@@ -60,8 +60,8 @@ public abstract  class AbstractConverter implements Converter {
     }
 
     /**
-     * when disable to  throw an excception when a conversion error ocurrs, return false, or return true.
-     * @return
+     * when disable to  throw an exception when a conversion error ocurrs, return false, or return true.
+     * @return whether throw an exception or not.
      */
     public boolean isDisableException() {
 		return disableException;
@@ -70,7 +70,7 @@ public abstract  class AbstractConverter implements Converter {
     /**
 	 *
      * Set <code>false</code> if the this converter and the default converter (if exists) should
-     * throw an exception when a conversion error occurs, otherwise <code>
+     * throw an exception when a conversion error occurs, otherwise
      * set <code>true</code>(default <code>false</code>)
      *
 	 * @param disableException Whether or not disable to  throw an excception when a conversion error ocurrs.

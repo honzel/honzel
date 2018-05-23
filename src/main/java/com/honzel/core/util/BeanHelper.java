@@ -17,7 +17,7 @@ public class BeanHelper {
 	
 	/**
 	 * disable exception or not
-	 * @param disableException
+	 * @param disableException  disable exception or not
 	 */
 	public static void setDisableException(boolean disableException) {
 		NestedPropertyUtilsBean.getInstance().setDisableException(disableException);
@@ -59,29 +59,32 @@ public class BeanHelper {
 	
 	/**
 	 * Returns the {@link TypeConverter} 
-	 * @return
+	 * @return the <code>TypeConverter</code> instance.
 	 */
 	public static TypeConverter getTypeConverter() {
 		return NestedPropertyUtilsBean.getInstance().getTypeConverter();
 	}
 
-	 /**
-     * Look up and return any registered {@link Converter} for the specified
-     * destination class; if there is no registered Converter, return
-     * <code>null</code>.
-     *
-     * @param toType Class for which to return a registered Converter
-     */
+	/**
+	 * Look up and return any registered {@link Converter} for the specified
+	 * destination type; if there is no registered Converter, return
+	 * <code>null</code>.
+	 *
+	 * @param toType Class for which to return a registered Converter
+	 * @return the registered <code>Converter</code> for the specified type
+	 */
 	public static Converter lookup(Class toType) {
 		return NestedPropertyUtilsBean.getInstance().lookup(toType);
 	}
+
 	/**
-	* <p>Convert the specified value to an object of the specified class (if
-     * possible).  Otherwise, return default value(usually <code>null</code>) which defined in the converter.</p>
-     * 
-     * @param value Value to be converted (may be null)
-     * @param toType Java class to be converted to
-	 * @return
+	 * <p>Convert the specified value to an object of the specified class (if
+	 * possible).  Otherwise, return default value(usually <code>null</code>) which defined in the converter.</p>
+	 *
+	 * @param value Value to be converted (may be null)
+	 * @param toType Java class to be converted to
+	 * @param <E> the target type
+	 * @return the converted value
 	 */
 	public static <E> E convert(Object value, Class<E> toType) {
 		return NestedPropertyUtilsBean.getInstance().convert(value, toType);
@@ -160,7 +163,7 @@ public class BeanHelper {
      * @param bean Bean for which a property descriptor is requested
      * @param name Possibly indexed and/or nested name of the property for
      *  which a property descriptor is requested
-	 * @return
+	 * @return The property type
 	 */
    public static Class getPropertyType(Object bean, String name) {
 	   return NestedPropertyUtilsBean.getInstance().getPropertyType(bean, name);
@@ -177,7 +180,7 @@ public class BeanHelper {
     * @param beanClass Bean class for which a property descriptor is requested
     * @param name Possibly indexed and/or nested name of the property for
     *  which a property descriptor is requested
-    * @return 
+    * @return  The property type
     */
    public static  Class getPropertyType(Class beanClass, String name) {
    		return NestedPropertyUtilsBean.getInstance().getPropertyType(beanClass, name);
@@ -193,7 +196,7 @@ public class BeanHelper {
      * @param bean Bean whose property is to be extracted
      * @param name Possibly indexed and/or nested name of the property 
      *  to be extracted, such as user.roles[1]
-     * @return 
+     * @return Return the value of the specified nested property
      */
 	public static  Object getProperty(Object bean , String name) {
 		return NestedPropertyUtilsBean.getInstance().getProperty(bean, name);
@@ -206,28 +209,30 @@ public class BeanHelper {
      * @param bean Bean on which setting is to be performed
      * @param name Property name (can be nested/indexed/mapped/combo)
      * @param value Value to be set
-     * @return 
+     * @return Return true when success to set,otherwise return false
      */
 	public static boolean setProperty(Object bean , String name, Object value) {
 		return NestedPropertyUtilsBean.getInstance().setProperty(bean, name, value);
 	}
-	
-	 /**
-	    * <p>Copy property values from the "origin" bean to the "destination" bean
-	    * for all cases where the property names are the same (even though the
-	    * actual getter and setter methods might have been customized via
-	    * <code>BeanInfo</code> classes or specified). 
-	    *
-	    * <p>If the origin "bean" is actually a <code>Map</code>, it is assumed
-	    * to contain String-valued <strong>simple</strong> property names as the keys, pointing
-	    * at the corresponding property values that will be set in the destination
-	    * bean.<strong>Note</strong> that this method is intended to perform 
-	    * a "shallow copy" of the properties and so complex properties 
-	    * (for example, nested ones) will not be copied.</p>
-	    *
-	    * @param source Origin bean whose properties are retrieved
-	    * @param target Destination bean whose properties are modified
-		 */
+
+    /**
+     * <p>Copy property values from the "origin" bean to the "destination" bean
+     * for all cases where the property names are the same (even though the
+     * actual getter and setter methods might have been customized via
+     * <code>BeanInfo</code> classes or specified).
+     *
+     * <p>If the origin "bean" is actually a <code>Map</code>, it is assumed
+     * to contain String-valued <strong>simple</strong> property names as the keys, pointing
+     * at the corresponding property values that will be set in the destination
+     * bean.<strong>Note</strong> that this method is intended to perform
+     * a "shallow copy" of the properties and so complex properties
+     * (for example, nested ones) will not be copied.</p>
+     *
+     * @param source Origin bean whose properties are retrieved
+     * @param target Destination bean whose properties are modified
+     * @param <T> the target bean type
+     * @return returns the destination bean whose properties are modified
+     */
 		public static<T>  T copyProperties(Object source, T target) {
 			return NestedPropertyUtilsBean.getInstance().copyProperties(source, target);
 		}

@@ -42,7 +42,7 @@ public class SimplePropertyUtilsBean {
 	
 	/**
 	 * disable exception or not
-	 * @param disableException
+	 * @param disableException whether or not to disable throw exception
 	 */
 	public void setDisableException(boolean disableException) {
 		this.disableException = disableException;
@@ -67,7 +67,7 @@ public class SimplePropertyUtilsBean {
 	/**
 	 * Return a new instance of <code>PropertyUtilsBean</code>
 	 * @param typeConverter the specified converter.
-	 * @return
+	 * @return Return the SimplePropertyUtilsBean bean instance.
 	 */
 	public static SimplePropertyUtilsBean getInstance(TypeConverter typeConverter) {
 		return new SimplePropertyUtilsBean(null, typeConverter);
@@ -141,12 +141,8 @@ public class SimplePropertyUtilsBean {
 	 	}
 
 
-	 	/**
-		 *
-		 * @param key
-		 * @return
-		 */
-		public int findIndex(Object key) {
+
+		int findIndex(Object key) {
 			int index = -1;
 			if (key instanceof Number) {
 				index = ((Number) key).intValue();
@@ -163,9 +159,9 @@ public class SimplePropertyUtilsBean {
      * bean, with no type conversions.
      *
      * @param bean Bean whose property is to be extracted
-     * @param key
-     * @param mapped
-     * @return
+     * @param key Possibly indexed and/or simple name of the property  to be extracted
+     * @param mapped whether map or not.
+     * @return Return the value of the specified simple property
      */
     public Object getProperty(Object bean, Object key, boolean mapped) {
     	if (bean == null) {
@@ -213,8 +209,7 @@ public class SimplePropertyUtilsBean {
      *
      * @param collection Collection whose element to be extracted
      * @param index index of the collection  to be extracted
-     *
-	 * @return
+	 * @return Return the value of the specified indexed element of the specified bean
 	 */
 	private Object getItem(Object collection, int index) {
 		if (index < 0)
@@ -283,7 +278,7 @@ public class SimplePropertyUtilsBean {
      * specified bean.
      * @param beanClass Bean class for which a property descriptor is requested
      * @param name Simple name of the property for which a property descriptor is requested
-	 * @return
+	 * @return The property type of the specified bean class
 	 */
 	public Class getPropertyType(Class beanClass, String name) {
 		PropertyDescriptor descriptor = getDescriptor(beanClass, name);
@@ -372,14 +367,7 @@ public class SimplePropertyUtilsBean {
 		return map == null ? null : (PropertyDescriptor) map.get(name);
     }
 
-	/**
-     * <p>Retrieve the property descriptors for the specified class,
-     * introspecting and caching them the first time a particular bean class
-     * is encountered.</p>
-     *
-     * @param beanClass Bean class for which property descriptors are requested
-	 * @return
-	 */
+
 	private Object[] getDescriptorArray(Class beanClass) {
 		if (beanClass == null) {
 			 return null;
@@ -427,7 +415,7 @@ public class SimplePropertyUtilsBean {
      * is encountered.</p>
      *
      * @param beanClass Bean class for which property descriptors are requested
-	 * @return
+	 * @return the property descriptors for the specified class
 	 */
 	public Map getDescriptorMap(Class beanClass) {
 		Object[] descriptorArray = getDescriptorArray(beanClass);
@@ -443,7 +431,7 @@ public class SimplePropertyUtilsBean {
      * is encountered.</p>
      *
      * @param beanClass Bean class for which property descriptors are requested
-	 * @return
+	 * @return the property descriptors for the specified class
 	 */
 	public PropertyDescriptor[] getPropertyDescriptors(Class beanClass) {
 		Object[] descriptorArray = getDescriptorArray(beanClass);
@@ -455,8 +443,8 @@ public class SimplePropertyUtilsBean {
 	
 	/**
 	 * exception or error info 
-	 * @param e
-	 * @param info
+	 * @param e cause exception
+	 * @param info error info
 	 */
 	public void error(Throwable e, String info) {
 		PropertyException exception = null;

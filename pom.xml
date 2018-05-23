@@ -4,15 +4,16 @@
         <artifactId>oss-parent</artifactId>
         <version>7</version>
     </parent>
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.github.honzel</groupId>
+    <artifactId>honzel</artifactId>
+    <version>1.6</version>
+    <description>Java Type Converter Tool</description>
+    <url>https://github.com/honzel/honzel</url>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jdk.version>1.8</jdk.version>
     </properties>
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>com.github.honzel</groupId>
-  <artifactId>honzel</artifactId>
-  <version>1.6</version>
- <description>Java Type Converter Tool</description>
   <dependencies>
   	<dependency>
 		<groupId>junit</groupId>
@@ -30,9 +31,9 @@
     </licenses>
     <scm>
         <tag>master</tag>
-        <url>git@github.com:honzel/honzel.git</url>
-        <connection>scm:git:git@github.com:honzel/honzel.git</connection>
-        <developerConnection>scm:git:git@github.com:honzel/honzel.git</developerConnection>
+        <url>https://github.com/honzel/honzel</url>
+        <connection>scm:git:https://github.com/honzel/honzel.git</connection>
+        <developerConnection>scm:git:https://github.com/honzel/honzel.git</developerConnection>
     </scm>
     <developers>
         <developer>
@@ -40,30 +41,4 @@
             <email>aniu_zhengzhuan@163.com</email>
         </developer>
     </developers>
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <configuration>
-                    <source>${jdk.version}</source>
-                    <target>${jdk.version}</target>
-                    <testSource>${jdk.version}</testSource>
-                    <testTarget>${jdk.version}</testTarget>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>attach-sources</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
 </project>

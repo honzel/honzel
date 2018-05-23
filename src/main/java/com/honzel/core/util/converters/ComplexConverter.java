@@ -52,7 +52,7 @@ public class ComplexConverter extends TypeConverter {
      *
      * @param value the input object.
      * @param targetType Class for which to return a registered Converter
-	 * @return
+	 * @return The registered {@link Converter} or <code>null</code> if not found
 	 */
 	public Converter lookup(Object value, Class targetType) {
 		Map sourceConverters = (Map) converters.get(targetType);
@@ -74,22 +74,17 @@ public class ComplexConverter extends TypeConverter {
 	 * Convert the specified array to an  array of the specified element type.
 	 * @param value the input array object.
 	 * @param elementType the element type of  ouput array 
-	 * @return
+	 * @return the converted array
 	 */
 	protected Object convertToArray(Object[] value, Class elementType) {
 		Object result = Array.newInstance(elementType, value.length);
-		 for(int i = 0; i < value.length; i++) 
+		 for(int i = 0; i < value.length; i++) {
 			 Array.set(result, i, convertToType(value[i], elementType));
+		 }
 		return result;
 	}
 	
-	/**
-	 * 
-	 * @param sourceType
-	 * @param sourceConverters
-	 * @param fetchSuperClass
-	 * @return
-	 */
+
 	private Converter lookupAncestors(Class sourceType, Map sourceConverters, boolean fetchSuperClass) {
 		Converter converter = null;
 		if(fetchSuperClass && !sourceType.isInterface()) {

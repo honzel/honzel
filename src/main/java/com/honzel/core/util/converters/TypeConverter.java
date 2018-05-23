@@ -73,12 +73,13 @@ public class TypeConverter extends AbstractConverter {
 	}
 
 	/**
-     * Look up and return any registered {@link Converter} for the specified
-     * destination class; if there is no registered Converter, return
-     * <code>null</code>.
-     *
-     * @param targetType Class for which to return a registered Converter
-     */
+	 * Look up and return any registered {@link Converter} for the specified
+	 * destination class; if there is no registered Converter, return
+	 * <code>null</code>.
+	 *
+	 * @param targetType Class for which to return a registered Converter
+	 * @return The registered {@link Converter} or <code>null</code> if not found
+	 */
 	public Converter lookup(Class targetType) {
 		return lookup(null, targetType);
 	}
@@ -90,12 +91,13 @@ public class TypeConverter extends AbstractConverter {
 	 *
 	 * @param value the value being converted
 	 * @param targetType Class of the value to be converted to
-	 * @return
+	 * @return The registered {@link Converter} or <code>null</code> if not found
 	 */
 	protected Converter lookup(Object value, Class targetType) {
 		Converter converter = (Converter) converters.get(targetType);
-		if (converter == null && targetType.isArray())
+		if (converter == null && targetType.isArray()) {
 			converter = getArrayConverter();
+		}
 		if (converter == null && targetType.isEnum()) {
 			converter = (Converter) converters.get(Enum.class);
 		}
@@ -129,7 +131,7 @@ public class TypeConverter extends AbstractConverter {
 	}
 	/**
 	 * array converter
-	 * @return
+	 * @return the array converter
 	 */
 	public ArrayConverter getArrayConverter() {
 		return arrayConverter;
@@ -144,7 +146,7 @@ public class TypeConverter extends AbstractConverter {
      * @param value Value to be converted (may be null)
      * @param toType Java class to be converted to
 	 * @param converter the specified converter
-	 * @return
+	 * @return  The converted value
 	 */
 	public Object convert(Object value, Class toType, Converter converter) {
 		if (toType.isInstance(value)) {
@@ -159,9 +161,6 @@ public class TypeConverter extends AbstractConverter {
 		return converter.convert(value, toType);
 	}
 
-	/**
-	 *
-	 */
 	private void registerStandard() {
 		register(Integer.TYPE, standardConverter);
 		register(Short.TYPE, standardConverter);

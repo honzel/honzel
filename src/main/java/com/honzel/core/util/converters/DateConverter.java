@@ -179,7 +179,7 @@ public class DateConverter extends AbstractConverter {
         return null;
     }
     /**
-     * Return a <code>DateFormat<code> for the Locale.
+     * Return a <code>DateFormat</code> instance for the Locale.
      * @param locale The Locale to create the Format with (may be null)
      * @param timeZone The Time Zone create the Format with (may be null)
      *
@@ -268,7 +268,7 @@ public class DateConverter extends AbstractConverter {
 	 * Parse a String date value using the set of patterns.
 	 *
 	 * @param text The String date value.
-	 * @param toType
+	 * @param toType the target type.
 	 *
 	 * @return The converted Date object.
 	 */

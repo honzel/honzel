@@ -318,10 +318,10 @@ public class StandardConverter  extends AbstractConverter  {
 			return result;
 		}
 		/**
-		 * if the specified <code>Class<code> parameter is  a primitive type ,return  a default value represents this type,
+		 * if the specified type parameter is  a primitive type ,return  a default value represents this type,
 		 * or return null
-		 * @param toType 
-		 * @return
+		 * @param toType  the specified type
+		 * @return return  a default value represents this type
 		 */
 		public static Object primtiveDefault(Class toType) {
 			return primitiveDefaults.get(toType);

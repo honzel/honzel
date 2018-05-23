@@ -56,48 +56,48 @@ public interface Resolver {
 	int getEndType();
 
 	/**
-	 * Return the start of the current expression in the input expression without trim .
-	 * @return
+	 * Return the start of the current expression in the input expression .
+	 * @return the index of the current expression in the input expression
 	 */
 	int getStart();
 
 	/**
 	 * Return the start of the current expression in the input expression .
-	 * @param trim
-	 * @return
+	 * @param trim whether to trim or not
+	 * @return the index of the current expression in the input expression
 	 */
 	int getStart(boolean trim);
 	/**
-	 * Return the start of the current expression in the input expression without trim .
-	 * @return
+	 * Return the end index of the current expression in the input expression  .
+	 * @return the end index of the current expression in the input expression
 	 */
 	int getEnd();
 	/**
 	 * Return the end of the current expression in the input expression .
-	 * @param trim
-	 * @return
+	 * @param trim  whether to trim or not
+	 * @return the end of the current expression in the input expression .
 	 */
 	int getEnd(boolean trim);
 	/**
 	 * Return  the terminal point in the input expression .
-	 * @return
+	 * @return the terminal index in the input expression .
 	 */
 	int getTerminal();
 
 
 	/**
 	 * Return true if the tokens is pair.
-	 * @return
+	 * @return Return true if the tokens is pair, otherwise return false.
 	 */
 	boolean isPair();
 	/**
 	 * Return whether the current expression is the last one or not.
-	 * @return
+	 * @return return true when the current expression is the last one
 	 */
 	boolean isLast();
 	/**
 	 * Return whether the current expression is the first one (starts with 0 index of the input character sequence) or not.
-	 * @return
+	 * @return return true when  the current expression is the first one.
 	 */
 	boolean isFirst();
 	/**
@@ -116,45 +116,49 @@ public interface Resolver {
 	 * specify  some tokens to use.
 	 * @param openTokens  the specified opened tokens that  will to use to parse the input string.
 	 * @param closeTokens the specified closed tokens that  will to use to parse the input string.
-	 * @return
+	 * @return  Return this resolver.
 	 */
 	Resolver useTokens(String openTokens, String closeTokens);
 	/**
-	 *Return true if the current type is in the specified types  that  represent  the  tokens.
+	 * Return true if the current type is in the specified types  that  represent  the  tokens.
 	 * @param types  the specified types that  represent  the  tokens.
-	 * @return
+	 * @return Return true if the current type is in the specified types  that  represent  the  tokens
 	 */
 	boolean isInTypes(int types);
 	/**
-	 *Return true if the current expression is end in the specified tokens.
+	 * Return true if the current expression is end in the specified tokens.
 	 * @param types  the specified tokens.
-	 * @return
+	 * @return Return true if the current expression is end in the specified tokens
 	 */
 	boolean endsInTypes(int types);
 	/**
 	 * Return true if the current expression is in the specified tokens.
 	 * @param tokens  the specified tokens.
-	 * @return
+	 * @return Return true if the current expression is in the specified tokens.
 	 */
 	boolean isInTokens(String tokens);
 
+	/**
+	 * Return true if the current expression is in the specified tokens.
+	 * @return Return true if the current expression is in the specified tokens.
+	 */
 	boolean isInTokens();
 
 	/**
-	 *Return true if the current expression is end in the specified tokens.
+	 * Return true if the current expression is end in the specified tokens.
 	 * @param tokens  the specified tokens.
-	 * @return
+	 * @return Return true if the current expression is end in the specified tokens.
 	 */
 	boolean endsInTokens(String tokens);
 	/**
 	 * Return whether current content is empty or not.
-	 * @return
+	 * @return Return whether current content is empty or not.
 	 */
 	boolean isEmpty();
 	/**
 	 * Return whether current content is empty or not.
-	 * @param trim
-	 * @return
+	 * @param trim whether to trim
+	 * @return Return whether current content is empty or not.
 	 */
 	public boolean isEmpty(boolean trim);
 	/**
@@ -166,14 +170,14 @@ public interface Resolver {
 	/**
 	 * Return the content from the current  expression.
 	 * @param escaped if true, remove the escape char that  is  in the current expression ,otherwise not
-	 * @return
+	 * @return  The current content
 	 */
 	String next(boolean escaped);
 	/**
 	 * Return the content from the current  expression.
 	 * @param escaped if true, remove the escape char that is  in the current expression ,otherwise not
 	 * @param trim  whether to trim the current expression or not.
-	 * @return
+	 * @return  The current content
 	 */
 	String next(boolean escaped, boolean trim);
 
@@ -221,7 +225,7 @@ public interface Resolver {
 	 * @param escaped if true, remove the escape char that is  in the current expression ,otherwise not
 	 * @param trim  whether to trim the current expression or not.
 	 * @param containsToken whether to contains the token in current expression or not
-	 * @return
+	 * @return  The current content
 	 */
 	String next(boolean escaped, boolean trim, boolean containsToken);
 
@@ -286,20 +290,20 @@ public interface Resolver {
 
 	/**
 	 *  reset the input expression and use current start index as start position and the current end index of input as term position
-	 * @return
+	 * @return Return this resolver.
 	 */
 	Resolver resetToCurrent();
 
 	/**
-	 *
-	 * @param offset
-	 * @return
+	 *  reset the input expression and use current term index as start position
+	 * @param offset the offset of term position
+	 * @return Return this resolver.
 	 */
 	Resolver resetToBeyond(int offset);
 
 	/**
 	 * return the input expression last set
-	 * @return
+	 * @return return the input expression last set
 	 */
 	CharSequence getInput();
 	/**
@@ -311,7 +315,7 @@ public interface Resolver {
 	/**
 	 * Set the escape
 	 * @param escapeChar if the char is greater than 0,apply it as escape char in parse input expression
-	 * @param forChars
+	 * @param forChars the escape only for this characters , if the parameter is null ,for all characters.
 	 * @return Return this resolver
 	 */
 	Resolver useEscape(int escapeChar, String forChars) ;
@@ -319,37 +323,39 @@ public interface Resolver {
 	/**
 	 * set whether default to use trim when fetch the current expression string.
 	 *@param trim whether default to trim the current expression.
-	 * @return
+	 * @return Return this resolver
 	 */
 	Resolver useTrim(boolean trim);
 
 	/**
-	 * set the terminal position of this resolver, if <code>terminal</code> is  equal or greater than 0, use it as the terminal position.
+	 * set the terminal position of this resolver, if terminal is  equal or greater than 0, use it as the terminal position.
 	 * otherwise use the input character sequences length as the terminal position.
-	 * @param terminal
-	 * @return
+	 * @param terminal the specified terminal position
+	 * @return Return this resolver
 	 */
 	Resolver useTerminal(int terminal);
 	/**
 	 * return the current expression has escape or not.
-	 * @return
+	 * @return return the current expression has escape or not.
 	 */
 	boolean containsEscape();
+
 	/**
-	 * Get the escape char.
+	 * return the escape char.
+	 * @return return the escape char.
 	 */
 	char getEscape();
 	/**
 	 * Return the types of the specified tokens.
 	 * @param tokens  the specified tokens that  will to use to parse the input string.
-	 * @return
+	 * @return Return the types of the specified tokens.
 	 */
 	int findTypes(String tokens);
 	/**
 	 * Return the types of the specified tokens.
 	 * @param openTokens  the specified opened tokens
 	 * @param closeTokens the specified closed tokens
-	 * @return
+	 * @return Return the types of the specified tokens.
 	 */
 	int findTypes(String openTokens, String closeTokens);
 

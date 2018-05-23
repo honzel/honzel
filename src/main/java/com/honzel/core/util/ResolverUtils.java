@@ -30,12 +30,7 @@ public class ResolverUtils {
 	public static Resolver createResolver(String opened, String closed, boolean trim, int escapeChar) {
 		return createResolver(opened, closed).useTrim(trim).useEscape(escapeChar);
 	}
-	/**
-	 * Return the types of the specified delimiters if is in the total delimiters.
-	 * @param totalDelimiters the total opened/closed delimiters
-	 * @param sub some delimiters.
-	 * @return
-	 */
+
 	public static int findTypes(String totalDelimiters, String sub) {
 		return findTypes(totalDelimiters, sub, 0);
 	}
@@ -44,7 +39,7 @@ public class ResolverUtils {
 	 * @param totalDelimiters the total opened/closed delimiters
 	 * @param sub some delimiters.
 	 * @param fromIndex the type index to start the search from
-	 * @return
+	 * @return Return the types of the specified delimiters if is in the total delimiters.
 	 */
 	public static int findTypes(String totalDelimiters, String sub, int fromIndex) {
 		int result = 0;
@@ -58,7 +53,7 @@ public class ResolverUtils {
 	 * @param totalDelimiters the total opened/closed delimiters
 	 * @param ch the specified delimiter.
 	 * @param fromIndex the type index to start the search from
-	 * @return
+	 * @return Return the type of the specified delimiter if is in the delimiters.
 	 */
 	public static int findType(String totalDelimiters, char ch, int fromIndex) {
 		int result = 0;
@@ -74,7 +69,7 @@ public class ResolverUtils {
 	 * Return the type of the specified delimiters if is in the total delimiters.
 	 * @param allDelimiters the total opened/closed delimiters
 	 * @param ch the specified delimiter.
-	 * @return
+	 * @return Returns the type of the specified delimiters if is in the total delimiters.
 	 */
 	public static int findType(String allDelimiters, char ch) {
 		return findType(allDelimiters, ch, 0);
@@ -82,10 +77,9 @@ public class ResolverUtils {
 
 
 	/**
-	 * Returns the type value at the
-     * specified index.
-	 * @param typeIndex
-	 * @return
+	 * Returns the type value at the specified index.
+	 * @param typeIndex the specified index
+	 * @return Returns the type value at the specified index.
 	 */
 	public static int getType(int typeIndex) {
 		return DefaultResolver.getType(typeIndex);
@@ -93,9 +87,9 @@ public class ResolverUtils {
 
 	/**
 	 * Return the intersection between firstTypes and secondTypes
-	 * @param firstTypes
-	 * @param secondTypes
-	 * @return
+	 * @param firstTypes the first types
+	 * @param secondTypes the second types
+	 * @return Return the intersection between firstTypes and secondTypes
 	 */
 	public static int interTypes(int firstTypes, int secondTypes) {
 		return (firstTypes & secondTypes);
