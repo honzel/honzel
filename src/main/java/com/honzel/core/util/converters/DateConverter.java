@@ -1,5 +1,7 @@
 package com.honzel.core.util.converters;
 
+import com.honzel.core.util.exceptions.ConversionException;
+
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.text.DateFormat;
@@ -9,8 +11,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 import java.util.TimeZone;
-
-import com.honzel.core.util.exceptions.ConversionException;
 /**
  * This converter handles conversion to the following types:
  * <ul>
@@ -316,7 +316,7 @@ public class DateConverter extends AbstractConverter {
 			if(result != null)
 				return result;
 			if(validType == 1 && (Long.class.equals(toType) || Long.TYPE.equals(toType))) {
-				return Long.valueOf(longValue);
+				return longValue;
 			}
 		} else if ((firstValue instanceof CharSequence) && ((CharSequence) firstValue).length() > 0) {
 			Object result = parseDate(toType, firstValue.toString());

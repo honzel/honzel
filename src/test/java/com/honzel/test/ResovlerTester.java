@@ -90,13 +90,15 @@ public class ResovlerTester {
 	}
 	
 	public void testIsInTypes() {
-		
+		String src = "aaa/bbb/ccc/ddd";
+		System.out.println(src.lastIndexOf("aaa", 0));
 	}
 	
 	public static void main(String[] args) {
 		ResovlerTester tester = new ResovlerTester();
 //		tester.testMoveBit();
 //		tester.testStartsWithResolver();
-		tester.testExpressionResolver();
+//		tester.testExpressionResolver();
+		tester.testIsInTypes();
 	}
 }

@@ -1,5 +1,11 @@
 package com.honzel.core.util.bean;
 
+import com.honzel.core.util.ResolverUtils;
+import com.honzel.core.util.converters.AbstractConverter;
+import com.honzel.core.util.converters.Converter;
+import com.honzel.core.util.converters.TypeConverter;
+import com.honzel.core.util.resolver.Resolver;
+
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
@@ -7,21 +13,10 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.Map;
-
-import com.honzel.core.util.ResolverUtils;
-import com.honzel.core.util.converters.AbstractConverter;
-import com.honzel.core.util.converters.Converter;
-import com.honzel.core.util.converters.TypeConverter;
-import com.honzel.core.util.resolver.Resolver;
+import java.util.*;
 /**
  * 
- * @author honzy
+ * @author honzel
  *
  */
 @SuppressWarnings({"rawtypes","unchecked"})
@@ -32,7 +27,10 @@ public class NestedPropertyUtilsBean {
 	
 	private static final String opened = "[.";
 	private static final String closed = "]";
-	
+
+	private static final Object[] EMPTY_PARAMETERS = {};
+	private static final Class[] EMPTY_CLASS_ARRAY = {};
+
 	private static final int ERROR_TYPES = Resolver.LINK | Resolver.END;
 
 
@@ -455,6 +453,19 @@ public class NestedPropertyUtilsBean {
      *  to be extracted, such as user.roles[1]
      * @return Returns the value of the specified property of the specified bean
      */
+	public Object getSimpleProperty(Object bean , String name) {
+		return propertyUtilsBean.getProperty(bean, name, false);
+	}
+	 /**
+     * Return the value of the specified property of the specified bean,
+     * no matter which property reference format is used, with no
+     * type conversions.
+     *
+     * @param bean Bean whose property is to be extracted
+     * @param name Possibly indexed and/or nested name of the property
+     *  to be extracted, such as user.roles[1]
+     * @return Returns the value of the specified property of the specified bean
+     */
 	public  Object getProperty(Object bean , String name) {
 		if(name != null) {
 			name = name.trim();
@@ -467,7 +478,7 @@ public class NestedPropertyUtilsBean {
 		if(pos > 0) {
 			String key = name.substring(0, pos).trim();
 			bean = propertyUtilsBean.getProperty(bean, key, false);
-			if(bean == null) {
+			if (bean == null) {
 				return null;
 			}
 		}
@@ -490,6 +501,20 @@ public class NestedPropertyUtilsBean {
 		return bean;
 	}
 
+
+	/**
+	 * <p>Set the specified property value, performing type conversions as
+	 * required to conform to the type of the destination property.</p>
+	 *
+	 * @param bean Bean on which setting is to be performed
+	 * @param name Property name (can be nested/indexed/mapped/combo)
+	 * @param value Value to be set
+	 * @return Return true when success to set,otherwise return false
+	 */
+
+	public boolean setSimpleProperty(Object bean, String name, Object value) {
+		return propertyUtilsBean.setProperty(bean, name, value, false);
+	}
 	 /**
      * <p>Set the specified property value, performing type conversions as
      * required to conform to the type of the destination property.</p>
@@ -658,9 +683,9 @@ public class NestedPropertyUtilsBean {
 					prop = item;
 				} else // if the usual property is null
 				if (prop == null) {
-					prop = propClass.newInstance();
+					prop = propClass.getConstructor(EMPTY_CLASS_ARRAY).newInstance(EMPTY_PARAMETERS);
 					if (split) {
-						descriptor.getWriteMethod().invoke(bean, new Object[] {prop});
+						descriptor.getWriteMethod().invoke(bean, prop);
 					} else {
 						splitBean = bean;
 						splitProp = prop;
@@ -691,18 +716,17 @@ public class NestedPropertyUtilsBean {
 	}
 
 	private void copyBeanByMap(Object target, Map source) {
-		Iterator iterator = source.entrySet().iterator();
-		while (iterator.hasNext()) {
-			Map.Entry entry = (Map.Entry) iterator.next();
+		Set<Map.Entry> entries = source.entrySet();
+		for (Map.Entry entry : entries) {
 			String name = (String) entry.getKey();
 			PropertyDescriptor descriptor = propertyUtilsBean.getDescriptor(target.getClass(), name);
-			if(descriptor == null) {
-				if(getPropertyType(target, name, false) != null) {
-					setProperty(target,  name, entry.getValue());
+			if (descriptor == null) {
+				if (getPropertyType(target, name, false) != null) {
+					setProperty(target, name, entry.getValue());
 				}
 				continue;
 			}
-			if(descriptor.getWriteMethod() == null) {
+			if (descriptor.getWriteMethod() == null) {
 				continue;
 			}
 			try {
@@ -711,9 +735,9 @@ public class NestedPropertyUtilsBean {
 				if (typeConverter != null) {
 					value = typeConverter.convert(value, descriptor.getPropertyType());
 				}
-				descriptor.getWriteMethod().invoke(target, new Object[] {value});
+				descriptor.getWriteMethod().invoke(target, new Object[]{value});
 			} catch (Exception e) {
-				error(e, "Fail to set the specified property '" +  name + "' for the specified bean of the type '"
+				error(e, "Fail to set the specified property '" + name + "' for the specified bean of the type '"
 						+ getTypeName(target) + "', reason: " + e.toString());
 			}
 		}

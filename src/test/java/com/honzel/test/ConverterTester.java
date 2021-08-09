@@ -1,12 +1,12 @@
 package com.honzel.test;
 
+import com.honzel.core.util.BeanHelper;
+import com.honzel.core.util.converters.DateConverter;
+
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.Date;
-
-import com.honzel.core.util.BeanHelper;
-import com.honzel.core.util.converters.DateConverter;
 
 public class ConverterTester {
 	

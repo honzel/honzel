@@ -1,20 +1,17 @@
 package com.honzel.core.util.bean;
 
+import com.honzel.core.util.converters.TypeConverter;
+import com.honzel.core.util.exceptions.PropertyException;
+
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
+import java.lang.ref.SoftReference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-
-import com.honzel.core.util.converters.TypeConverter;
-import com.honzel.core.util.exceptions.PropertyException;
 /**
  * 
  * @author honzy
@@ -82,7 +79,7 @@ public class SimplePropertyUtilsBean {
 	}
 
 	private boolean isList(Object bean) {
-		return bean == null ? false: isList(bean.getClass());
+		return bean != null && isList(bean.getClass());
 	}
 
 
@@ -128,7 +125,7 @@ public class SimplePropertyUtilsBean {
 	     		if (typeConverter != null) {
 	     			value = typeConverter.convert(value, descriptor.getPropertyType());
 	     		}
-	     		descriptor.getWriteMethod().invoke(bean, new Object[] {value});
+	     		descriptor.getWriteMethod().invoke(bean, value);
 	     		return true;
 	     	} catch (PropertyException e) {
 				error(e, null);
@@ -322,7 +319,7 @@ public class SimplePropertyUtilsBean {
 						if (typeConverter != null) {
 							value = this.typeConverter.convert(value, descriptor.getPropertyType());
 						}
-						descriptor.getWriteMethod().invoke(target, new Object[]{value});
+						descriptor.getWriteMethod().invoke(target, value);
 					} catch (Exception e) {
 						this.error(e, "Fail to set the specified property '" + descriptor.getName() + "' for the specified bean of the type '" + targetType.getName() + "', reason: " + e.toString());
 					}
@@ -395,11 +392,11 @@ public class SimplePropertyUtilsBean {
 	       		descriptorMap.put(descriptors[i].getName(), descriptors[i]);
 	       		try {
 					Method method = descriptors[i].getReadMethod();
-					if (method != null && !method.isAccessible()) {
+					if (method != null) {
 						method.setAccessible(true);
 					}
 					method = descriptors[i].getWriteMethod();
-					if (method != null && !method.isAccessible()) {
+					if (method != null) {
 						method.setAccessible(true);
 					}
 				} catch (SecurityException e) {}

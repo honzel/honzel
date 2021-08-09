@@ -1,0 +1,472 @@
+package com.honzel.core.util.timerange;
+
+import com.honzel.core.util.TextUtils;
+
+import java.time.LocalTime;
+import java.time.temporal.ChronoField;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * @author honzel
+ * @Description: 时间段值转换
+ * @date 2021/1/4
+ */
+public class TimeRangeUtils {
+    /**
+     * 全部时间
+     */
+    public static final long ALL_TIMES;
+
+    /**
+     * 全部日期
+     */
+    public static final long ALL_WEEKDAYS;
+    /**
+     * 班次时间标识
+     */
+    public static final long SHIFT_TIME_FLAG;
+    /**
+     * 无设置值
+     */
+    public static final long NONE = 0L;
+    /**
+     * 日期开始时间
+     */
+    private static final long DATE_START_TIME;
+
+    private static final int TIME_BITS = 48;
+
+    private static final int START_TIME_BITS = 6;
+
+    private static final int WEEKDAY_BITS = 7;
+
+    private static final int TIME_UNIT_IN_MINUTES = 30;
+
+
+    private static final long FIRST_BIT = 1L;
+
+    private TimeRangeUtils () {}
+
+    static {
+        // 时间位
+        long result = NONE;
+        for (int i = 0; i < TIME_BITS; i ++) {
+            result |= (FIRST_BIT << i);
+        }
+        ALL_TIMES = result;
+        // 开始位置位
+        result = NONE;
+        for (int i = TIME_BITS; i < TIME_BITS + START_TIME_BITS; i ++) {
+            result |= (FIRST_BIT << i);
+        }
+        DATE_START_TIME = result;
+        // 日期位
+        result = NONE;
+        for (int i = TIME_BITS + START_TIME_BITS; i < TIME_BITS + START_TIME_BITS + WEEKDAY_BITS; i ++) {
+            result |= (FIRST_BIT << i);
+        }
+        ALL_WEEKDAYS = result;
+        // 班次时间标识
+        SHIFT_TIME_FLAG = FIRST_BIT << (TIME_BITS + START_TIME_BITS + WEEKDAY_BITS);
+    }
+
+
+    /**
+     * 获取时间范围列表
+     * @param timeRangeStamp 时间段值
+     * @return 返回时间段列表
+     */
+    public static List<TimeRange> getTimeRanges(long timeRangeStamp) {
+        return getTimeRanges(timeRangeStamp, 0, false);
+    }
+    /**
+     * 获取时间范围列表
+     * @param timeRangeStamp 时间段值
+     * @param divisionDuration 切割时长（单位为分钟)
+     * @return 返回拆分后的时间段列表
+     */
+    public static List<TimeRange> getTimeRanges(long timeRangeStamp, int divisionDuration) {
+        return getTimeRanges(timeRangeStamp, divisionDuration, false);
+    }
+
+    /**
+     * 获取时间范围列表
+     * @param timeRangeStamp 时间段值
+     * @param divisionDuration 切割时长（单位为分钟), 0为不切割
+     * @param halfDivisionDurationEnabled 是否步长为一半切割时长, true-步长为切割时长的一半, false-步长与切割时长相等
+     * @return 返回拆分后的时间段列表
+     */
+    public static List<TimeRange> getTimeRanges(long timeRangeStamp, int divisionDuration, boolean halfDivisionDurationEnabled) {
+        if (timeRangeStamp == NONE || (timeRangeStamp & ALL_TIMES) == NONE) {
+            return Collections.emptyList();
+        }
+        //是否班次时间
+        boolean shiftFlag = (timeRangeStamp & SHIFT_TIME_FLAG) != NONE;
+        List<TimeRange> timeRangeList = new ArrayList<>();
+        TimeRange timeRange = null;
+        // 日期起始位
+        int offset = getOffsetIndex(timeRangeStamp);
+        for (int i = 0; i < TIME_BITS; i ++) {
+            int seq = (offset + i) % TIME_BITS;
+            if ((timeRangeStamp & (FIRST_BIT << seq)) == NONE) {
+                if (timeRange != null) {
+                    if (shiftFlag) {
+                        timeRange.setEndTime(i == TIME_BITS - 1 && seq == i ? LocalTime.MAX : parseTime(seq + 1));
+                    } else {
+                        timeRange.setEndTime(parseTime(seq));
+                    }
+                    // 按切割时长拆分时间段
+                    divideTimeRange(timeRange, timeRangeList, divisionDuration, halfDivisionDurationEnabled);
+                    timeRange = null;
+                }
+            } else {
+                if (timeRange == null) {
+                    timeRange = new TimeRange();
+                    timeRange.setStartTime(parseTime(seq));
+                    timeRangeList.add(timeRange);
+                }
+            }
+        }
+        if (timeRange != null) {
+            if (offset == 0) {
+                // 如果结束时间为一天的最后，则设置当天最大值
+                timeRange.setEndTime(LocalTime.MAX);
+            } else {
+                // 跨天时
+                timeRange.setEndTime(parseTime(offset));
+            }
+            // 按切割时长拆分时间段
+            divideTimeRange(timeRange, timeRangeList, divisionDuration, halfDivisionDurationEnabled);
+        }
+        return timeRangeList;
+    }
+
+    /**
+     * 按切割时长拆分时间段
+     * @param timeRange 准备被切割拆分的时间段
+     * @param timeRangeList 时间段列表
+     * @param divisionDuration 切割时长（单位为分钟)
+     * @param halfDivisionDurationEnabled 是否步长为一半切割时长, true-步长为切割时长的一半, false-步长与切割时长相等
+     */
+    private static void divideTimeRange(TimeRange timeRange, List<TimeRange> timeRangeList, int divisionDuration, boolean halfDivisionDurationEnabled) {
+        if (divisionDuration < 1) {
+            // 切割时长小于1时不切割
+            return;
+        }
+        if (halfDivisionDurationEnabled && divisionDuration < 2) {
+            // 如果小于半切割最小单位时按false处理
+            halfDivisionDurationEnabled = false;
+        }
+        // 步长时长
+        int stepDuration = halfDivisionDurationEnabled ? divisionDuration / 2 : divisionDuration;
+        // 开始时间及结束时间
+        LocalTime startTime = timeRange.getStartTime();
+        LocalTime endTime = timeRange.getEndTime();
+        // 计算总时间段数
+        int count = calcTotalCount(startTime, endTime, stepDuration, halfDivisionDurationEnabled);
+        // 前一个时间段
+        TimeRange prevRange = timeRange;
+        // 拆分时间段
+        for (int i = 1; i < count; ++ i) {
+            // 子时间段
+            TimeRange subRange = new TimeRange();
+            // 计算开始时间
+            subRange.setStartTime(startTime.plusMinutes(i * stepDuration));
+            if (halfDivisionDurationEnabled) {
+                // 结束时间按切割时长处理
+                prevRange.setEndTime(prevRange.getStartTime().plusMinutes(divisionDuration));
+            } else {
+                // 后一段开始时间点作为上一段的结束时间点
+                prevRange.setEndTime(subRange.getStartTime());
+            }
+            // 将时间段添加入结果
+            timeRangeList.add(subRange);
+            //
+            prevRange = subRange;
+        }
+        //结束时间
+        prevRange.setEndTime(endTime);
+    }
+
+    private static int calcTotalCount(LocalTime startTime, LocalTime endTime, int stepDuration, boolean halfDivisionDurationEnabled) {
+        // 计算总时长
+        if (LocalTime.MAX.equals(endTime)) {
+            endTime  = LocalTime.MIN;
+        }
+        int maxDuration = (int) ChronoUnit.MINUTES.between(startTime, endTime);
+        if (maxDuration <= 0) {
+            // 跨天时
+            maxDuration = (int) (ChronoUnit.DAYS.getDuration().toMinutes() + maxDuration);
+        }
+        // 计算总时间段数
+        int count = maxDuration / stepDuration;
+        if (maxDuration % stepDuration == 0) {
+            if (halfDivisionDurationEnabled) {
+                count--;
+            }
+        } else {
+            if (!halfDivisionDurationEnabled) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * 获取最起始时间点
+     * @param timeRangeStamp 时间段值
+     * @return 返回最起始时间点
+     */
+    public static LocalTime getFirstStartTime(long timeRangeStamp) {
+        if (timeRangeStamp != NONE) {
+            int offset = getOffsetIndex(timeRangeStamp);
+            for (int i = 0; i < TIME_BITS; i ++) {
+                int seq = (offset + i) % TIME_BITS;
+                if ((timeRangeStamp & (FIRST_BIT << seq)) != NONE) {
+                    return parseTime(seq);
+                }
+            }
+        }
+        return LocalTime.MIN;
+    }
+    /**
+     * 获取最后结束时间点
+     * @param timeRangeStamp 时间段值
+     * @return 返回最后结束时间点
+     */
+    public static LocalTime getLastEndTime(long timeRangeStamp) {
+        if (timeRangeStamp != NONE) {
+            //是否班次时间
+            boolean shiftFlag = (timeRangeStamp & SHIFT_TIME_FLAG) != NONE;
+            // 开始时间位置
+            int offset = getOffsetIndex(timeRangeStamp);
+            for (int i = TIME_BITS - 1; i >= 0; i --) {
+                int seq = (offset + i) % TIME_BITS;
+                if ((timeRangeStamp & (FIRST_BIT << seq)) != NONE) {
+                    if (shiftFlag) {
+                        ++ seq;
+                    }
+                    if (seq == TIME_BITS - 1) {
+                        return LocalTime.MAX;
+                    } else {
+                        return parseTime(seq + 1);
+                    }
+                }
+            }
+        }
+        return LocalTime.MIN;
+    }
+
+    /**
+     * 是否时间有跨天
+     * @param timeRangeStamp 时间段值
+     * @return true代表跨天, false代表不跨天
+     */
+    public static boolean isTimeCrossDate(long timeRangeStamp) {
+        return getOffsetIndex(timeRangeStamp) != 0;
+    }
+
+    /**
+     * 获取日期范围列表，周一为1,周二为2,...多个用英文逗号分隔
+     * @param timeRangeStamp 日期段值
+     * @return 返回星期值，多个用英文逗号分隔
+     */
+    public static String getWeekDays(long timeRangeStamp) {
+        if (timeRangeStamp == NONE || (timeRangeStamp & ALL_WEEKDAYS) == NONE) {
+            return TextUtils.EMPTY;
+        }
+        timeRangeStamp >>>= (TIME_BITS + START_TIME_BITS);
+
+        StringBuilder buf = new StringBuilder();
+        for (int i = 0; i < WEEKDAY_BITS; i ++) {
+            if ((timeRangeStamp & (FIRST_BIT << i)) != NONE) {
+                buf.append(i + 1).append(',');
+            }
+        }
+        if (buf.length() > 0) {
+            buf.setLength(buf.length() - 1);
+        }
+        return buf.toString();
+    }
+
+    /**
+     * 获取时间段值
+     * @param weekdays 星期(周一为1;周二为2;...), 多个用英文逗号(,)分隔
+     * @return 星期段值
+     */
+    public static long fromWeekDays(String weekdays) {
+        if (TextUtils.isEmpty(weekdays)) {
+            return NONE;
+        }
+        long result = NONE;
+        for (int i = 0; i < WEEKDAY_BITS; i ++) {
+            if (TextUtils.containsValue(weekdays, i + 1)) {
+                result |= (FIRST_BIT << i);
+            }
+        }
+        return result << (TIME_BITS + START_TIME_BITS);
+    }
+    /**
+     * 获取时间段值
+     * @param timeRanges 时间范围列表
+     * @return 时间段值
+     */
+    public static long fromTimeRanges(List<TimeRange> timeRanges) {
+        return fromTimeRanges0(timeRanges, false);
+    }
+    /**
+     * 获取班次时间段值
+     * @param timeRanges 时间范围列表
+     * @return 时间段值
+     */
+    public static long fromShiftTimeRanges(List<TimeRange> timeRanges) {
+        return fromTimeRanges0(timeRanges, true);
+    }
+
+    /**
+     * 获取班次时间段值
+     * @param timeRanges 时间范围列表
+     */
+    public static void checkValidShiftTimeRanges(List<TimeRange> timeRanges) {
+        if (timeRanges == null || timeRanges.isEmpty()) {
+            throw new IllegalArgumentException("没有指定时间段");
+        }
+        long result = NONE;
+        for (TimeRange timeRange : timeRanges) {
+            if (timeRange.getStartTime() == null) {
+                throw new IllegalArgumentException("开始时间不能为空");
+            }
+            if (timeRange.getEndTime() == null) {
+                throw new IllegalArgumentException("结束时间不能为空");
+            }
+            long time = fromTimeRange0(timeRange.getStartTime(), timeRange.getEndTime(), true, false);
+            if (time == NONE) {
+                throw new IllegalArgumentException("时间段长度必须都大于" + TIME_UNIT_IN_MINUTES + "分钟");
+            }
+            if ((time & result) != NONE) {
+                throw new IllegalArgumentException("时间段不能出现重叠");
+            }
+            long end = FIRST_BIT << (getIndexByTime(timeRange.getEndTime(), true) - 1);
+            if ((end & result) != NONE) {
+                throw new IllegalArgumentException("时间段不能出现重叠");
+            }
+            result = result | time | end;
+        }
+    }
+    /**
+     * 获取时间段值
+     * @param timeRanges 时间范围列表
+     * @param forceShift 是否强制分隔班次
+     * @return 时间段值
+     */
+    private static long fromTimeRanges0(List<TimeRange> timeRanges, boolean forceShift) {
+        if (timeRanges == null || timeRanges.isEmpty()) {
+            return NONE;
+        }
+        boolean fetchOffset = true;
+        long result = NONE;
+        for (TimeRange timeRange : timeRanges) {
+            // 获取时间段
+            long range = fromTimeRange0(timeRange.getStartTime(), timeRange.getEndTime(), forceShift, fetchOffset);
+            // 只获取第一次的跨天位置
+            fetchOffset = fetchOffset && (range & START_TIME_BITS) == NONE;
+            // 并入时段
+            result |= range;
+        }
+        return (forceShift && result != NONE) ? result | SHIFT_TIME_FLAG : result;
+    }
+
+
+    /**
+     * 获取时间段值
+     * @param weekdays 星期(周一为1;周二为2;...), 多个用英文逗号(,)分隔
+     * @param timeRanges 时间范围列表
+     * @return 时间段值
+     */
+    public static long from(String weekdays, List<TimeRange> timeRanges) {
+        return fromWeekDays(weekdays) | fromTimeRanges(timeRanges);
+    }
+
+
+
+    /**
+     * 获取时间范围对应的段值
+     * @param startTime 开始时间
+     * @param endTime 结束时间
+     * @return 时间段值
+     */
+    public static long fromTimeRange(LocalTime startTime, LocalTime endTime) {
+        return fromTimeRange0(startTime, endTime, false, true);
+    }
+
+    /**
+     * 获取时间对应的段值
+     * @param time 时间
+     * @return 时间段值
+     */
+    public static long fromTime(LocalTime time) {
+        return time != null ? FIRST_BIT << getIndexByTime(time, false) : NONE;
+    }
+
+    /**
+     * 获取时间范围对应的段值
+     * @param startTime 开始时间
+     * @param endTime 结束时间
+     * @param forceShift 是否强制分隔班次
+     * @param fetchOffset 是否解析营业天开始时间
+     * @return 时间段值
+     */
+    private static long fromTimeRange0(LocalTime startTime, LocalTime endTime, boolean forceShift, boolean fetchOffset) {
+        if (startTime == null || endTime == null) {
+            return NONE;
+        }
+        int start = getIndexByTime(startTime, false);
+        int end = getIndexByTime(endTime, true);
+        long startValue = FIRST_BIT << start;
+        if (end == TIME_BITS || start < end && startTime.isBefore(endTime)) {
+            // 非跨天
+            return (FIRST_BIT << (forceShift ? end - 1 : end)) - startValue;
+        }
+        // 跨天
+        long result;
+        if (forceShift) {
+            result = start <= end ? (FIRST_BIT << (TIME_BITS - 1)) - FIRST_BIT:  ~(startValue - (FIRST_BIT << (end - 1))) & ALL_TIMES;
+        } else {
+            result = start <= end ? ALL_TIMES :  ~(startValue - (FIRST_BIT << end)) & ALL_TIMES;
+        }
+        if (fetchOffset) {
+            result |= (long)end << TIME_BITS;
+        }
+        return result;
+    }
+
+
+    private static int getOffsetIndex(long timeRangeStamp) {
+        return (int) ((timeRangeStamp & DATE_START_TIME) >>> TIME_BITS);
+    }
+
+    private static LocalTime parseTime(int seq) {
+        return LocalTime.MIN.plusMinutes(seq * TIME_UNIT_IN_MINUTES);
+    }
+
+    /**
+     * 获取时间对应的段值
+     * @param time 时间
+     * @param isEnd 是否是时间段的结束点
+     * @return 返回时间index
+     */
+    private static int getIndexByTime(LocalTime time, boolean isEnd) {
+        int minutes = time.get(ChronoField.MINUTE_OF_DAY);
+        if (isEnd) {
+            // 如果结束时间为零，可以认为是24:00
+            return minutes == 0 ? TIME_BITS : (minutes - 1) / TIME_UNIT_IN_MINUTES + 1;
+        }
+        return minutes / TIME_UNIT_IN_MINUTES;
+    }
+
+
+
+}

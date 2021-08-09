@@ -1,13 +1,13 @@
 package com.honzel.core.util.converters;
 
+import com.honzel.core.util.exceptions.ConversionException;
+
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-
-import com.honzel.core.util.exceptions.ConversionException;
 /**
  * This converter handles conversion to the following types:
  * <ul>

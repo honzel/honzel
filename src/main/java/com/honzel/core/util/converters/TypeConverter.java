@@ -1,11 +1,11 @@
 package com.honzel.core.util.converters;
 
+import com.honzel.core.util.exceptions.ConversionException;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
-
-import com.honzel.core.util.exceptions.ConversionException;
 /**
  * The multi types converter
  * @author honzy

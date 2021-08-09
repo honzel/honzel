@@ -427,8 +427,7 @@ public class DefaultResolver implements Resolver {
 		}
 		curTerminal = getCurrentTerminal();
 		findNextToken(firstFetch);
-		return (start < curTerminal
-				|| type == TYPE_INDEX_OF_START);
+		return start < curTerminal;
 	}
 
 	public boolean hasNext(String tokens) {

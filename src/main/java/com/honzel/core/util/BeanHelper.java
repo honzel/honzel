@@ -1,11 +1,11 @@
 package com.honzel.core.util;
 
-import java.beans.PropertyDescriptor;
-import java.util.Map;
-
 import com.honzel.core.util.bean.NestedPropertyUtilsBean;
 import com.honzel.core.util.converters.Converter;
 import com.honzel.core.util.converters.TypeConverter;
+
+import java.beans.PropertyDescriptor;
+import java.util.Map;
 /**
  * Utility methods for using Java Reflection APIs to facilitate generic
  * property getter and setter operations on Java objects. 
@@ -194,14 +194,28 @@ public class BeanHelper {
      * type conversions. 
      *
      * @param bean Bean whose property is to be extracted
-     * @param name Possibly indexed and/or nested name of the property 
+     * @param name simple property name
+     * @return Return the value of the specified simple property
+     */
+	public static  Object getSimpleProperty(Object bean , String name) {
+		return NestedPropertyUtilsBean.getInstance().getSimpleProperty(bean, name);
+	}
+
+
+	 /**
+     * Return the value of the specified property of the specified bean,
+     * no matter which property reference format is used, with no
+     * type conversions.
+     *
+     * @param bean Bean whose property is to be extracted
+     * @param name Possibly indexed and/or nested name of the property
      *  to be extracted, such as user.roles[1]
      * @return Return the value of the specified nested property
      */
 	public static  Object getProperty(Object bean , String name) {
 		return NestedPropertyUtilsBean.getInstance().getProperty(bean, name);
 	}
-	
+
     /**
      * <p>Set the specified property value, performing type conversions as
      * required to conform to the type of the destination property.</p>
@@ -213,6 +227,18 @@ public class BeanHelper {
      */
 	public static boolean setProperty(Object bean , String name, Object value) {
 		return NestedPropertyUtilsBean.getInstance().setProperty(bean, name, value);
+	}
+    /**
+     * <p>Set the specified property value, performing type conversions as
+     * required to conform to the type of the destination property.</p>
+     *
+     * @param bean Bean on which setting is to be performed
+     * @param name Property simple name
+     * @param value Value to be set
+     * @return Return true when success to set,otherwise return false
+     */
+	public static boolean setSimpleProperty(Object bean , String name, Object value) {
+		return NestedPropertyUtilsBean.getInstance().setSimpleProperty(bean, name, value);
 	}
 
     /**
