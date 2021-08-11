@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.Modifier;
 import java.text.SimpleDateFormat;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
@@ -513,7 +514,8 @@ public class TextUtils {
 			if (propValue == params && !isEmpty(name)) {
 				// 如果不是列表或数组
 				propValue = BeanHelper.getProperty(params, name);
-				if (offset == 0 && propValue == null && BeanHelper.getPropertyType(params, name) == null) {
+				if (propValue == null && (offset == 0 && index < 0 || index == 0)
+                        && Modifier.isFinal(params.getClass().getModifiers()) && BeanHelper.getPropertyType(params, name) == null) {
 					propValue = params;
 				}
 			}
