@@ -14,14 +14,14 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 /**
  * 
- * @author honzy
+ * @author honzel
  *
  */
 @SuppressWarnings({ "unchecked", "rawtypes" })
 public class SimplePropertyUtilsBean {
 
 	private static  SimplePropertyUtilsBean propertyUtilsBean = new SimplePropertyUtilsBean(
-		new ConcurrentHashMap(),
+		new ConcurrentReferenceHashMap(),
 		new TypeConverter()
 	);
 	private static final PropertyDescriptor[] EMPTY_DESCRIPTORS = new PropertyDescriptor[0];

@@ -2,6 +2,7 @@ package com.honzel.core.util.resolver;
 
 
 import java.io.IOException;
+import java.util.Objects;
 
 /**
  * Default Property Name Expression {@link Resolver} Implementation.
@@ -284,15 +285,11 @@ public class DefaultResolver implements Resolver {
 		String result = next(escaped, trim);
 		if (isPair) {
 			if (type != TYPE_INDEX_OF_LINK) {
-				StringBuilder sb = new StringBuilder();
-				sb.append(input.charAt(start)).append(result).append(input.charAt(end - 1));
-				return sb.toString();
+				return input.charAt(start) + result + input.charAt(end - 1);
 			}
 		} else {
 			if (type != TYPE_INDEX_OF_START) {
-				StringBuilder sb = new StringBuilder();
-				sb.append(input.charAt(start)).append(result);
-				return sb.toString();
+				return input.charAt(start) + result;
 			}
 		}
 		return result;
@@ -305,8 +302,7 @@ public class DefaultResolver implements Resolver {
 		if (trim) {
 			int from = getStart(false);
 			int to = getEnd(false);
-			if (from < to && (input.charAt(from) <= ' ' ||  input.charAt(to - 1) <= ' '))
-				return false;
+			return from >= to || (input.charAt(from) > ' ' && input.charAt(to - 1) > ' ');
 		}
 		return true;
 	}
@@ -326,7 +322,7 @@ public class DefaultResolver implements Resolver {
 			return null;
 		}
 		int startIndex = getStart(trim, startOffset);
-		int endIndex = 0;
+		int endIndex;
 		if (endOffset != 0) {
 			endIndex = getStart(trim, endOffset);
 		} else {
@@ -370,8 +366,7 @@ public class DefaultResolver implements Resolver {
 		if (hasEscape && escaped) {
 			for (int i = startIndex; i < endIndex; i++) {
 				char ch = input.charAt(i);
-				if (ch == escape && (escapeForChars == null
-								|| (i < curTerminal - 1 && escapeForChars.indexOf(input.charAt(i + 1)) >= 0))) {
+				if (isEscapeChar(ch, i)) {
 					if (++i == endIndex)
 						break;
 					ch = input.charAt(i);
@@ -508,8 +503,7 @@ public class DefaultResolver implements Resolver {
 	private int findNextPosition(char token, int fromIndex) {
 		for ( ; fromIndex < curTerminal; fromIndex++) {
 			char ch = input.charAt(fromIndex);
-			if (toEscape && ch == escape && (escapeForChars == null
-					|| (fromIndex < curTerminal - 1 && escapeForChars.indexOf(input.charAt(fromIndex + 1)) >= 0))) {
+			if (toEscape && isEscapeChar(ch, fromIndex)) {
 				hasEscape = true;
 				if (++fromIndex == curTerminal)
 					break;
@@ -521,10 +515,15 @@ public class DefaultResolver implements Resolver {
 		return fromIndex;
 	}
 
+	private boolean isEscapeChar(char ch, int fromIndex) {
+		return ch == escape && (escapeForChars == null
+				|| (fromIndex < curTerminal - 1 && escapeForChars.indexOf(input.charAt(fromIndex + 1)) >= 0));
+	}
+
 	/**
 	 *
 	 * @param fromIndex the started position to find the opened token
-	 * @return
+	 * @return int
 	 */
 	private int findNextOpenToken(int fromIndex) {
 		int result = TYPE_INDEX_OF_END;
@@ -541,8 +540,7 @@ public class DefaultResolver implements Resolver {
 		} else { //use more than one tokens
 			for ( ; fromIndex < curTerminal; fromIndex ++) {
 				char ch = input.charAt(fromIndex);
-				if (toEscape && ch == escape && (escapeForChars == null
-						|| (fromIndex < curTerminal - 1 && escapeForChars.indexOf(input.charAt(fromIndex + 1)) >= 0))) {
+				if (toEscape && isEscapeChar(ch, fromIndex)) {
 					hasEscape = true;
 					if (++fromIndex == curTerminal)
 						break;
@@ -607,7 +605,7 @@ public class DefaultResolver implements Resolver {
 			this.escape = (char) escapeChar;
 			this.toEscape = (escapeChar > 0);
 			escapeForChars = forChars;
-		} else if (forChars != escapeForChars && (forChars == null || !forChars.equals(escapeForChars))) {
+		} else if (!Objects.equals(escapeForChars, forChars)) {
 			this.hasEscape = false;
 			escapeForChars = forChars;
 		}
@@ -694,7 +692,7 @@ public class DefaultResolver implements Resolver {
      * @param  prefix    the prefix.
      * @param  startOffset   where to begin looking in the next token string from this resolver.
      * @param identical Whether they are identical or not.
-     * @return
+     * @return boolean
 	 */
 	private boolean match(String prefix, int startOffset, boolean identical) {
 		if (input == null || prefix == null)
@@ -720,8 +718,7 @@ public class DefaultResolver implements Resolver {
 		if (hasEscape) {
 			for (int i = 0, len = prefix.length(); i < len; i ++, fromIndex ++) {
 				char ch = input.charAt(fromIndex);
-				if (ch == escape && (escapeForChars == null
-						|| (fromIndex < curTerminal - 1 && escapeForChars.indexOf(input.charAt(fromIndex + 1)) >= 0))) {
+				if (isEscapeChar(ch, fromIndex)) {
 					if (startOffset >= 0) {
 						if (interval == 0)
 							return false;
@@ -746,10 +743,7 @@ public class DefaultResolver implements Resolver {
 				}
 			}
 		}
-		if (identical && startOffset >= 0 && interval != 0) {
-			return false;
-		}
-		return true;
+		return !identical || startOffset < 0 || interval == 0;
 	}
 
 
@@ -799,18 +793,8 @@ public class DefaultResolver implements Resolver {
 			int index = totalTokens.indexOf(tokens.charAt(i));
 			if (index < 0)
 				continue;
-			if (first) {
-				fetchOne = true;
-				targets = index;
-				first = false;
-			} else if (fetchOne) {
-				if (targets != index) {
-					targets = (1 << targets) | (1 << index);
-					fetchOne = false;
-				}
-			} else  {
-				targets |= (1 << index);
-			}
+			addTargets(index, first);
+			first= false;
 		}
 		return this;
 	}
@@ -827,30 +811,39 @@ public class DefaultResolver implements Resolver {
 		targets = NONE_OF_TYPES;
 		boolean first = true;
 		for (int i = openTokens.length() - 1; i >= 0; i -- ) {
-			int index = 0;
-			if (i < closeTokens.length()) {
-				index = closed.indexOf(closeTokens.charAt(i));
-				while (index >= 0 && openTokens.charAt(i) != opened.charAt(index))
-					index =closed.indexOf(closeTokens.charAt(i), index + 1);
-			} else {
-				index = opened.indexOf(openTokens.charAt(i), closed.length());
-			}
+			int index = findNextIndex(i, openTokens, closeTokens);
 			if (index < 0)
 				continue;
-			if (first) {
-				fetchOne = true;
-				targets = index;
-				first = false;
-			} else if (fetchOne) {
-				if (targets != index) {
-					targets = (1 << targets) | (1 << index);
-					fetchOne = false;
-				}
-			} else  {
-				targets |= (1 << index);
-			}
+			addTargets(index, first);
+			first = false;
 		}
 		return this;
+	}
+
+	private void addTargets(int index, boolean first) {
+		if (first) {
+			fetchOne = true;
+			targets = index;
+		} else if (fetchOne) {
+			if (targets != index) {
+				targets = (1 << targets) | (1 << index);
+				fetchOne = false;
+			}
+		} else {
+			targets |= (1 << index);
+		}
+	}
+
+	private int findNextIndex(int i, String openTokens, String closeTokens) {
+		int index;
+		if (i < closeTokens.length()) {
+			index = closed.indexOf(closeTokens.charAt(i));
+			while (index >= 0 && openTokens.charAt(i) != opened.charAt(index))
+				index = closed.indexOf(closeTokens.charAt(i), index + 1);
+		} else {
+			index = opened.indexOf(openTokens.charAt(i), closed.length());
+		}
+		return index;
 	}
 
 	public boolean isInTokens() {
@@ -919,14 +912,7 @@ public class DefaultResolver implements Resolver {
 			return findTypesByTotal(closeTokens, closed);
 		int type = NONE_OF_TYPES;
 		for (int i = openTokens.length() - 1; i >= 0; i -- ) {
-			int index = 0;
-			if (i < closeTokens.length()) {
-				index = closed.indexOf(closeTokens.charAt(i));
-				while (index >= 0 && openTokens.charAt(i) != opened.charAt(index))
-					index =closed.indexOf(closeTokens.charAt(i), index + 1);
-			} else {
-				index = opened.indexOf(openTokens.charAt(i), closed.length());
-			}
+			int index = findNextIndex(i, openTokens, closeTokens);
 			if (index < 0)
 				continue;
 			type |= (1 << index);

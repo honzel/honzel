@@ -9,7 +9,7 @@ import java.util.WeakHashMap;
  * @param <T>  value type
  */
 public class ContextLocal<T> {
-    private  Map<ClassLoader, T> valueMap = new WeakHashMap<ClassLoader, T>();
+    private  Map<ClassLoader, T> valueMap = new WeakHashMap<>();
     private  boolean gValInitialized = false;
     private   T gVal;
     public  T initialValue() {
