@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 /**
  * The multi types converter
- * @author honzy
+ * @author honzel
  *
  */
 @SuppressWarnings({"rawtypes","unchecked"})

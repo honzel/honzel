@@ -9,7 +9,7 @@ import java.util.Map;
 /**
  * Utility methods for using Java Reflection APIs to facilitate generic
  * property getter and setter operations on Java objects. 
- * @author honzy
+ * @author honzel
  *
  */
 @SuppressWarnings({"rawtypes" })

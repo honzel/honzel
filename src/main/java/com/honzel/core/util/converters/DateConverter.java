@@ -25,7 +25,7 @@ import java.util.TimeZone;
  *     <li><code>java.lang.Long</code></li>
  *     <li><code>java.lang.String</code></li>
  * </ul>
- * @author honzy
+ * @author honzel
  *
  */
 @SuppressWarnings({"rawtypes"})

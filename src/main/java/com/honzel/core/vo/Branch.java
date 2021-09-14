@@ -3,7 +3,7 @@ package com.honzel.core.vo;
 import java.io.Serializable;
 /**
  * 分叉对象类型
- * @author honzy
+ * @author honzel
  *
  */
 public class Branch<K, L, R> implements Serializable {

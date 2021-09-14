@@ -13,7 +13,7 @@ import java.lang.reflect.Array;
  * <p>
  * Implementations should provide conversion to the specified
  * type and from the type of the input object.
- * @author honzy
+ * @author honzel
  *
  */
 @SuppressWarnings({"rawtypes"})

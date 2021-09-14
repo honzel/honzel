@@ -6,7 +6,7 @@ import java.util.Objects;
 
 /**
  * Default Property Name Expression {@link Resolver} Implementation.
- * @author honzy
+ * @author honzel
  */
 public class DefaultResolver implements Resolver {
 	

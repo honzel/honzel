@@ -33,7 +33,7 @@ import java.util.Map;
  *     <li><code>java.lang.Class</code></li>
  *     <li><code>java.lang.String</code></li>
  * </ul>
- * @author honzy
+ * @author honzel
  *
  */
 @SuppressWarnings({"unchecked", "rawtypes"})

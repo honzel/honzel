@@ -9,7 +9,7 @@ import java.lang.reflect.Array;
 /**
  * {@link Converter} implementaion that handles conversion 
  * to and from <b>array</b>.
- * @author honzy
+ * @author honzel
  *
  */
 public class ArrayConverter extends AbstractConverter {

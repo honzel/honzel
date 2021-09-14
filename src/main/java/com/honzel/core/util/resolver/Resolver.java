@@ -3,7 +3,7 @@ package com.honzel.core.util.resolver;
 
 /**
 * Property Name Expression Resolver.it is not safe working in multithread.
-* @author honzy
+* @author honzel
 */
 public interface Resolver {
 	

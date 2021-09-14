@@ -3,7 +3,7 @@ package com.honzel.core.vo;
 import java.io.Serializable;
 /**
  * 对项值的封装
- * @author honzy
+ * @author honzel
  *
  */
 public class Item<T> implements Serializable {

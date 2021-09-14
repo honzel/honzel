@@ -3,7 +3,7 @@ package com.honzel.core.vo;
 import java.io.Serializable;
 /**
  * 键值对类型
- * @author honzy
+ * @author honzel
  *
  */
 public class Entry<K, V> implements Serializable {

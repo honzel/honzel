@@ -3,7 +3,7 @@ package com.honzel.core.util.exceptions;
 /**
  * Thrown when an error is encountered whilst attempting to set/get a property
  * using the {@link com.honzel.core.util.bean.NestedPropertyUtilsBean} utility class.
- * @author honzy
+ * @author honzel
  *
  */
 public class PropertyException extends RuntimeException {

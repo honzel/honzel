@@ -3,7 +3,7 @@ package com.honzel.core.util.converters;
   * <p>General purpose data type converter that can be registered and used
  * within the BeanHelper package to manage the conversion of objects from
  * one type to another.
- * @author honzy
+ * @author honzel
  *
  */
 @SuppressWarnings({"rawtypes"})

@@ -3,7 +3,7 @@ package com.honzel.core.util.exceptions;
 /**
  * <p>A <b>ConversionException</b> indicates that a call to
  * <code>Converter.convert()</code> has failed to complete successfully.
- * @author honzy
+ * @author honzel
  *
  */
 public class ConversionException extends RuntimeException {

@@ -5,7 +5,7 @@ import com.honzel.core.util.resolver.Resolver;
 
 /**
  * 
- * @author honzy
+ * @author honzel
  *
  */
 public class ResolverUtils {

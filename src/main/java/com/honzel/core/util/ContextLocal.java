@@ -4,7 +4,7 @@ import java.util.Map;
 import java.util.WeakHashMap;
 /**
  * A value that is provided per (thread) context classloader.
- * @author honzy
+ * @author honzel
  *
  * @param <T>  value type
  */
