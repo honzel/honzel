@@ -672,6 +672,7 @@ public class TextUtils {
 			switch(ch) {
 				case '\\':
 					content.append("\\\\");
+					break;
 				case '\"':
 					content.append("\\\"");
 					break;
