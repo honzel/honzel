@@ -513,57 +513,59 @@ public class TextUtils {
 	}
 
 	private static Object getMappingValue(Resolver resolver, Object value, Object configParams, Object params, boolean alternateHolderEnabled) {
-		//
-		String stringValue = null;
-		boolean isSimpleValuePattern = true;
-		int dataType = 0;
-		while (resolver.hasNext()) {
-			if (isSimpleValuePattern) {
-				if (resolver.endsInTokens(SEMICOLON)) {
-					if (!resolver.isEmpty()) {
-						if (resolver.nextEquals("json")) {
-							dataType = DATA_TYPE_JSON;
-						} else if (resolver.nextEquals("xml")) {
-							dataType = DATA_TYPE_XML;
-						} else if (resolver.nextEquals("url")) {
-							dataType = DATA_TYPE_QUERY_STRING;
-						}
-						isSimpleValuePattern = false;
-					}
-					resolver.hasNext();
-				} else {
-					isSimpleValuePattern = false;
-				}
-				if (resolver.isLast()) {
-					String pattern = resolver.next();
-					if (isSimpleValuePattern) {
-						// 基本类型或日期格式转化
-						return formatSimpleValue(value, pattern);
-					}
-					if (isEmpty(pattern) || "*".equals(pattern)) {
-						return value;
-					}
-					int useDataType = dataType > 0 ? dataType : getDataType(pattern);
-					return format0(!alternateHolderEnabled, useDataType, pattern, configParams, params, value);
-				}
-				stringValue = (value != null) ? toString(value) : "null";
-				isSimpleValuePattern = false;
-			}
-			if (resolver.nextEquals(stringValue) || resolver.nextEquals("*")) {
-				if (resolver.isLast() || !resolver.endsInTokens(EQUAL)) {
-					// 返回原值
-					return value;
-				}
-				resolver.hasNext(SEMICOLON);
-				String pattern = resolver.next();
-				int useDataType = dataType > 0 ? dataType : getDataType(pattern);
-				stringValue = format0(!alternateHolderEnabled, useDataType, pattern, configParams, params, value);
-				// 映射值
-				return "null".equals(stringValue) ? null : stringValue;
-			}
-		}
-		return null;
-	}
+        //
+        String stringValue = null;
+        boolean isSimpleValuePattern = true;
+        int dataType = 0;
+        while (resolver.hasNext()) {
+            if (isSimpleValuePattern) {
+                if (resolver.endsInTokens(SEMICOLON)) {
+                    if (!resolver.isEmpty()) {
+                        if (resolver.nextEquals("json")) {
+                            dataType = DATA_TYPE_JSON;
+                        } else if (resolver.nextEquals("xml")) {
+                            dataType = DATA_TYPE_XML;
+                        } else if (resolver.nextEquals("txt")) {
+                            dataType = DATA_TYPE_TEXT;
+                        } else if (resolver.nextEquals("url")) {
+                            dataType = DATA_TYPE_QUERY_STRING;
+                        }
+                        isSimpleValuePattern = false;
+                    }
+                    resolver.hasNext();
+                } else {
+                    isSimpleValuePattern = false;
+                }
+                if (resolver.isLast()) {
+                    String pattern = resolver.next();
+                    if (isSimpleValuePattern) {
+                        // 基本类型或日期格式转化
+                        return formatSimpleValue(value, pattern);
+                    }
+                    if (isEmpty(pattern) || "*".equals(pattern)) {
+                        return value;
+                    }
+                    int useDataType = dataType > 0 ? dataType : getDataType(pattern);
+                    return format0(!alternateHolderEnabled, useDataType, pattern, configParams, params, value);
+                }
+                stringValue = (value != null) ? toString(value) : "null";
+                isSimpleValuePattern = false;
+            }
+            if (resolver.nextEquals(stringValue) || resolver.nextEquals("*")) {
+                if (resolver.isLast() || !resolver.endsInTokens(EQUAL)) {
+                    // 返回原值
+                    return value;
+                }
+                resolver.hasNext(SEMICOLON);
+                String pattern = resolver.next();
+                int useDataType = dataType > 0 ? dataType : getDataType(pattern);
+                stringValue = format0(!alternateHolderEnabled, useDataType, pattern, configParams, params, value);
+                // 映射值
+                return "null".equals(stringValue) ? null : stringValue;
+            }
+        }
+        return null;
+    }
 
 	/**
 	 * 日期格式转化
