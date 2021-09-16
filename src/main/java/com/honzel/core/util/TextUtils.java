@@ -516,9 +516,20 @@ public class TextUtils {
 		//
 		String stringValue = null;
 		boolean isSimpleValuePattern = true;
+		int dataType = 0;
 		while (resolver.hasNext()) {
 			if (isSimpleValuePattern) {
-				if (resolver.isEmpty() && resolver.endsInTokens(SEMICOLON)) {
+				if (resolver.endsInTokens(SEMICOLON)) {
+					if (!resolver.isEmpty()) {
+						if (resolver.nextEquals("json")) {
+							dataType = DATA_TYPE_JSON;
+						} else if (resolver.nextEquals("xml")) {
+							dataType = DATA_TYPE_XML;
+						} else if (resolver.nextEquals("url")) {
+							dataType = DATA_TYPE_QUERY_STRING;
+						}
+						isSimpleValuePattern = false;
+					}
 					resolver.hasNext();
 				} else {
 					isSimpleValuePattern = false;
@@ -532,7 +543,8 @@ public class TextUtils {
 					if (isEmpty(pattern) || "*".equals(pattern)) {
 						return value;
 					}
-					return format0(!alternateHolderEnabled, DATA_TYPE_TEXT, pattern, configParams, params, value);
+					int useDataType = dataType > 0 ? dataType : getDataType(pattern);
+					return format0(!alternateHolderEnabled, useDataType, pattern, configParams, params, value);
 				}
 				stringValue = (value != null) ? toString(value) : "null";
 				isSimpleValuePattern = false;
@@ -543,7 +555,9 @@ public class TextUtils {
 					return value;
 				}
 				resolver.hasNext(SEMICOLON);
-				stringValue = format0(!alternateHolderEnabled, DATA_TYPE_TEXT, resolver.next(), configParams, params, value);
+				String pattern = resolver.next();
+				int useDataType = dataType > 0 ? dataType : getDataType(pattern);
+				stringValue = format0(!alternateHolderEnabled, useDataType, pattern, configParams, params, value);
 				// 映射值
 				return "null".equals(stringValue) ? null : stringValue;
 			}
