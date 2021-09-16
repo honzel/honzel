@@ -95,11 +95,11 @@ public class NestedPropertyUtilsBean {
      * @param toType Destination class for conversions performed by this
      *  Converter
      * @param converter Converter to be registered
-	 * @param overridenByGlobalEnableException whether or not to  override the converter enable exception set.
+	 * @param overriddenByGlobalEnableException whether or not to  override the converter enable exception set.
 	 */
-	public void  registerConverter(Class toType, Converter converter, boolean overridenByGlobalEnableException) {
+	public void  registerConverter(Class toType, Converter converter, boolean overriddenByGlobalEnableException) {
 		getTypeConverter().register(toType, converter);
-		if (overridenByGlobalEnableException) {
+		if (overriddenByGlobalEnableException) {
 			while (converter instanceof AbstractConverter) {
 				((AbstractConverter) converter).setDisableException(isDisableException());
 				converter = ( (AbstractConverter) converter).getDefaultConverter();

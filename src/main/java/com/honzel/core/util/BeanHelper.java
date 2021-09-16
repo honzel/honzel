@@ -39,10 +39,10 @@ public class BeanHelper {
      * @param toType Destination class for conversions performed by this
      *  Converter
      * @param converter Converter to be registered
-	 * @param overridenByGlobalEnableException whether or not to  override the converter enable exception set. 
+	 * @param overriddenByGlobalEnableException whether or not to  override the converter enable exception set.
 	 */
-	public static void  registerConverter(Class toType, Converter converter, boolean overridenByGlobalEnableException) {
-		NestedPropertyUtilsBean.getInstance().registerConverter(toType, converter, overridenByGlobalEnableException);
+	public static void  registerConverter(Class toType, Converter converter, boolean overriddenByGlobalEnableException) {
+		NestedPropertyUtilsBean.getInstance().registerConverter(toType, converter, overriddenByGlobalEnableException);
 	}
 	
 	/**
