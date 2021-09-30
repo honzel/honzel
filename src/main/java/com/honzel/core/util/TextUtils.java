@@ -39,6 +39,10 @@ public class TextUtils {
 
 	private static final char EXPR_FLAG = '#';
 
+	private static final char JOIN_FLAG = '+';
+
+	private static final char FOR_EMPTY_FLAG = '^';
+
 	private TextUtils() {
 	}
 
@@ -369,9 +373,9 @@ public class TextUtils {
 		String format = (String) resolver.getInput();
 		//判断是否前置常量串
 		int start = resolver.getStart();
-		if (resolver.isInTokens() && format.charAt(start) != EXPR_FLAG && format.charAt(start) != '+') {
+		if (resolver.isInTokens() && format.charAt(start) != EXPR_FLAG && format.charAt(start) != JOIN_FLAG) {
 			// 前置字符串是否为null时附加的内容, 预先附加上内容
-			if (format.charAt(start) == '^') {
+			if (format.charAt(start) == FOR_EMPTY_FLAG) {
 				appendForEmpty = true;
 				resolver.appendTo(content, 1);
 			} else {
@@ -465,23 +469,23 @@ public class TextUtils {
 		appendDataTypeValue(content, stringValue, dataType);
 		String format = (String) resolver.getInput();
 		// 是否分隔符
-		boolean nonSeperator = true;
+		boolean nonSeparator = true;
 		// 后置内容处理
 		boolean next = true;
 		while (next && resolver.isInTokens()) {
 			int start = resolver.getStart();
 			int offset = 0;
-			if (format.charAt(start) ==  '+') {
-				nonSeperator = false;
+			if (format.charAt(start) ==  JOIN_FLAG) {
 				if (isLastValue) {
 					next = resolver.hasNext();
 					// 最后一个元素时不添加该值
 					continue;
 				}
+				nonSeparator = false;
 				offset = 1;
 				start += offset;
 			}
-			if (format.charAt(start) ==  '^') {
+			if (format.charAt(start) ==  FOR_EMPTY_FLAG) {
 				// 如果为null时才附加，则值为null时进行附加
 				if (isEmpty(stringValue)) {
 					resolver.appendTo(content, offset + 1);
@@ -494,7 +498,7 @@ public class TextUtils {
 			}
 			next = resolver.hasNext();
 		}
-		if (!isLastValue && nonSeperator) {
+		if (!isLastValue && nonSeparator) {
 			// 没有指定分隔符时默认使用英文逗号
 			content.append(SEPARATOR);
 		}
@@ -1362,18 +1366,16 @@ public class TextUtils {
 		if (values == null) {
 			return EMPTY;
 		}
-		if (separator == null) {
-			separator = EMPTY;
-		}
 		StringBuilder result = new StringBuilder();
 		for (Object value : values) {
 			if (value != null) {
-				result.append(value).append(separator);
-			} else {
+				result.append(value);
+			}
+			if (separator != null && !separator.isEmpty()) {
 				result.append(separator);
 			}
 		}
-		if (result.length() > 0 && !separator.isEmpty()) {
+		if (result.length() > 0 && separator != null && !separator.isEmpty()) {
 			result.setLength(result.length() - separator.length());
 		}
 		return result.toString();
@@ -1389,18 +1391,16 @@ public class TextUtils {
 		if (values == null || values.length == 0) {
 			return EMPTY;
 		}
-		if (separator == null) {
-			separator = EMPTY;
-		}
 		StringBuilder result = new StringBuilder();
 		for (Object value : values) {
 			if (value != null) {
-				result.append(value).append(separator);
-			} else {
+				result.append(value);
+			}
+			if (separator != null && !separator.isEmpty()) {
 				result.append(separator);
 			}
 		}
-		if (result.length() > 0 && !separator.isEmpty()) {
+		if (result.length() > 0 && separator != null && !separator.isEmpty()) {
 			result.setLength(result.length() - separator.length());
 		}
 		return result.toString();
