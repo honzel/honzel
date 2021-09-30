@@ -1392,14 +1392,15 @@ public class TextUtils {
 			return EMPTY;
 		}
 		StringBuilder result = new StringBuilder();
-		for (Object value : values) {
-			if (value != null) {
-				result.append(value);
-			}
-			if (separator != null && !separator.isEmpty()) {
-				result.append(separator);
-			}
-		}
+        for (int i = 0, len = values.length; i < len; i++) {
+            Object value = values[i];
+            if (value != null) {
+                result.append(value);
+            }
+            if (separator != null && !separator.isEmpty()) {
+                result.append(separator);
+            }
+        }
 		if (result.length() > 0 && separator != null && !separator.isEmpty()) {
 			result.setLength(result.length() - separator.length());
 		}
