@@ -408,12 +408,14 @@ public class TextUtils {
 				hasNext = iterator.hasNext();
 				// 附加值
 				originPosition = appendFormatValue(content, resolver, dataType, itemValue, appendForEmpty, originPosition, !hasNext);
-				if (hasNext && !prefix.isEmpty()) {
-					// 添加前缀
-					content.append(prefix);
+				if (hasNext) {
+					if (!prefix.isEmpty()) {
+						// 添加前缀
+						content.append(prefix);
+					}
+					// 重置开始解析
+					resolver.reset(resolverStart).hasNext();
 				}
-				// 重置开始解析
-				resolver.reset(resolverStart).hasNext();
 			}
 		} else if (value instanceof Object[]) {
 			// 获取解析开始位置
@@ -429,12 +431,14 @@ public class TextUtils {
 				boolean hasNext = (i + 1 != len);
 				// 附加值
 				originPosition = appendFormatValue(content, resolver, dataType, itemValue, appendForEmpty, originPosition, !hasNext);
-				if (hasNext && !prefix.isEmpty()) {
-					// 添加前缀
-					content.append(prefix);
+				if (hasNext) {
+					if (!prefix.isEmpty()) {
+						// 添加前缀
+						content.append(prefix);
+					}
+					// 重置开始解析
+					resolver.reset(resolverStart).hasNext();
 				}
-				// 重置开始解析
-				resolver.reset(resolverStart).hasNext();
 			}
 			parsed = array.length > 0;
 		}
