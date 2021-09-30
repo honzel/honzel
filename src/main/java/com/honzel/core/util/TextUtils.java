@@ -368,9 +368,10 @@ public class TextUtils {
 		// 输入数据
 		String format = (String) resolver.getInput();
 		//判断是否前置常量串
-		if (resolver.isInTokens() && format.charAt(resolver.getStart()) != EXPR_FLAG) {
+		int start = resolver.getStart();
+		if (resolver.isInTokens() && format.charAt(start) != EXPR_FLAG && format.charAt(start) != '+') {
 			// 前置字符串是否为null时附加的内容, 预先附加上内容
-			if (format.charAt(resolver.getStart()) == '^') {
+			if (format.charAt(start) == '^') {
 				appendForEmpty = true;
 				resolver.appendTo(content, 1);
 			} else {
@@ -378,11 +379,12 @@ public class TextUtils {
 			}
 			// 解析下一部分
 			resolver.hasNext();
+			start = resolver.getStart();
 		}
 		// 参数值
 		Object value;
 		//后置常量串
-		if (!resolver.isInTokens() && format.startsWith(HOLDER_FLAG, resolver.getStart())) {
+		if (!resolver.isInTokens() && format.startsWith(HOLDER_FLAG, start)) {
 			//如果是配置属性
 			value = getConfigValue(resolver, thisValue, configParams);
 		} else {
@@ -390,7 +392,7 @@ public class TextUtils {
 			value = getParamValue(resolver, params, offset);
 			offset ++;
 		}
-
+		boolean parsed = false;
 		int startLen = content.length();
 		if (value instanceof Iterable) {
 			// 获取解析开始位置
@@ -398,13 +400,18 @@ public class TextUtils {
 			// 前缀
 			String prefix = startLen == originPosition ? EMPTY : content.substring(originPosition);
 			// 循环处理项
-			for (Object itemValue : ((Iterable) value)) {
+			Iterator<?> iterator = ((Iterable) value).iterator();
+			boolean hasNext = (parsed = iterator.hasNext());
+			while (hasNext) {
 				// 先格式化
-				itemValue = formatValue(resolver, itemValue, configParams, params, alternateHolderEnabled);
+				Object itemValue = formatValue(resolver, iterator.next(), configParams, params, alternateHolderEnabled);
+				hasNext = iterator.hasNext();
 				// 附加值
-				originPosition = appendFormatValue(content, resolver, dataType, itemValue, appendForEmpty, originPosition);
-				// 添加分隔符
-				content.append(SEPARATOR).append(prefix);
+				originPosition = appendFormatValue(content, resolver, dataType, itemValue, appendForEmpty, originPosition, !hasNext);
+				if (hasNext && !prefix.isEmpty()) {
+					// 添加前缀
+					content.append(prefix);
+				}
 				// 重置开始解析
 				resolver.reset(resolverStart).hasNext();
 			}
@@ -414,32 +421,35 @@ public class TextUtils {
 			// 前缀
 			String prefix = startLen == originPosition ? EMPTY : content.substring(originPosition);
 			// 循环处理项
-			for (Object itemValue : (Object[]) value) {
+			Object[] array = (Object[]) value;
+			for (int i = 0, len = array.length; i < len; ++i) {
 				// 先格式化
-				itemValue = formatValue(resolver, itemValue, configParams, params, alternateHolderEnabled);
+				Object itemValue = formatValue(resolver, array[i], configParams, params, alternateHolderEnabled);
+				// 是否有新一个
+				boolean hasNext = (i + 1 != len);
 				// 附加值
-				originPosition = appendFormatValue(content, resolver, dataType, itemValue, appendForEmpty, originPosition);
-				// 添加分隔符
-				content.append(SEPARATOR).append(prefix);
+				originPosition = appendFormatValue(content, resolver, dataType, itemValue, appendForEmpty, originPosition, !hasNext);
+				if (hasNext && !prefix.isEmpty()) {
+					// 添加前缀
+					content.append(prefix);
+				}
 				// 重置开始解析
 				resolver.reset(resolverStart).hasNext();
 			}
+			parsed = array.length > 0;
 		}
-		if (startLen == content.length()) {
+		if (!parsed) {
 			// 先格式化
 			value = formatValue(resolver, value, configParams, params, alternateHolderEnabled);
 			// 没有解析到内容时
-			appendFormatValue(content, resolver, dataType, value, appendForEmpty, originPosition);
-		} else {
-			// 已解析到集合内容时, 去掉最后加入的部分内容
-			content.setLength(originPosition - SEPARATOR.length());
+			appendFormatValue(content, resolver, dataType, value, appendForEmpty, originPosition, true);
 		}
 		// 该段解析结束，准备解析后一段的内容
 		resolver.resetToBeyond(1).useTokens(HOLDER_FLAG);
 		return offset;
 	}
 
-	private static int appendFormatValue(StringBuilder content, Resolver resolver, int dataType, Object value, boolean appendForEmpty, int originPosition) {
+	private static int appendFormatValue(StringBuilder content, Resolver resolver, int dataType, Object value, boolean appendForEmpty, int originPosition, boolean isLastValue) {
 		// 格式化值
 		String stringValue = toString(value);
 		// 判断是否去掉前缀
@@ -453,21 +463,32 @@ public class TextUtils {
 		String format = (String) resolver.getInput();
 		boolean next = true;
 		while (next && resolver.isInTokens()) {
-			if (format.startsWith("^", resolver.getStart())) {
+			int start = resolver.getStart();
+			int offset = 0;
+			if (format.charAt(start) ==  '+') {
+				if (isLastValue) {
+					next = resolver.hasNext();
+					// 最后一个元素时不添加该值
+					continue;
+				}
+				offset = 1;
+				start += offset;
+			}
+			if (format.charAt(start) ==  '^') {
 				// 如果为null时才附加，则值为null时进行附加
 				if (isEmpty(stringValue)) {
-					resolver.appendTo(content, 1);
+					resolver.appendTo(content, offset + 1);
 				}
 			} else {
 				// 如果为非null时才附加，则值为非null时进行附加
 				if (!isEmpty(stringValue)) {
-					resolver.appendTo(content);
+					resolver.appendTo(content, offset);
 				}
 			}
 			next = resolver.hasNext();
 		}
 		// 需要包含紧接着的逗号
-		return content.length() + SEPARATOR.length();
+		return content.length();
 	}
 
 	/**
