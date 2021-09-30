@@ -459,13 +459,16 @@ public class TextUtils {
 		}
 		//添加参数值
 		appendDataTypeValue(content, stringValue, dataType);
-		// 后置内容处理
 		String format = (String) resolver.getInput();
+		// 是否分隔符
+		boolean nonSeperator = true;
+		// 后置内容处理
 		boolean next = true;
 		while (next && resolver.isInTokens()) {
 			int start = resolver.getStart();
 			int offset = 0;
 			if (format.charAt(start) ==  '+') {
+				nonSeperator = false;
 				if (isLastValue) {
 					next = resolver.hasNext();
 					// 最后一个元素时不添加该值
@@ -486,6 +489,10 @@ public class TextUtils {
 				}
 			}
 			next = resolver.hasNext();
+		}
+		if (!isLastValue && nonSeperator) {
+			// 没有指定分隔符时默认使用英文逗号
+			content.append(SEPARATOR);
 		}
 		// 需要包含紧接着的逗号
 		return content.length();
