@@ -270,6 +270,77 @@ public class TimeRangeUtils {
     }
 
     /**
+     * 抹除班次信息
+     * @param timeRangeStamp 时间段值
+     * @return 抹除班次信息的时间段值
+     */
+    public static long nonShift(long timeRangeStamp) {
+        if (timeRangeStamp == NONE) {
+            return NONE;
+        }
+        long result = ~SHIFT_TIME_FLAG & timeRangeStamp;
+        if (result != timeRangeStamp) {
+            //如果是班次时间
+            long time = (result & ALL_TIMES);
+            time |= (time << 1);
+            if (time != (time = time & ALL_TIMES)) {
+                time |= FIRST_BIT;
+            }
+            return result | time;
+        }
+        return result;
+    }
+    /**
+     * 时间段内是否包含有该时间
+     * @param timeRangeStamp  时间段值
+     * @param time 指定的时间
+     * @return 是否时间段值包含该时间
+     */
+    public static boolean containsTime(long timeRangeStamp, LocalTime time) {
+        return (nonShift(timeRangeStamp) & fromTime(time)) != NONE;
+    }
+
+    /**
+     * 时间段内是否包含有该时间
+     * @param timeRangeStamp  时间段值
+     * @param timeRange 时间段
+     * @return 是否时间段值包含该时间段
+     */
+    public static boolean containsTimeRange(long timeRangeStamp, TimeRange timeRange) {
+        return timeRange != null && containsTimeRange(timeRangeStamp, timeRange.getStartTime(), timeRange.getEndTime());
+    }
+    /**
+     * 时间段内是否包含有该时间
+     * @param timeRangeStamp  时间段值
+     * @param startTime 时间段开始时间点
+     * @param endTime 时间段结束时间
+     * @return 是否时间段值包含该时间段
+     */
+    public static boolean containsTimeRange(long timeRangeStamp, LocalTime startTime, LocalTime endTime) {
+        if (timeRangeStamp == NONE || startTime == null || endTime == null) {
+            return false;
+        }
+        //是否班次时间
+        boolean shiftFlag = (timeRangeStamp & SHIFT_TIME_FLAG) != NONE;
+        //
+        long range = fromTimeRange0(startTime, endTime, shiftFlag, false);
+        if (range == NONE) {
+            return containsTime(timeRangeStamp, startTime);
+        }
+        if ((timeRangeStamp & range) == range) {
+            // 如果范围是重合时，是否跨天时间点, 如果跨天时间点在时间段范围内
+            boolean containsInRange;
+            LocalTime offsetTime = parseTime(getOffsetIndex(timeRangeStamp));
+            if (startTime.isBefore(endTime)) {
+                containsInRange = offsetTime.isAfter(startTime) && offsetTime.isBefore(endTime);
+            } else {
+                containsInRange = offsetTime.isAfter(startTime) || offsetTime.isBefore(endTime);
+            }
+            return !containsInRange;
+        }
+        return false;
+    }
+    /**
      * 获取日期范围列表，周一为1,周二为2,...多个用英文逗号分隔
      * @param timeRangeStamp 日期段值
      * @return 返回星期值，多个用英文逗号分隔
