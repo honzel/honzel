@@ -1217,6 +1217,10 @@ public class TextUtils {
 		return value == null || EMPTY.equals(value);
 	}
 
+	public static boolean isNotEmpty(Object value) {
+		return !isEmpty(value);
+	}
+
 	/**
 	 * 获取指定位置的值, 如果列表是null或值索引超出列表元素边界时返回null
 	 * @param valueList 字符串值集合(用','隔开各值)
