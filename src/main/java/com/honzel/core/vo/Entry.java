@@ -2,6 +2,7 @@ package com.honzel.core.vo;
 
 import java.io.Serializable;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * 键值对类型
@@ -37,7 +38,21 @@ public class Entry<K, V> implements Map.Entry<K, V> {
 		this.value = value;
 		return oldValue;
 	}
-	
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		Entry<?, ?> entry = (Entry<?, ?>) o;
+		return key.equals(entry.key) &&
+				value.equals(entry.value);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(key, value);
+	}
+
 	public String toString() {
 		return "key:" + key + ",value:" + value;
 	}
