@@ -1,6 +1,6 @@
-package com.honzel.core.util.converters;
+package com.honzel.core.util.converter;
 
-import com.honzel.core.util.exceptions.ConversionException;
+import com.honzel.core.util.exception.ConversionException;
 
 import java.lang.reflect.Array;
 

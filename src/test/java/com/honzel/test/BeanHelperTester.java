@@ -1,8 +1,8 @@
 package com.honzel.test;
 
-import com.honzel.core.util.BeanHelper;
-import com.honzel.core.util.converters.DateConverter;
-import com.honzel.core.util.converters.StandardConverter;
+import com.honzel.core.util.bean.BeanHelper;
+import com.honzel.core.util.converter.DateConverter;
+import com.honzel.core.util.converter.StandardConverter;
 import com.honzel.core.vo.Branch;
 import com.honzel.core.vo.Entry;
 

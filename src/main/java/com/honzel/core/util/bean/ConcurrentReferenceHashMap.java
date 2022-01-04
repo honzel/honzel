@@ -15,8 +15,6 @@ package com.honzel.core.util.bean;
  * limitations under the License.
  */
 
-import com.sun.tools.javac.util.Assert;
-
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
@@ -936,8 +934,9 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V> implemen
 
         @Override
         public void remove() {
-            Assert.check(this.last != null, "No element to remove");
-            ConcurrentReferenceHashMap.this.remove(this.last.getKey());
+            if (this.last != null) {
+                ConcurrentReferenceHashMap.this.remove(this.last.getKey());
+            }
         }
     }
 

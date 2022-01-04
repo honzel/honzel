@@ -1,17 +1,17 @@
 package com.honzel.core.util.bean;
 
-import com.honzel.core.util.converters.TypeConverter;
-import com.honzel.core.util.exceptions.PropertyException;
+import com.honzel.core.constant.ArrayConstants;
+import com.honzel.core.util.converter.TypeConverter;
+import com.honzel.core.util.exception.PropertyException;
 
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
-import java.lang.ref.SoftReference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * 
  * @author honzel
@@ -24,7 +24,6 @@ public class SimplePropertyUtilsBean {
 		new ConcurrentReferenceHashMap(),
 		new TypeConverter()
 	);
-	private static final PropertyDescriptor[] EMPTY_DESCRIPTORS = new PropertyDescriptor[0];
 	private static final int DESCRIPTORS = 0;
 	private static final int DESCRIPTOR_MAP = 1;
 	
@@ -435,7 +434,7 @@ public class SimplePropertyUtilsBean {
 		if (descriptorArray != null) {
 			 return (PropertyDescriptor[]) descriptorArray[DESCRIPTORS];
 		 }
-		return EMPTY_DESCRIPTORS;
+		return ArrayConstants.EMPTY_DESCRIPTOR_ARRAY;
 	}
 	
 	/**

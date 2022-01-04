@@ -1,10 +1,13 @@
-package com.honzel.core.util;
+package com.honzel.core.util.bean;
 
-import com.honzel.core.util.bean.NestedPropertyUtilsBean;
-import com.honzel.core.util.converters.Converter;
-import com.honzel.core.util.converters.TypeConverter;
+import com.honzel.core.util.TextUtils;
+import com.honzel.core.util.converter.Converter;
+import com.honzel.core.util.converter.TypeConverter;
 
 import java.beans.PropertyDescriptor;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.Map;
 /**
  * Utility methods for using Java Reflection APIs to facilitate generic
@@ -14,6 +17,7 @@ import java.util.Map;
  */
 @SuppressWarnings({"rawtypes" })
 public class BeanHelper {
+
 	
 	/**
 	 * disable exception or not
@@ -263,4 +267,69 @@ public class BeanHelper {
 			return NestedPropertyUtilsBean.getInstance().copyProperties(source, target);
 		}
 
+	/**
+	 * Find a method with the given method name and the given parameter types,
+	 * declared on the given class or one of its superclasses. Will return a public,
+	 * protected, package access, or private method.
+	 * <p>Checks {@code Class.getDeclaredMethod}, cascading upwards to all superclasses.
+	 * @param clazz clazz The class to introspect
+	 * @param name the name of the method to find
+	 * @param paramTypes the parameter types of the method to find
+	 * @return the Method object, or {@code null} if not found
+	 * @see Class#getDeclaredMethod
+	 */
+	public static Method findDeclaredMethod(Class<?> clazz, String name, Class<?>... paramTypes) {
+		if (TextUtils.isEmpty(name) || clazz == null) {
+			return null;
+		}
+		int index = name.lastIndexOf('.');
+		if (index >= 0) {
+			clazz = NestedPropertyUtilsBean.getInstance().getPropertyType(clazz, name.substring(0, index));
+			if (clazz == null) {
+				return null;
+			}
+			name = name.substring(index + 1);
+		}
+		return getDeclaredMethod0(clazz, name, paramTypes);
+	}
+
+	private static Method getDeclaredMethod0(Class<?> clazz, String name, Class<?>[] paramTypes) {
+		try {
+			return clazz.getDeclaredMethod(name, paramTypes);
+		} catch (NoSuchMethodException ex) {
+			if (clazz.getSuperclass() != null) {
+				return getDeclaredMethod0(clazz.getSuperclass(), name, paramTypes);
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * 通过反射, 获得Class定义中声明的父类的泛型参数的类型. 如无法找到, 返回Object.class.
+	 *
+	 * 如public UserDao extends HibernateDao<User,Long>
+	 *
+	 * @param clazz clazz The class to introspect
+	 * @param index the Index of the generic declaration,start from 0.
+	 * @return the index generic declaration, or Object.class if cannot be determined
+	 */
+	public static Class getGenericActualType(final Class clazz, final int index) {
+		Type genType = clazz.getGenericSuperclass();
+		if (!(genType instanceof ParameterizedType)) {
+			return Object.class;
+		}
+		Type[] params = ((ParameterizedType) genType).getActualTypeArguments();
+		if (index >= params.length || index < 0) {
+			return Object.class;
+		}
+		Type type = params[index];
+		if (type instanceof Class) {
+			return (Class) type;
+		}
+		if (type instanceof ParameterizedType) {
+			type = ((ParameterizedType) type).getRawType();
+			return type instanceof Class ? (Class) type : Object.class;
+		}
+		return Object.class;
+	}
 }

@@ -1,7 +1,7 @@
 package com.honzel.test;
 
-import com.honzel.core.util.BeanHelper;
-import com.honzel.core.util.converters.DateConverter;
+import com.honzel.core.util.bean.BeanHelper;
+import com.honzel.core.util.converter.DateConverter;
 
 import java.sql.Time;
 import java.sql.Timestamp;

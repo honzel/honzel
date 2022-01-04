@@ -1,6 +1,6 @@
-package com.honzel.core.util.converters;
+package com.honzel.core.util.converter;
 
-import com.honzel.core.util.exceptions.ConversionException;
+import com.honzel.core.util.exception.ConversionException;
 
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
@@ -63,31 +63,31 @@ public class StandardConverter  extends AbstractConverter  {
 				return value;
 		}
 		if ((toType == Integer.class) || (toType == Integer.TYPE))
-			return Integer.valueOf((int) longValue(firstValue));
+			return (int) longValue(firstValue);
 		
 		if ((toType == Double.class) || (toType == Double.TYPE))
-			return Double.valueOf(doubleValue(firstValue));
+			return doubleValue(firstValue);
 		
 		if ((toType == Boolean.class) || (toType == Boolean.TYPE))
 			return booleanValue(firstValue) ? Boolean.TRUE : Boolean.FALSE;
 		
 		if ((toType == Long.class) || (toType == Long.TYPE))
-			return Long.valueOf(longValue(firstValue));
+			return longValue(firstValue);
 		
 		if(toType == Class.class) {
 			return classValue(convertToString(firstValue));
 		}
 		if ((toType == Byte.class) || (toType == Byte.TYPE))
-			return Byte.valueOf((byte) longValue(firstValue));
+			return (byte) longValue(firstValue);
 		
 		if ((toType == Character.class) || (toType == Character.TYPE))
-			return Character.valueOf((char) longValue(firstValue));
+			return (char) longValue(firstValue);
 		
 		if ((toType == Short.class) || (toType == Short.TYPE))
-			return Short.valueOf((short) longValue(firstValue));
+			return (short) longValue(firstValue);
 		
 		if ((toType == Float.class) || (toType == Float.TYPE))
-			return Float.valueOf((float) doubleValue(firstValue));
+			return (float) doubleValue(firstValue);
 		
 		if (toType == BigInteger.class)
 			return bigIntValue(firstValue);
@@ -110,10 +110,10 @@ public class StandardConverter  extends AbstractConverter  {
 	        	return Boolean.parseBoolean((String) value);
 	        
 	        if (c == Boolean.class)
-	            return ((Boolean) value).booleanValue();
+	            return (Boolean) value;
 	        
 	        if (c == Character.class)
-	            return ((Character) value).charValue() != 0;
+	            return (Character) value != 0;
 	        
 	        if (value instanceof Number)
 	            return ((Number) value).doubleValue() != 0;
@@ -206,10 +206,10 @@ public class StandardConverter  extends AbstractConverter  {
 	            return ((Number) value).doubleValue();
 	        
 	        if (c == Boolean.class)
-	            return ((Boolean) value).booleanValue() ? 1 : 0;
+	            return (Boolean) value ? 1 : 0;
 	        
 	        if (c == Character.class)
-	            return ((Character) value).charValue();
+	            return (Character) value;
 	        
 	        return Double.parseDouble(convertToString(value));
 	    }
@@ -242,10 +242,10 @@ public class StandardConverter  extends AbstractConverter  {
 	            return BigInteger.valueOf(((Number) value).longValue());
 	        
 	        if (c == Boolean.class)
-	            return BigInteger.valueOf(((Boolean) value).booleanValue() ? 1 : 0);
+	            return BigInteger.valueOf((Boolean) value ? 1 : 0);
 	        
 	        if (c == Character.class)
-	            return BigInteger.valueOf(((Character) value).charValue());
+	            return BigInteger.valueOf((Character) value);
 	        
 	        return new BigInteger(convertToString(value));
 	    }
@@ -278,10 +278,10 @@ public class StandardConverter  extends AbstractConverter  {
 	            return new BigDecimal(((Number) value).doubleValue());
 	        
 	        if (c == Boolean.class)
-	            return BigDecimal.valueOf(((Boolean) value).booleanValue() ? 1 : 0);
+	            return BigDecimal.valueOf((Boolean) value ? 1 : 0);
 	        
 	        if (c == Character.class)
-	            return BigDecimal.valueOf(((Character) value).charValue());
+	            return BigDecimal.valueOf((Character) value);
 	        
 	        return new BigDecimal(convertToString(value));
 	        
@@ -323,7 +323,7 @@ public class StandardConverter  extends AbstractConverter  {
 		 * @param toType  the specified type
 		 * @return return  a default value represents this type
 		 */
-		public static Object primtiveDefault(Class toType) {
+		public static Object primitiveDefault(Class toType) {
 			return primitiveDefaults.get(toType);
 		}
 		
@@ -331,18 +331,17 @@ public class StandardConverter  extends AbstractConverter  {
 		private static final Map primitiveDefaults = new HashMap();
 		private static final  Map primitiveTypeMap = new HashMap();
 		static {
-			primitiveDefaults.put(Short.TYPE, Short.valueOf((short) 0));
-			primitiveDefaults.put(Integer.TYPE, Integer.valueOf(0));
-			primitiveDefaults.put(Long.TYPE, Long.valueOf(0L));
+			primitiveDefaults.put(Short.TYPE, (short) 0);
+			primitiveDefaults.put(Integer.TYPE, 0);
+			primitiveDefaults.put(Long.TYPE, 0L);
 			primitiveDefaults.put(Boolean.TYPE, Boolean.FALSE);
-			primitiveDefaults.put(Byte.TYPE, Byte.valueOf((byte) 0));
-			primitiveDefaults.put(Character.TYPE, Character.valueOf((char) 0));
-			primitiveDefaults.put(Float.TYPE, Float.valueOf(0.0f));
-			primitiveDefaults.put(Double.TYPE, Double.valueOf(0.0));
+			primitiveDefaults.put(Byte.TYPE, (byte) 0);
+			primitiveDefaults.put(Character.TYPE, (char) 0);
+			primitiveDefaults.put(Float.TYPE, 0.0f);
+			primitiveDefaults.put(Double.TYPE, 0.0);
 			primitiveDefaults.put(Void.TYPE, null);
-			Iterator iterator = primitiveDefaults.keySet().iterator();
-			while (iterator.hasNext()) {
-				Class type = (Class) iterator.next();
+			for (Object o : primitiveDefaults.keySet()) {
+				Class type = (Class) o;
 				primitiveTypeMap.put(type.getName(), type);
 			}
 		}

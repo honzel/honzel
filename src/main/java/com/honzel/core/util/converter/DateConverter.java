@@ -1,9 +1,7 @@
-package com.honzel.core.util.converters;
+package com.honzel.core.util.converter;
 
-import com.honzel.core.util.exceptions.ConversionException;
+import com.honzel.core.util.exception.ConversionException;
 
-import java.sql.Time;
-import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;

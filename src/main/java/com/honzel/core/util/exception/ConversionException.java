@@ -1,4 +1,4 @@
-package com.honzel.core.util.exceptions;
+package com.honzel.core.util.exception;
 
 /**
  * <p>A <b>ConversionException</b> indicates that a call to

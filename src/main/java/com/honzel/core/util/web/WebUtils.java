@@ -1,7 +1,7 @@
 package com.honzel.core.util.web;
 
-import com.honzel.core.util.BeanHelper;
-import com.honzel.core.util.ResolverUtils;
+import com.honzel.core.util.bean.BeanHelper;
+import com.honzel.core.util.resolver.ResolverUtils;
 import com.honzel.core.util.TextUtils;
 import com.honzel.core.util.resolver.Resolver;
 import org.slf4j.Logger;
@@ -21,7 +21,7 @@ import java.util.zip.GZIPInputStream;
 
 /**
  * WEB Utils for request
- * @author luhz@trendit.cn
+ * @author honzel
  *
  */
 public class WebUtils {

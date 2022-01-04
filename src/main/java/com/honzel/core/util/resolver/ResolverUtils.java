@@ -1,4 +1,4 @@
-package com.honzel.core.util;
+package com.honzel.core.util.resolver;
 
 import com.honzel.core.util.resolver.DefaultResolver;
 import com.honzel.core.util.resolver.Resolver;

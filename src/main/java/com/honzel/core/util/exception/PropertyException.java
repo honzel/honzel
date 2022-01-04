@@ -1,4 +1,4 @@
-package com.honzel.core.util.exceptions;
+package com.honzel.core.util.exception;
 
 /**
  * Thrown when an error is encountered whilst attempting to set/get a property

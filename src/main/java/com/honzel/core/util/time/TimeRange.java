@@ -1,4 +1,4 @@
-package com.honzel.core.util.timerange;
+package com.honzel.core.util.time;
 
 import java.io.Serializable;
 import java.time.LocalTime;

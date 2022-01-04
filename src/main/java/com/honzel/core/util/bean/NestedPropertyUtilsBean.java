@@ -1,9 +1,9 @@
 package com.honzel.core.util.bean;
 
-import com.honzel.core.util.ResolverUtils;
-import com.honzel.core.util.converters.AbstractConverter;
-import com.honzel.core.util.converters.Converter;
-import com.honzel.core.util.converters.TypeConverter;
+import com.honzel.core.util.resolver.ResolverUtils;
+import com.honzel.core.util.converter.AbstractConverter;
+import com.honzel.core.util.converter.Converter;
+import com.honzel.core.util.converter.TypeConverter;
 import com.honzel.core.util.resolver.Resolver;
 
 import java.beans.PropertyDescriptor;
@@ -14,6 +14,10 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
+
+import static com.honzel.core.constant.ArrayConstants.EMPTY_CLASS_ARRAY;
+import static com.honzel.core.constant.ArrayConstants.EMPTY_OBJECT_ARRAY;
+
 /**
  * 
  * @author honzel
@@ -27,9 +31,6 @@ public class NestedPropertyUtilsBean {
 	
 	private static final String opened = "[.";
 	private static final String closed = "]";
-
-	private static final Object[] EMPTY_PARAMETERS = {};
-	private static final Class[] EMPTY_CLASS_ARRAY = {};
 
 	private static final int ERROR_TYPES = Resolver.LINK | Resolver.END;
 
@@ -318,7 +319,7 @@ public class NestedPropertyUtilsBean {
     * @param classIntance whether it is  class instance or not.
     * @return
     */
-	private  Class getPropertyType(Object bean, String name, boolean classIntance) {
+	Class getPropertyType(Object bean, String name, boolean classIntance) {
 		if(bean == null)
 			return null;
 		Class beanClass;
@@ -683,7 +684,7 @@ public class NestedPropertyUtilsBean {
 					prop = item;
 				} else // if the usual property is null
 				if (prop == null) {
-					prop = propClass.getConstructor(EMPTY_CLASS_ARRAY).newInstance(EMPTY_PARAMETERS);
+					prop = propClass.getConstructor(EMPTY_CLASS_ARRAY).newInstance(EMPTY_OBJECT_ARRAY);
 					if (split) {
 						descriptor.getWriteMethod().invoke(bean, prop);
 					} else {
@@ -735,7 +736,7 @@ public class NestedPropertyUtilsBean {
 				if (typeConverter != null) {
 					value = typeConverter.convert(value, descriptor.getPropertyType());
 				}
-				descriptor.getWriteMethod().invoke(target, new Object[]{value});
+				descriptor.getWriteMethod().invoke(target, value);
 			} catch (Exception e) {
 				error(e, "Fail to set the specified property '" + name + "' for the specified bean of the type '"
 						+ getTypeName(target) + "', reason: " + e.toString());

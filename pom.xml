@@ -7,7 +7,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.github.honzel</groupId>
     <artifactId>honzel</artifactId>
-    <version>1.6</version>
+    <version>1.6.1</version>
     <description>Java Type Converter Tool</description>
     <url>https://github.com/honzel/honzel</url>
     <properties>
@@ -25,6 +25,27 @@
           <groupId>org.slf4j</groupId>
           <artifactId>slf4j-api</artifactId>
           <version>1.7.30</version>
+      </dependency>
+      <dependency>
+          <groupId>org.apache.commons</groupId>
+          <artifactId>commons-lang3</artifactId>
+          <version>3.0.1</version>
+      </dependency>
+      <dependency>
+          <groupId>javax.annotation</groupId>
+          <artifactId>javax.annotation-api</artifactId>
+          <version>1.3.2</version>
+          <scope>provided</scope>
+      </dependency>
+      <dependency>
+          <groupId>org.springframework</groupId>
+          <artifactId>spring-aop</artifactId>
+          <version>4.3.1.RELEASE</version>
+      </dependency>
+      <dependency>
+          <groupId>org.springframework</groupId>
+          <artifactId>spring-context</artifactId>
+          <version>4.3.1.RELEASE</version>
       </dependency>
   </dependencies>
     <licenses>

@@ -1,4 +1,4 @@
-package com.honzel.core.util.timerange;
+package com.honzel.core.util.time;
 
 import com.honzel.core.util.TextUtils;
 
@@ -47,8 +47,6 @@ public class TimeRangeUtils {
 
 
     private static final long FIRST_BIT = 1L;
-
-    private TimeRangeUtils () {}
 
     static {
         // 时间位
