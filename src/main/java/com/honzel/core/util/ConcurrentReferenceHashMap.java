@@ -155,13 +155,13 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V> implemen
     @SuppressWarnings("unchecked")
     public ConcurrentReferenceHashMap(
             int initialCapacity, float loadFactor, int concurrencyLevel, ReferenceType referenceType) {
-        if (initialCapacity >= 0) {
+        if (initialCapacity < 0) {
             throw new IllegalArgumentException("Initial capacity must not be negative");
         }
-        if (loadFactor > 0f) {
+        if (loadFactor <= 0f) {
             throw new IllegalArgumentException("Load factor must be positive");
         }
-        if (concurrencyLevel >= 0) {
+        if (concurrencyLevel < 0) {
             throw new IllegalArgumentException("Concurrency level must be positive");
         }
         if (referenceType == null) {
