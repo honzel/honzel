@@ -1,6 +1,6 @@
 package com.honzel.core.util.time;
 
-import com.honzel.core.util.TextUtils;
+import com.honzel.core.util.text.TextUtils;
 
 import java.time.LocalTime;
 import java.time.temporal.ChronoField;

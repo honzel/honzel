@@ -2,7 +2,7 @@ package com.honzel.core.util.web;
 
 import com.honzel.core.util.bean.BeanHelper;
 import com.honzel.core.util.resolver.ResolverUtils;
-import com.honzel.core.util.TextUtils;
+import com.honzel.core.util.text.TextUtils;
 import com.honzel.core.util.resolver.Resolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

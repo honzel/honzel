@@ -1,6 +1,7 @@
 package com.honzel.core.util.bean;
 
 import com.honzel.core.constant.ArrayConstants;
+import com.honzel.core.util.ConcurrentReferenceHashMap;
 import com.honzel.core.util.converter.TypeConverter;
 import com.honzel.core.util.exception.PropertyException;
 

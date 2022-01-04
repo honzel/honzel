@@ -30,7 +30,7 @@ public class ContextLocal<T> {
                 }
                 return value;
             }
-        } catch (SecurityException e) { }
+        } catch (SecurityException ignored) { }
         if (!gValInitialized) {
             gVal = initialValue();
             gValInitialized = true;

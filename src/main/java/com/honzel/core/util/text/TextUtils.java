@@ -1,4 +1,4 @@
-package com.honzel.core.util;
+package com.honzel.core.util.text;
 
 import com.honzel.core.util.bean.BeanHelper;
 import com.honzel.core.util.resolver.Resolver;

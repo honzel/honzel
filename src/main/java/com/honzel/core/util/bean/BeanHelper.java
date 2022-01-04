@@ -1,6 +1,6 @@
 package com.honzel.core.util.bean;
 
-import com.honzel.core.util.TextUtils;
+import com.honzel.core.util.text.TextUtils;
 import com.honzel.core.util.converter.Converter;
 import com.honzel.core.util.converter.TypeConverter;
 
