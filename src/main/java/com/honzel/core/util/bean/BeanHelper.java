@@ -30,12 +30,7 @@ public class BeanHelper {
 	public static boolean isDisableException() {
 		return NestedPropertyUtilsBean.getInstance().isDisableException();
 	}
-	/**
-	 * 
-	 */
-	private BeanHelper() {
-		
-	}
+
 	/**
      * Register a custom {@link Converter} for the specified destination
      * <code>Class</code>, replacing any previously registered Converter.

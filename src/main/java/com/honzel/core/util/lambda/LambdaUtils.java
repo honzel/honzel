@@ -19,9 +19,6 @@ public class LambdaUtils {
     private static final String WRITE_REPLACE_METHOD = "writeReplace";
     private static final String LAMBADA_BLOCK_METHOD_PREFIX = "lambda$";
 
-    private LambdaUtils() {
-    }
-
     public static SerializedLambda resolveLambda(Serializable lambda) {
         return resolveLambda(lambda, true);
     }

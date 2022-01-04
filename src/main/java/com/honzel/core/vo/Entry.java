@@ -1,14 +1,15 @@
 package com.honzel.core.vo;
 
 import java.io.Serializable;
+import java.util.Map;
+
 /**
  * 键值对类型
  * @author honzel
  *
  */
-public class Entry<K, V> implements Serializable {
-	
-	private static final long serialVersionUID = 4806914956857026385L;
+public class Entry<K, V> implements Map.Entry<K, V> {
+
 	private K key;
 	private V value;
 	public Entry() {
@@ -31,8 +32,10 @@ public class Entry<K, V> implements Serializable {
 		return value;
 	}
 
-	public void setValue(V value) {
+	public V setValue(V value) {
+		V oldValue = this.value;
 		this.value = value;
+		return oldValue;
 	}
 	
 	public String toString() {
