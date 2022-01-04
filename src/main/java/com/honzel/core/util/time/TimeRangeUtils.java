@@ -383,7 +383,7 @@ public class TimeRangeUtils {
      * @param timeRanges 时间范围列表
      * @return 时间段值
      */
-    public static long fromTimeRanges(List<TimeRange> timeRanges) {
+    public static long fromTimeRanges(List<? extends TimeRange> timeRanges) {
         return fromTimeRanges0(timeRanges, false);
     }
     /**
@@ -391,7 +391,7 @@ public class TimeRangeUtils {
      * @param timeRanges 时间范围列表
      * @return 时间段值
      */
-    public static long fromShiftTimeRanges(List<TimeRange> timeRanges) {
+    public static long fromShiftTimeRanges(List<? extends TimeRange> timeRanges) {
         return fromTimeRanges0(timeRanges, true);
     }
 
@@ -399,7 +399,7 @@ public class TimeRangeUtils {
      * 获取班次时间段值
      * @param timeRanges 时间范围列表
      */
-    public static void checkValidShiftTimeRanges(List<TimeRange> timeRanges) {
+    public static void checkValidShiftTimeRanges(List<? extends TimeRange> timeRanges) {
         if (timeRanges == null || timeRanges.isEmpty()) {
             throw new IllegalArgumentException("没有指定时间段");
         }
@@ -431,7 +431,7 @@ public class TimeRangeUtils {
      * @param forceShift 是否强制分隔班次
      * @return 时间段值
      */
-    private static long fromTimeRanges0(List<TimeRange> timeRanges, boolean forceShift) {
+    private static long fromTimeRanges0(List<? extends TimeRange> timeRanges, boolean forceShift) {
         if (timeRanges == null || timeRanges.isEmpty()) {
             return NONE;
         }
@@ -455,7 +455,7 @@ public class TimeRangeUtils {
      * @param timeRanges 时间范围列表
      * @return 时间段值
      */
-    public static long from(String weekdays, List<TimeRange> timeRanges) {
+    public static long from(String weekdays, List<? extends TimeRange> timeRanges) {
         return fromWeekDays(weekdays) | fromTimeRanges(timeRanges);
     }
 
