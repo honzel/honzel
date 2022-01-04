@@ -2,6 +2,7 @@ package com.honzel.core.util.time;
 
 import com.honzel.core.util.text.TextUtils;
 
+import java.time.DateTimeException;
 import java.time.LocalTime;
 import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
@@ -401,26 +402,26 @@ public class TimeRangeUtils {
      */
     public static void checkValidShiftTimeRanges(List<? extends TimeRange> timeRanges) {
         if (timeRanges == null || timeRanges.isEmpty()) {
-            throw new IllegalArgumentException("没有指定时间段");
+            throw new DateTimeException("没有指定时间段");
         }
         long result = NONE;
         for (TimeRange timeRange : timeRanges) {
             if (timeRange.getStartTime() == null) {
-                throw new IllegalArgumentException("开始时间不能为空");
+                throw new DateTimeException("开始时间不能为空");
             }
             if (timeRange.getEndTime() == null) {
-                throw new IllegalArgumentException("结束时间不能为空");
+                throw new DateTimeException("结束时间不能为空");
             }
             long time = fromTimeRange0(timeRange.getStartTime(), timeRange.getEndTime(), true, false);
             if (time == NONE) {
-                throw new IllegalArgumentException("时间段长度必须都大于" + TIME_UNIT_IN_MINUTES + "分钟");
+                throw new DateTimeException("时间段长度必须都大于" + TIME_UNIT_IN_MINUTES + "分钟");
             }
             if ((time & result) != NONE) {
-                throw new IllegalArgumentException("时间段不能出现重叠");
+                throw new DateTimeException("时间段不能出现重叠");
             }
             long end = FIRST_BIT << (getIndexByTime(timeRange.getEndTime(), true) - 1);
             if ((end & result) != NONE) {
-                throw new IllegalArgumentException("时间段不能出现重叠");
+                throw new DateTimeException("时间段不能出现重叠");
             }
             result = result | time | end;
         }
