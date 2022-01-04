@@ -45,9 +45,6 @@ public class TextUtils {
 
 	private static final char FOR_EMPTY_FLAG = '^';
 
-	private TextUtils() {
-	}
-
 	public static final int DATA_TYPE_JSON = 1;
 
 	public static final int DATA_TYPE_QUERY_STRING = 2;
