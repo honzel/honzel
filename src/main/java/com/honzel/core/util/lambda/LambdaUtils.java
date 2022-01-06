@@ -1,5 +1,7 @@
 package com.honzel.core.util.lambda;
 
+import com.honzel.core.util.ConcurrentReferenceHashMap;
+
 import java.io.Serializable;
 import java.lang.invoke.SerializedLambda;
 import java.lang.ref.WeakReference;
@@ -15,7 +17,7 @@ import java.util.function.*;
  */
 public class LambdaUtils {
 
-    private static final Map<Class, WeakReference<SerializedLambda>> FUNC_CACHE = new ConcurrentHashMap<>();
+    private static final Map<Class, WeakReference<SerializedLambda>> FUNC_CACHE = new ConcurrentReferenceHashMap<>();
     private static final String WRITE_REPLACE_METHOD = "writeReplace";
     private static final String LAMBADA_BLOCK_METHOD_PREFIX = "lambda$";
 

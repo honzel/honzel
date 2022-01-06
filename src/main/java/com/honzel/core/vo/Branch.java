@@ -1,6 +1,8 @@
 package com.honzel.core.vo;
 
 import java.io.Serializable;
+import java.util.Objects;
+
 /**
  * 分叉对象类型
  * @author honzel
@@ -53,7 +55,22 @@ public class Branch<K, L, R> implements Serializable {
 	public void setRight(R right) {
 		this.right = right;
 	}
-	
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		Branch<?, ?, ?> branch = (Branch<?, ?, ?>) o;
+		return Objects.equals(key, branch.key) &&
+				Objects.equals(left, branch.left) &&
+				Objects.equals(right, branch.right);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(key, left, right);
+	}
+
 	@Override
 	public String toString() {
 		return "key:" + key + ",left:" + left + ",right:" + right;

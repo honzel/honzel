@@ -1,7 +1,7 @@
 package com.honzel.core.stratery;
 
 
-import com.honzel.core.util.lambda.LambdaUtils;
+import com.honzel.core.util.lambda.LambdaUtils.SerializeTiConsumer;
 
 /**
  * 业务链保存上下文
@@ -22,6 +22,6 @@ public interface ChainSaveContext {
      * @param <Q> 第二个参数
      * @param <R> 第三个参数
      */
-    <P, Q, R> void executeInTransaction(P param, Q secondParam, R thirdParam, LambdaUtils.SerializeTiConsumer<P, Q, R> consumer);
+    <P, Q, R> void executeInTransaction(P param, Q secondParam, R thirdParam, SerializeTiConsumer<P, Q, R> consumer);
 
 }
