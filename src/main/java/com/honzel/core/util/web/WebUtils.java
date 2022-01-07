@@ -69,6 +69,9 @@ public class WebUtils {
         };
     }
 
+    protected WebUtils() {
+    }
+
     /**
      * 是否启用Cookie管理
      * @param enabled 是否启用cookie

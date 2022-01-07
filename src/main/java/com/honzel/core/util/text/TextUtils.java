@@ -53,6 +53,8 @@ public class TextUtils {
 
 	public static final int DATA_TYPE_TEXT = 4;
 
+	protected TextUtils() {
+	}
 
 	public static int getDataType(String content) {
 		if (isEmpty(content)) {

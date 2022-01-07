@@ -10,6 +10,8 @@ import com.honzel.core.util.resolver.Resolver;
  */
 public class ResolverUtils {
 
+	protected ResolverUtils() {
+	}
 
 	public static Resolver createResolver(String opened, String closed) {
 		return (new DefaultResolver(opened, closed)).useEscape('\\');

@@ -72,6 +72,8 @@ public class TimeRangeUtils {
         SHIFT_TIME_FLAG = FIRST_BIT << (TIME_BITS + START_TIME_BITS + WEEKDAY_BITS);
     }
 
+    protected TimeRangeUtils() {
+    }
 
     /**
      * 获取时间范围列表

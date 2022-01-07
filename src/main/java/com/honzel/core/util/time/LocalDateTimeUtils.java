@@ -72,6 +72,9 @@ public class LocalDateTimeUtils {
 
     }
 
+    protected LocalDateTimeUtils() {
+    }
+
     /**
      * 解析时间
      * @param input 输入文本

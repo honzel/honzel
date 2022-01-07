@@ -17,6 +17,9 @@ import java.util.function.*;
  */
 public class LambdaUtils {
 
+    protected LambdaUtils() {
+    }
+
     private static final Map<Class, WeakReference<SerializedLambda>> FUNC_CACHE = new ConcurrentReferenceHashMap<>();
     private static final String WRITE_REPLACE_METHOD = "writeReplace";
     private static final String LAMBADA_BLOCK_METHOD_PREFIX = "lambda$";

@@ -69,6 +69,8 @@ public class ChainProcessUtils {
         return MASK_LOW_FLAG | (low & CHAIN_MASK_LOW);
     }
 
+    protected ChainProcessUtils() {
+    }
 
     private static final Map<Class<?>, List<Method>> processMethodCache = new WeakHashMap<>();
     private static final Map<AnnotatedElement, Annotation[]> declaredProcessorAnnotationCache = new WeakHashMap<>();

@@ -18,8 +18,10 @@ import java.util.Map;
 @SuppressWarnings({"rawtypes" })
 public class BeanHelper {
 
-	
-	/**
+    protected BeanHelper() {
+    }
+
+    /**
 	 * disable exception or not
 	 * @param disableException  disable exception or not
 	 */
