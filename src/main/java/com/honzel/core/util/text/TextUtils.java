@@ -193,7 +193,7 @@ public class TextUtils {
 					continue;
 				}
 				// 解析当前小段内容
-				resolver.resetToCurrent().useTokens(BRACKET_START).reset(resolver.getStart() + 1).hasNext();
+				resolver.resetToCurrent(simplified ? 0 : 1).useTokens(BRACKET_START).hasNext();
 				if (!resolver.isInTokens() && resolver.isEmpty() && !resolver.isLast()) {
 					// 忽略空串解析下一部分
 					resolver.hasNext();
@@ -223,7 +223,7 @@ public class TextUtils {
 				if (resolver.isInTokens() && resolver.getInput().charAt(resolver.getStart()) == EXPR_FLAG) {
 					// 表达式
 					int outerTerminal = resolver.getTerminal();
-					resolver.resetToCurrent().reset(resolver.getStart() + 1).useTokens(EQUAL + SEMICOLON);
+					resolver.resetToCurrent(1).useTokens(EQUAL + SEMICOLON);
 					// 获取映射值
 					boolean isSimpleValuePattern = true;
 					while (resolver.hasNext()) {
@@ -525,10 +525,7 @@ public class TextUtils {
 		// 解析当前小段内容
 		// 初始位置
 		int originPosition = content.length();
-		resolver.resetToCurrent().useTokens(BRACKET_START);
-		if (!simplified) {
-		    resolver.reset(resolver.getStart() + 1);
-        }
+		resolver.resetToCurrent(simplified ? 0 : 1).useTokens(BRACKET_START);
 		if (resolver.hasNext() && !resolver.isInTokens() && resolver.isEmpty() && !resolver.isLast()) {
 			// 忽略空串解析下一部分
 			resolver.hasNext();
@@ -706,7 +703,7 @@ public class TextUtils {
 		}
 		// 起始位置
 		int outerTerminal = resolver.getTerminal();
-		resolver.resetToCurrent().reset(resolver.getStart() + 1).useTokens(EQUAL + SEMICOLON);
+		resolver.resetToCurrent(1).useTokens(EQUAL + SEMICOLON);
 		// 获取映射值
 		value =  getMappingValue(resolver, value, configParams, params, alternateHolderEnabled, simplified);
 		// 返回

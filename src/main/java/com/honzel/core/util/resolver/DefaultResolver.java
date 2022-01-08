@@ -479,7 +479,7 @@ public class DefaultResolver implements Resolver {
 	}
 
 	private boolean checkHitToken(boolean firstFetch, int result) {
-		if (end != start) {
+		if (end > start) {
 			if (firstFetch) {
 				type = TYPE_INDEX_OF_START;
 				return true;
