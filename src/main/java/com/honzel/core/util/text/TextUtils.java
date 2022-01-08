@@ -348,7 +348,7 @@ public class TextUtils {
 	 * @param params 参数
 	 * @return 返回格式化后内容
 	 */
-	public static String simplifiedAlternateFormat(int dataType, String pattern, Object configParams, Object params) {
+	public static String alternateSimplifiedFormat(int dataType, String pattern, Object configParams, Object params) {
 		return format0(true, dataType, pattern, configParams, params, null, true);
 	}
 
@@ -358,7 +358,7 @@ public class TextUtils {
 	 * @param param 参数
 	 * @return 返回格式化后内容
 	 */
-	public static String simplifiedAlternateFormat(String pattern, Object param) {
+	public static String alternateSimplifiedFormat(String pattern, Object param) {
 		return format0(true, getDataType(pattern), pattern, null, param, null, true);
 	}
 	/**
@@ -368,7 +368,7 @@ public class TextUtils {
 	 * @param param 参数
 	 * @return 返回格式化后内容
 	 */
-	public static String simplifiedAlternateFormat(int dataType, String pattern, Object param) {
+	public static String alternateSimplifiedFormat(int dataType, String pattern, Object param) {
 		return format0(true, dataType, pattern, null, param, null, true);
 	}
 
@@ -378,7 +378,7 @@ public class TextUtils {
 	 * @param params 参数
 	 * @return 返回格式化后内容
 	 */
-	public static String simplifiedAlternateFormat(String pattern, Object... params) {
+	public static String alternateSimplifiedFormat(String pattern, Object... params) {
 		return format0(true, getDataType(pattern), pattern, null, params, null, true);
 	}
 	/**

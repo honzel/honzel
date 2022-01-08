@@ -19,7 +19,7 @@ public class ResovlerTester {
 	}
 	
 	public void testExpressionResolver() {
-		StringBuilder input= new StringBuilder(".aaaa  [  bb  ] \\cc\\       [  30].ff(kk). pp, pp挂起\\ ");
+		StringBuilder input= new StringBuilder(".aaaa  [  bb  ] \\cc\\       [  30].ff(kk). pp, pp挂起\\ ,");
 		String[] types={"索引值","key值","嵌套", "分隔"};
 		Resolver resolver=new DefaultResolver("[(.,", "])").reset(input).useTrim(true);
 //		resolver.useTypes(Resolver.ALL_OF_TYPES ^ (1 << 2));
@@ -98,7 +98,7 @@ public class ResovlerTester {
 		ResovlerTester tester = new ResovlerTester();
 //		tester.testMoveBit();
 //		tester.testStartsWithResolver();
-//		tester.testExpressionResolver();
-		tester.testIsInTypes();
+		tester.testExpressionResolver();
+//		tester.testIsInTypes();
 	}
 }
