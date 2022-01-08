@@ -285,18 +285,17 @@ class ChainMethodList {
                 result |= (1 << i);
             } else if (i == HASH_RESULT && pos > 0 && matchResultType(allArgumentTypes[HASH_RESULT], actTypes[pos - 1])) {
                 // 如果是结果类型，则优先作为结果类型
-                if (pos == HASH_RESULT) {
-                    result = ~(1 << (HASH_RESULT - 1)) & result | (1 << HASH_RESULT);
+                if (result == 1) {
+                    result <<= HASH_RESULT;
+                } else {
+                    for (int j = HASH_RESULT - 1; j >= pos - 1; --j) {
+                        int h;
+                        if ((h = result & (1 << j)) != 0) {
+                            result = ~h & result | (1 << HASH_RESULT);
+                            break;
+                        }
+                    }
                 }
-//                else { // 因为HASH_RESULT固定为1，该段永远不会执行，
-//                    for (int j = HASH_RESULT - 1; j >= pos - 1; --j) {
-//                        int h;
-//                        if ((h = result & (1 << j)) != 0) {
-//                            result = ~h & result | (1 << HASH_RESULT);
-//                            break;
-//                        }
-//                    }
-//                }
             }
         }
         if (pos < argsNum) {
