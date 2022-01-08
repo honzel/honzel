@@ -126,7 +126,7 @@ public class TimeRangeUtils {
                 if (timeRange != null) {
                     int seq = (offset + i) % TIME_BITS;
                     if (shiftFlag) {
-                        timeRange.setEndTime(i == TIME_BITS - 1 && seq == i ? utils.dateMaxEndTime() : parseTime(seq + 1));
+                        timeRange.setEndTime(i == TIME_BITS - 1 && seq == i ? LocalTime.MAX : parseTime(seq + 1));
                     } else {
                         timeRange.setEndTime(parseTime(seq));
                     }
@@ -148,7 +148,7 @@ public class TimeRangeUtils {
         if (timeRange != null) {
             if (offset == 0) {
                 // 如果结束时间为一天的最后，则设置当天最大值
-                timeRange.setEndTime(utils.dateMaxEndTime());
+                timeRange.setEndTime(LocalTime.MAX);
             } else {
                 // 跨天时
                 timeRange.setEndTime(parseTime(offset));
@@ -161,10 +161,6 @@ public class TimeRangeUtils {
 
     protected TimeRange newTimeRange() {
         return new TimeRange();
-    }
-
-    protected LocalTime dateMaxEndTime() {
-        return LocalTime.MAX;
     }
 
     /**
