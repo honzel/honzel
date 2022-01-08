@@ -119,13 +119,18 @@ public class SimplePropertyUtilsBean {
 	     			}
 	     			if (descriptor == null) {
 	     				throw new PropertyException("The property  '" + key + "' of bean type  '"
-	     						+ beanClass.getName() + "' did not exist.");
+	     						+ beanClass.getName() + "' isn't exists.");
 	     			}
 	     		}
 	     		if (typeConverter != null) {
 	     			value = typeConverter.convert(value, descriptor.getPropertyType());
 	     		}
-	     		descriptor.getWriteMethod().invoke(bean, value);
+				Method writeMethod = descriptor.getWriteMethod();
+	     		if (writeMethod == null) {
+					throw new PropertyException("The setter of property  '" + key + "' of bean type  '"
+							+ beanClass.getName() + "' isn't exists.");
+				}
+				writeMethod.invoke(bean, value);
 	     		return true;
 	     	} catch (PropertyException e) {
 				error(e, null);
@@ -144,9 +149,9 @@ public class SimplePropertyUtilsBean {
 			if (key instanceof Number) {
 				index = ((Number) key).intValue();
 			} else {
-				try{
+				try {
 					index = Integer.parseInt(key.toString());
-				}catch(Exception e) {}
+				} catch (Exception ignore) {}
 			}
 			return index;
 		}

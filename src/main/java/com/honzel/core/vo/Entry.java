@@ -32,6 +32,10 @@ public class Entry<K, V> implements Map.Entry<K, V> {
 		return value;
 	}
 
+	public void setNewValue(V value) {
+		this.value = value;
+	}
+
 	public V setValue(V value) {
 		V oldValue = this.value;
 		this.value = value;
