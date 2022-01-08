@@ -10,36 +10,36 @@ public interface Resolver {
 	/**
 	 * the constant represented all types.
 	 */
-	public static final int ALL_OF_TYPES = -1;
+	int ALL_OF_TYPES = -1;
 	
 	/**
 	 * the constant represented none type.
 	 */
-	public static final int NONE_OF_TYPES = 0;
+	int NONE_OF_TYPES = 0;
 	/**
 	 * the constant represented not to escape.
 	 */
-	public static final int NOT_ESCAPE = 0;
+	int NOT_ESCAPE = 0;
 	
 	/**
 	 * disabled to  use of the terminal position.
 	 */
-	public static final int DISABLED_TERMINAL = -1;
+	int DISABLED_TERMINAL = -1;
 	
 	/**
 	 * the constant represented  link type of result
 	 */
-	public static final int LINK = (1 << -2);
+	int LINK = (1 << 30);
 	
 	
 	/**
 	 * the constant represented  end type of result
 	 */
-	public static final int END = (1 << -3);
+	int END = (1 << 29);
 	/**
 	 * the constant represented  start type of result
 	 */
-	public static final int START = (1 << -1);
+	int START = (1 << 31);
 
 	/**
 	 * Return the current expression type
@@ -96,7 +96,7 @@ public interface Resolver {
 	 */
 	boolean isLast();
 	/**
-	 * Return whether the current expression is the first one (starts with 0 index of the input character sequence) or not.
+	 * Return whether the current expression is the first one  or not.
 	 * @return return true when  the current expression is the first one.
 	 */
 	boolean isFirst();
@@ -295,7 +295,7 @@ public interface Resolver {
 	Resolver resetToCurrent();
 
 	/**
-	 *  reset the input expression and use current start index as start position and the current end index of input as term position
+	 *  reset the input expression and use the specified offset of the current start position as start position and the current end index of input as end position
 	 * @param offset the offset of start position
 	 * @return Return this resolver.
 	 */

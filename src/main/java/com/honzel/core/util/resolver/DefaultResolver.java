@@ -930,7 +930,7 @@ public class DefaultResolver implements Resolver {
 	}
 
 	public Resolver resetToBeyond(int offset) {
-		return reset(getCurrentTerminal() + offset).useTerminal(DISABLED_TERMINAL);
+		return reset(getTerminal() + offset).useTerminal(DISABLED_TERMINAL);
 	}
 
 	private boolean appendTo(Appendable appendable, boolean trim, int startOffset, int endOffset) {
