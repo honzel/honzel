@@ -40,6 +40,6 @@ public class Item<T> implements Serializable {
 	}
 
 	public String toString() {
-		return "value:" + value;
+		return "{value:" + value + "}";
 	}
 }

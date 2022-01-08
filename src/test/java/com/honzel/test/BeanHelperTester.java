@@ -39,7 +39,7 @@ public class BeanHelperTester {
 		BeanHelper.setProperty(bean, "left.left", BeanHelper.convert(1001234, String.class));
 		BeanHelper.setProperty(bean, "right.key", "英国人");
 		BeanHelper.setProperty(bean, "right.key", BeanHelper.convert("20150104", Calendar.class));
-		BeanHelper.setProperty(bean, "right.value", BeanHelper.convert("20150104", Long.class));
+		BeanHelper.setProperty(bean, "right.newValue", BeanHelper.convert("20150104", Long.class));
 		Map result = new HashMap();
 		System.out.println(bean);
 		BeanHelper.copyProperties(bean, result);

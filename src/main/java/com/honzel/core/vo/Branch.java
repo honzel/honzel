@@ -73,7 +73,7 @@ public class Branch<K, L, R> implements Serializable {
 
 	@Override
 	public String toString() {
-		return "key:" + key + ",left:" + left + ",right:" + right;
+		return "{key:" + key + ",left:" + left + ",right:" + right + "}";
 	}
 	
 }

@@ -57,7 +57,7 @@ public class Entry<K, V> implements Map.Entry<K, V> {
 	}
 
 	public String toString() {
-		return "key:" + key + ",value:" + value;
+		return "{key:" + key + ",value:" + value + "}";
 	}
 	
 }
