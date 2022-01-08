@@ -87,7 +87,7 @@ public class TimeRangeUtils {
      * @param timeRangeStamp 时间段值
      * @return 返回时间段列表
      */
-    public static List<TimeRange> getTimeRanges(long timeRangeStamp) {
+    public static<TimeRange extends com.honzel.core.util.time.TimeRange> List<TimeRange> getTimeRanges(long timeRangeStamp) {
         return getTimeRanges(timeRangeStamp, 0, false);
     }
     /**
@@ -96,7 +96,7 @@ public class TimeRangeUtils {
      * @param divisionDuration 切割时长（单位为分钟)
      * @return 返回拆分后的时间段列表
      */
-    public static List<TimeRange> getTimeRanges(long timeRangeStamp, int divisionDuration) {
+    public static<TimeRange extends com.honzel.core.util.time.TimeRange> List<TimeRange> getTimeRanges(long timeRangeStamp, int divisionDuration) {
         return getTimeRanges(timeRangeStamp, divisionDuration, false);
     }
 
@@ -107,7 +107,8 @@ public class TimeRangeUtils {
      * @param halfDivisionDurationEnabled 是否步长为一半切割时长, true-步长为切割时长的一半, false-步长与切割时长相等
      * @return 返回拆分后的时间段列表
      */
-    public static List<TimeRange> getTimeRanges(long timeRangeStamp, int divisionDuration, boolean halfDivisionDurationEnabled) {
+    @SuppressWarnings("unchecked")
+    public static<TimeRange extends com.honzel.core.util.time.TimeRange> List<TimeRange> getTimeRanges(long timeRangeStamp, int divisionDuration, boolean halfDivisionDurationEnabled) {
         long times;
         if (timeRangeStamp == NONE || (times = timeRangeStamp & ALL_TIMES) == NONE) {
             return Collections.emptyList();
@@ -139,7 +140,7 @@ public class TimeRangeUtils {
                 }
             } else {
                 if (timeRange == null) {
-                    timeRange = utils.newTimeRange();
+                    timeRange = (TimeRange) utils.newTimeRange();
                     timeRange.setStartTime(parseTime((offset + i) % TIME_BITS));
                     timeRangeList.add(timeRange);
                 }
@@ -159,6 +160,7 @@ public class TimeRangeUtils {
         return timeRangeList;
     }
 
+
     protected TimeRange newTimeRange() {
         return new TimeRange();
     }
@@ -170,7 +172,8 @@ public class TimeRangeUtils {
      * @param divisionDuration 切割时长（单位为分钟)
      * @param halfDivisionDurationEnabled 是否步长为一半切割时长, true-步长为切割时长的一半, false-步长与切割时长相等
      */
-    private static void divideTimeRange(TimeRange timeRange, List<TimeRange> timeRangeList, int divisionDuration, boolean halfDivisionDurationEnabled) {
+    @SuppressWarnings("unchecked")
+    private static<T extends TimeRange> void divideTimeRange(TimeRange timeRange, List<T> timeRangeList, int divisionDuration, boolean halfDivisionDurationEnabled) {
         if (divisionDuration < 1) {
             // 切割时长小于1时不切割
             return;
@@ -191,7 +194,7 @@ public class TimeRangeUtils {
         // 拆分时间段
         for (int i = 1; i < count; ++ i) {
             // 子时间段
-            TimeRange subRange = utils.newTimeRange();
+            T subRange = (T) utils.newTimeRange();
             // 计算开始时间
             subRange.setStartTime(startTime.plusMinutes(i * stepDuration));
             if (halfDivisionDurationEnabled) {
