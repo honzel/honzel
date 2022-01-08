@@ -214,7 +214,7 @@ public class DefaultResolver implements Resolver {
 	}
 
 	public boolean isPair() {
-		return isPair && type != TYPE_INDEX_OF_LINK;
+		return isPair && type != TYPE_INDEX_OF_LINK && end >= start;
 	}
 
 	public boolean isLast() {
