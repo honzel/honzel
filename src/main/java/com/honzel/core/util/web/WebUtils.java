@@ -62,7 +62,7 @@ public class WebUtils {
     protected WebUtils() {}
 
     @PostConstruct
-    private void init() {
+    protected void init() {
         utils = this;
         initSSLContext();
     }

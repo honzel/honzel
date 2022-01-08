@@ -63,7 +63,7 @@ public class TextUtils {
 	}
 
 	@PostConstruct
-	private void init() {
+    protected void init() {
 		utils = this;
 	}
 

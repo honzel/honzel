@@ -80,7 +80,7 @@ public class TimeRangeUtils {
     protected TimeRangeUtils() {}
 
     @PostConstruct
-    private void init() {
+    protected void init() {
         utils = this;
     }
 
