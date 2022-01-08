@@ -523,11 +523,13 @@ public class TextUtils {
 	 */
 	private static int appendValue(StringBuilder content, Resolver resolver, int dataType, Object thisValue, Object configParams, Object params, int offset, boolean alternateHolderEnabled, boolean simplified) {
 		// 解析当前小段内容
-		int startIndex = resolver.getStart() + 1;
 		// 初始位置
 		int originPosition = content.length();
-		resolver.resetToCurrent().useTokens(BRACKET_START).reset(startIndex).hasNext();
-		if (!resolver.isInTokens() && resolver.isEmpty() && !resolver.isLast()) {
+		resolver.resetToCurrent().useTokens(BRACKET_START);
+		if (!simplified) {
+		    resolver.reset(resolver.getStart() + 1);
+        }
+		if (resolver.hasNext() && !resolver.isInTokens() && resolver.isEmpty() && !resolver.isLast()) {
 			// 忽略空串解析下一部分
 			resolver.hasNext();
 		}

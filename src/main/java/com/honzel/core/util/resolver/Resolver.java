@@ -295,6 +295,13 @@ public interface Resolver {
 	Resolver resetToCurrent();
 
 	/**
+	 *  reset the input expression and use current start index as start position and the current end index of input as term position
+	 * @param offset the offset of start position
+	 * @return Return this resolver.
+	 */
+	Resolver resetToCurrent(int offset);
+
+	/**
 	 *  reset the input expression and use current term index as start position
 	 * @param offset the offset of term position
 	 * @return Return this resolver.

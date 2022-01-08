@@ -921,7 +921,12 @@ public class DefaultResolver implements Resolver {
 	}
 
 	public Resolver resetToCurrent() {
-		return useTerminal(getEnd(false)).reset(getStart());
+		return resetToCurrent(0);
+	}
+
+	@Override
+	public Resolver resetToCurrent(int offset) {
+		return useTerminal(getEnd(false)).reset(getStart() + offset);
 	}
 
 	public Resolver resetToBeyond(int offset) {
