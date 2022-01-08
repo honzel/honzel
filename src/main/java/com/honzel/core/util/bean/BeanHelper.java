@@ -260,9 +260,9 @@ public class BeanHelper {
      * @param <T> the target bean type
      * @return returns the destination bean whose properties are modified
      */
-		public static<T>  T copyProperties(Object source, T target) {
-			return NestedPropertyUtilsBean.getInstance().copyProperties(source, target);
-		}
+	public static<T>  T copyProperties(Object source, T target) {
+		return NestedPropertyUtilsBean.getInstance().copyProperties(source, target);
+	}
 
 	/**
 	 * Find a method with the given method name and the given parameter types,

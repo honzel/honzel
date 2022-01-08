@@ -44,4 +44,9 @@ public class TimeRange implements Serializable {
     public void setEndTime(LocalTime endTime) {
         this.endTime = endTime;
     }
+
+    @Override
+    public String toString() {
+        return startTime + "-" + endTime;
+    }
 }

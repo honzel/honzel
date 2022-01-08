@@ -12,6 +12,7 @@ import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.core.annotation.AnnotationUtils;
 
 import java.lang.annotation.Annotation;
+import java.lang.ref.SoftReference;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -31,6 +32,9 @@ public class ChainProcessUtils {
 
     private static final Logger log = LoggerFactory.getLogger(ChainProcessUtils.class);
 
+    private static final SoftReference<Annotation[]> EMPTY_ANNOTATION_ARRAY_REF = new SoftReference(EMPTY_ANNOTATION_ARRAY);
+
+    private static final SoftReference<Map<String, String>> EMPTY_MAP_REF = new SoftReference(Collections.emptyMap());
     /**
      * 获取底位
      * @param chainType 链类型
@@ -72,11 +76,11 @@ public class ChainProcessUtils {
     protected ChainProcessUtils() {
     }
 
-    private static final Map<Class<?>, List<Method>> processMethodCache = new WeakHashMap<>();
-    private static final Map<AnnotatedElement, Annotation[]> declaredProcessorAnnotationCache = new WeakHashMap<>();
-    private static final Map<ProcessorAnnotationKey, BusinessProcessor> processorMethodAnnotationCache = new WeakHashMap<>();
-    private static final Map<Class<?>, Map<String, String>> processorAttributesAliasCache = new WeakHashMap<>();
-    private static final Map<Class<?>, ProcessorAttributesMapper> processorAttributesMapperCache = new WeakHashMap<>();
+    private static final Map<Class<?>, SoftReference<List<Method>>> processMethodCache = new WeakHashMap<>();
+    private static final Map<AnnotatedElement, SoftReference<Annotation[]>> declaredProcessorAnnotationCache = new WeakHashMap<>();
+    private static final Map<ProcessorAnnotationKey, SoftReference<BusinessProcessor>> processorMethodAnnotationCache = new WeakHashMap<>();
+    private static final Map<Class<?>, SoftReference<Map<String, String>>> processorAttributesAliasCache = new WeakHashMap<>();
+    private static final Map<Class<?>, SoftReference<ProcessorAttributesMapper>> processorAttributesMapperCache = new WeakHashMap<>();
     /**
      * Cache key for the AnnotatedElement cache.
      */
@@ -122,7 +126,8 @@ public class ChainProcessUtils {
      * @return 处理方法
      */
     static synchronized List<Method> getProcessMethodList(Class<?> processorClass) {
-        List<Method> methods = processMethodCache.get(processorClass);
+        SoftReference<List<Method>> ref = processMethodCache.get(processorClass);
+        List<Method> methods = ref != null ? ref.get() : null;
         if (methods == null) {
             methods = new ArrayList<>();
             Set<Class<?>> foundTypes = new HashSet<>();
@@ -134,7 +139,7 @@ public class ChainProcessUtils {
                 // 获取父类Annotation方法
                 targetCls = addAnnotationMethods(methods, targetCls, foundTypes, true);
             }
-            processMethodCache.put(processorClass, methods);
+            processMethodCache.put(processorClass, new SoftReference<>(methods));
         }
         return methods;
     }
@@ -151,14 +156,15 @@ public class ChainProcessUtils {
                 continue;
             }
             ProcessorAnnotationKey mappingKey = new ProcessorAnnotationKey(sourceMethod, nestAnnotation.annotationType());
-            BusinessProcessor processor = processorMethodAnnotationCache.get(mappingKey);
+            SoftReference<BusinessProcessor> ref = processorMethodAnnotationCache.get(mappingKey);
+            BusinessProcessor processor = ref != null ? ref.get() : null;
             if (processor == null) {
                 // 获取属性信息
                 AnnotationAttributes annotationAttributes = mergeAnnotationAttributes(AnnotationUtils.getAnnotationAttributes(sourceMethod, nestAnnotation), sourceMethod, nestAnnotation, false);
                 // 合成代理Annotation
                 processor = AnnotationUtils.synthesizeAnnotation(annotationAttributes, BusinessProcessor.class, sourceMethod);
                 // 放入缓存
-                processorMethodAnnotationCache.put(mappingKey, processor);
+                processorMethodAnnotationCache.put(mappingKey, new SoftReference<>(processor));
             }
             if (ArrayUtils.contains(processor.processFor(), chainCls)) {
                 // 匹配到链类型
@@ -169,7 +175,8 @@ public class ChainProcessUtils {
     }
 
     private  static Annotation[] getDeclaredProcessorAnnotations(AnnotatedElement annotatedElement) {
-        Annotation[] annotations = declaredProcessorAnnotationCache.get(annotatedElement);
+        SoftReference<Annotation[]> ref = declaredProcessorAnnotationCache.get(annotatedElement);
+        Annotation[] annotations = ref != null ? ref.get() : null;
         if (annotations == null) {
             List<Annotation> annotationList = null;
             Annotation[] declaredAnnotations = annotatedElement.getDeclaredAnnotations();
@@ -186,7 +193,7 @@ public class ChainProcessUtils {
             // 转成数组
             annotations = (annotationList == null) ? EMPTY_ANNOTATION_ARRAY : annotationList.toArray(EMPTY_ANNOTATION_ARRAY);
             // 放入临时缓存
-            declaredProcessorAnnotationCache.putIfAbsent(annotatedElement, annotations);
+            declaredProcessorAnnotationCache.putIfAbsent(annotatedElement, annotationList == null ? EMPTY_ANNOTATION_ARRAY_REF : new SoftReference<>(annotations));
         }
         return annotations;
     }
@@ -232,10 +239,11 @@ public class ChainProcessUtils {
         // 属性映射类
         Class<? extends ProcessorAttributesMapper> mapperType = mapping.value();
         // 获取属性映射器
-        ProcessorAttributesMapper mapper = processorAttributesMapperCache.get(mapperType);
+        SoftReference<ProcessorAttributesMapper> ref = processorAttributesMapperCache.get(mapperType);
+        ProcessorAttributesMapper mapper = ref != null ? ref.get() : null;
         if (mapper == null) {
             mapper = newInstance(mapperType);
-            processorAttributesMapperCache.put(mapperType, mapper);
+            processorAttributesMapperCache.put(mapperType, new SoftReference<>(mapper));
         }
         // 属性名
         Set<String> overidedAttributeNames = Collections.emptySet();
@@ -320,7 +328,8 @@ public class ChainProcessUtils {
 
     private static void mergeAliasAttributes(AnnotationAttributes annotationAttributes, Class<? extends Annotation> annotationType) {
         // 获取别名列表
-        Map<String, String> aliasNameMap = processorAttributesAliasCache.get(annotationType);
+        SoftReference<Map<String, String>> ref = processorAttributesAliasCache.get(annotationType);
+        Map<String, String> aliasNameMap = ref != null ? ref.get() : null;
         if (aliasNameMap == null) {
             Method[] declaredMethods = annotationType.getDeclaredMethods();
             for (Method method : declaredMethods) {
@@ -337,7 +346,7 @@ public class ChainProcessUtils {
                     }
                 }
             }
-            processorAttributesAliasCache.put(annotationType, aliasNameMap == null ? Collections.emptyMap() : aliasNameMap);
+            processorAttributesAliasCache.put(annotationType, aliasNameMap == null ? EMPTY_MAP_REF : new SoftReference<>(aliasNameMap));
         }
         // 有有效别名时设置别名属性
         if (aliasNameMap != null && !aliasNameMap.isEmpty()) {

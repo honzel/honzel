@@ -1,9 +1,9 @@
 package com.honzel.core.util.web;
 
 import com.honzel.core.util.bean.BeanHelper;
+import com.honzel.core.util.resolver.Resolver;
 import com.honzel.core.util.resolver.ResolverUtils;
 import com.honzel.core.util.text.TextUtils;
-import com.honzel.core.util.resolver.Resolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +16,6 @@ import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.zip.GZIPInputStream;
 
 /**
@@ -30,14 +29,20 @@ public class WebUtils {
     public static final String     METHOD_POST     = "POST";
     public static final String     METHOD_GET      = "GET";
 
-    private static HostnameVerifier verifier        = null;
-
-    private static SSLSocketFactory socketFactory   = null;
-    private static CookieHandler cookieManager   	= null;
 
     private static final int CONNECT_TIMEOUT = 10000;
     private static final int READ_TIMEOUT = 20000;
 
+
+    private static WebUtils utils;
+    static {
+        // 初始化
+        new WebUtils();
+    }
+
+    private HostnameVerifier verifier;
+    private SSLSocketFactory socketFactory;
+    private CookieHandler cookieHandler;
     private static class DefaultTrustManager implements X509TrustManager {
         private static final X509Certificate[] EMPTY_CERTIFICATES = {};
         public X509Certificate[] getAcceptedIssuers() {
@@ -54,22 +59,63 @@ public class WebUtils {
             }
         }
     }
-    static {
-        try {
-            SSLContext ctx = SSLContext.getInstance("TLS");
-            ctx.init(new KeyManager[0], new TrustManager[] { new DefaultTrustManager() }, new SecureRandom());
-            ctx.getClientSessionContext().setSessionTimeout(15);
-            ctx.getClientSessionContext().setSessionCacheSize(1000);
-            socketFactory = ctx.getSocketFactory();
-        } catch (Exception e) {
-            LOG.info("initialize SocketFactory fail!");
-        }
-        verifier = (hostname, session) -> {
-            return false;//默认认证不通过，进行证书校验。
-        };
-    }
 
     protected WebUtils() {
+        utils = this;
+        initSSLContext();
+    }
+
+    private void initSSLContext() {
+        try {
+            SSLContext ctx = SSLContext.getInstance("TLS");
+            KeyManager[] km;
+            if ((km = initSSLKeyManagers()) == null) {
+                km = new KeyManager[0];
+            }
+            TrustManager[] tm;
+            if ((tm = initSSLTrustManagers()) == null) {
+                tm = new TrustManager[]{new DefaultTrustManager()};
+            }
+            ctx.init(km, tm, new SecureRandom());
+            // 初始化客户端
+            initSSLClientSessionContext(ctx.getClientSessionContext());
+            // 初始化服务器端
+            initSSLServerSessionContext(ctx.getServerSessionContext());
+
+            socketFactory = ctx.getSocketFactory();
+
+            verifier = initHostnameVerifier();
+        } catch (Exception e) {
+            LOG.error("initialize SSL SSLContext fail: {}", e.getMessage());
+        }
+        if (socketFactory != null && verifier == null) {
+            verifier = (hostname, session) -> {
+                return false;//默认认证不通过，进行证书校验。
+            };
+        }
+    }
+
+
+    protected KeyManager[] initSSLKeyManagers() {
+        return null;
+    }
+
+    protected TrustManager[] initSSLTrustManagers() {
+        return null;
+    }
+    protected HostnameVerifier initHostnameVerifier() {
+        return null;
+    }
+    protected CookieHandler initDefaultCookieHandler() {
+        return null;
+    }
+
+    protected void initSSLClientSessionContext(SSLSessionContext context) {
+        context.setSessionTimeout(15);
+        context.setSessionCacheSize(1000);
+    }
+
+    protected void initSSLServerSessionContext(SSLSessionContext context) {
     }
 
     /**
@@ -77,16 +123,16 @@ public class WebUtils {
      * @param enabled 是否启用cookie
      */
     public static void setCookieEnabled(boolean enabled) {
-        CookieHandler defaultManager = CookieManager.getDefault();
         if (enabled) {
-            if (defaultManager == null) {
-                if (cookieManager == null)
-                    cookieManager = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
-                CookieManager.setDefault(cookieManager);
+            CookieHandler cookieHandler = utils.cookieHandler;
+            if (cookieHandler == null) {
+                if ((cookieHandler = utils.initDefaultCookieHandler()) == null) {
+                    cookieHandler = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
+                }
+                utils.cookieHandler = cookieHandler;
             }
+            CookieManager.setDefault(cookieHandler);
         } else {
-            if (defaultManager != null && cookieManager == null)
-                cookieManager = defaultManager;
             CookieManager.setDefault(null);
         }
     }
@@ -109,7 +155,7 @@ public class WebUtils {
      * @return 响应字符串
      * @throws IOException 异常
      */
-    public static String doPost(String url, Map<String, Object> textParams) throws IOException {
+    public static String doPost(String url, Map<String, ?> textParams) throws IOException {
         return doPost(url, textParams, DEFAULT_CHARSET, null);
     }
     /**
@@ -122,7 +168,7 @@ public class WebUtils {
      * @return 响应字符串
      * @throws IOException 异常
      */
-    public static String doPost(String url, Map<String, Object> textParams, Charset charset, Map<String, Object> headerMap) throws IOException {
+    public static String doPost(String url, Map<String, ?> textParams, Charset charset, Map<String, ?> headerMap) throws IOException {
         return doPost(url, textParams, charset, CONNECT_TIMEOUT, READ_TIMEOUT, headerMap);
     }
 
@@ -139,7 +185,7 @@ public class WebUtils {
      * @return 响应字符串
      * @throws IOException 异常
      */
-    public static String doPost(String url, Map<String, Object> textParams, Charset charset, int connectTimeout, int readTimeout, Map<String, Object> headerMap) throws IOException {
+    public static String doPost(String url, Map<String, ?> textParams, Charset charset, int connectTimeout, int readTimeout, Map<String, ?> headerMap) throws IOException {
         return doPost(url, buildQuery(textParams, charset), charset, connectTimeout, readTimeout, headerMap);
     }
 
@@ -155,7 +201,7 @@ public class WebUtils {
      * @return 响应字符串
      * @throws IOException 异常
      */
-    public static String doPost(String url, String content, Charset charset, int connectTimeout, int readTimeout, Map<String, Object> headerMap) throws IOException {
+    public static String doPost(String url, String content, Charset charset, int connectTimeout, int readTimeout, Map<String, ?> headerMap) throws IOException {
         if (charset == null) {
             charset = DEFAULT_CHARSET;
         }
@@ -174,7 +220,7 @@ public class WebUtils {
      * @return 响应字符串
      * @throws IOException 异常
      */
-    public static String doPost(String url, String content, Map<String, Object> headerMap) throws IOException {
+    public static String doPost(String url, String content, Map<String, ?> headerMap) throws IOException {
         return doPost(url, content, DEFAULT_CHARSET, CONNECT_TIMEOUT, READ_TIMEOUT, headerMap);
     }
     /**
@@ -323,7 +369,7 @@ public class WebUtils {
      * @return 响应字符串
      * @throws IOException 异常
      */
-    public static String doPost(String url, Map<String, Object> textParams,  Map<String, FileItem> fileParams) throws IOException {
+    public static String doPost(String url, Map<String, ?> textParams,  Map<String, ? extends FileItem> fileParams) throws IOException {
         return doPost(url, textParams, fileParams, null);
     }
     /**
@@ -336,7 +382,7 @@ public class WebUtils {
      * @return 响应字符串
      * @throws IOException 异常
      */
-    public static String doPost(String url, Map<String, Object> textParams, Map<String, FileItem> fileParams, Map<String, Object> headerMap) throws IOException {
+    public static String doPost(String url, Map<String, ?> textParams, Map<String, ? extends FileItem> fileParams, Map<String, ?> headerMap) throws IOException {
         if (fileParams == null || fileParams.isEmpty()) {
             return doPost(url, textParams, DEFAULT_CHARSET, CONNECT_TIMEOUT, READ_TIMEOUT, headerMap);
         } else {
@@ -357,7 +403,7 @@ public class WebUtils {
      * @return 响应字符串
      * @throws IOException 异常
      */
-    public static String doPost(String url, Map<String, Object> textParams, Map<String, FileItem> fileParams, Charset charset, int connectTimeout, int readTimeout, Map<String, Object> headerMap)
+    public static String doPost(String url, Map<String, ?> textParams, Map<String, ? extends FileItem> fileParams, Charset charset, int connectTimeout, int readTimeout, Map<String, ?> headerMap)
             throws IOException {
         if (fileParams == null || fileParams.isEmpty()) {
             return doPost(url, textParams, charset, connectTimeout, readTimeout, headerMap);
@@ -374,8 +420,7 @@ public class WebUtils {
             out = conn.getOutputStream();
             byte[] entryBoundaryBytes = ("\r\n--" + boundary + "\r\n").getBytes(charset);
             if (textParams != null) { // 组装文本请求参数
-                Set<Entry<String, Object>> textEntrySet = textParams.entrySet();
-                for (Entry<String, Object> textEntry : textEntrySet) {
+                for (Entry<String, ?> textEntry : textParams.entrySet()) {
                     String value = BeanHelper.convert(textEntry.getValue(), String.class);
                     byte[] textBytes = getTextEntry(textEntry.getKey(), value, charset);
                     out.write(entryBoundaryBytes);
@@ -383,8 +428,7 @@ public class WebUtils {
                 }
             }
             // 组装文件请求参数
-            Set<Entry<String, FileItem>> fileEntrySet = fileParams.entrySet();
-            for (Entry<String, FileItem> fileEntry : fileEntrySet) {
+            for (Entry<String, ? extends FileItem> fileEntry : fileParams.entrySet()) {
                 FileItem fileItem = fileEntry.getValue();
                 byte[] fileBytes = getFileEntry(fileEntry.getKey(), fileItem.getFileName(), fileItem.getMimeType(), charset);
                 out.write(entryBoundaryBytes);
@@ -430,7 +474,7 @@ public class WebUtils {
      * @return 响应字符串
      * @throws IOException 异常
      */
-    public static String doGet(String url, Map<String, Object> textParams) throws IOException {
+    public static String doGet(String url, Map<String, ?> textParams) throws IOException {
         return doGet(url, textParams, DEFAULT_CHARSET);
     }
     /**
@@ -453,7 +497,7 @@ public class WebUtils {
      * @return 响应字符串
      * @throws IOException 异常
      */
-    public static String doGet(String url, Map<String, Object> textParams, Charset charset) throws IOException {
+    public static String doGet(String url, Map<String, ?> textParams, Charset charset) throws IOException {
         if (charset == null) {
             charset = DEFAULT_CHARSET;
         }
@@ -469,7 +513,7 @@ public class WebUtils {
      * @return 响应字符串
      * @throws IOException 异常
      */
-    public static String doGet(String url, String params, Map<String, Object> headerMap) throws IOException {
+    public static String doGet(String url, String params, Map<String, ?> headerMap) throws IOException {
         String contentType = "application/x-www-form-urlencoded;charset=" + DEFAULT_CHARSET;
         return doRequest(getConnection(buildGetUrl(url, params), METHOD_GET, contentType, CONNECT_TIMEOUT, READ_TIMEOUT, headerMap), null, DEFAULT_CHARSET);
     }
@@ -486,7 +530,7 @@ public class WebUtils {
      * @return 响应字符串
      * @throws IOException 异常
      */
-    public static String doGet(String url, String params, Charset charset, int connectTimeout, int readTimeout, Map<String, Object> headerMap) throws IOException {
+    public static String doGet(String url, String params, Charset charset, int connectTimeout, int readTimeout, Map<String, ?> headerMap) throws IOException {
         if (charset == null) {
             charset = DEFAULT_CHARSET;
         }
@@ -519,15 +563,15 @@ public class WebUtils {
      * @param headerMap 请求头
      * @return 返回连接
      */
-    public static HttpURLConnection getConnection(String url, String method, String contentType, int connectTimeout, int readTimeout, Map<String, Object> headerMap) throws IOException {
+    public static HttpURLConnection getConnection(String url, String method, String contentType, int connectTimeout, int readTimeout, Map<String, ?> headerMap) throws IOException {
         HttpURLConnection conn = null;
         try {
             URL endPoint = new URL(url);
             if ("https".equals(endPoint.getProtocol())) {
                 HttpsURLConnection connHttps = (HttpsURLConnection) endPoint.openConnection();
                 conn = connHttps;
-                connHttps.setSSLSocketFactory(socketFactory);
-                connHttps.setHostnameVerifier(verifier);
+                connHttps.setSSLSocketFactory(utils.socketFactory);
+                connHttps.setHostnameVerifier(utils.verifier);
             } else {
                 conn = (HttpURLConnection) endPoint.openConnection();
             }
@@ -546,7 +590,7 @@ public class WebUtils {
                 conn.setReadTimeout(readTimeout);
             }
             if (headerMap != null && !headerMap.isEmpty()) {
-                for (Entry<String, Object> entry : headerMap.entrySet()) {
+                for (Entry<String, ?> entry : headerMap.entrySet()) {
                     if (entry.getKey() != null && entry.getValue() != null) {
                         conn.setRequestProperty(entry.getKey(), entry.getValue().toString());
                     }
@@ -581,7 +625,7 @@ public class WebUtils {
      * @param headerMap 请求头
      * @return 返回连接
      */
-    public static HttpURLConnection getConnection(String url, String method, String contentType, Map<String, Object> headerMap) throws IOException {
+    public static HttpURLConnection getConnection(String url, String method, String contentType, Map<String, ?> headerMap) throws IOException {
         return getConnection(url, method, contentType, CONNECT_TIMEOUT, READ_TIMEOUT, headerMap);
     }
 
@@ -612,7 +656,7 @@ public class WebUtils {
      * @param charset 字符串集
      * @return 返回组装后字符串
      */
-    public static String buildQuery(Map<String, Object> textParams, Charset charset) {
+    public static String buildQuery(Map<String, ?> textParams, Charset charset) {
         return buildQuery(textParams, charset, null);
     }
 
@@ -623,14 +667,13 @@ public class WebUtils {
      * @param ignoreKeys 忽略拼入的keys
      * @return 返回组装后字符串
      */
-    public static String buildQuery(Map<String, Object> textParams, Charset charset, String ignoreKeys) {
+    public static String buildQuery(Map<String, ?> textParams, Charset charset, String ignoreKeys) {
         if (textParams == null || textParams.isEmpty()) {
             return null;
         }
         StringBuilder query = new StringBuilder();
-        Set<Entry<String, Object>> entries = textParams.entrySet();
         boolean hasParam = false;
-        for (Entry<String, Object> entry : entries) {
+        for (Entry<String, ?> entry : textParams.entrySet()) {
             String key = entry.getKey();
             if (ignoreKeys != null && TextUtils.containsValue(ignoreKeys, key)) {
                 // 忽略的key
@@ -654,7 +697,7 @@ public class WebUtils {
      * @param textParams 参数
      * @return 返回组装后字符串
      */
-    public static String buildQuery(Map<String, Object> textParams) {
+    public static String buildQuery(Map<String, ?> textParams) {
         return buildQuery(textParams, DEFAULT_CHARSET);
     }
 
@@ -768,7 +811,7 @@ public class WebUtils {
         return value;
     }
 
-    public static String buildForm(String baseUrl, Map<String, Object> parameters) {
+    public static String buildForm(String baseUrl, Map<String, ?> parameters) {
         StringBuilder sb = new StringBuilder();
         sb.append("<form name=\"submit_form\" method=\"post\" action=\"");
         sb.append(baseUrl);
@@ -780,12 +823,11 @@ public class WebUtils {
         return sb.toString();
     }
 
-    private static void buildHiddenFields(StringBuilder sb, Map<String, Object> parameters) {
+    private static void buildHiddenFields(StringBuilder sb, Map<String, ?> parameters) {
         if (parameters == null || parameters.isEmpty()) {
             return;
         }
-        Set<Entry<String, Object>> entries = parameters.entrySet();
-        for (Entry<String, Object> entry : entries) {
+        for (Entry<String, ?> entry : parameters.entrySet()) {
             String value = BeanHelper.convert(entry.getValue(), String.class);
             // 除去参数中的空值
             if (entry.getKey() == null || value == null)

@@ -55,13 +55,25 @@ public class TextUtils {
 
 	public static final int DATA_TYPE_TEXT = 4;
 
+	private static TextUtils utils;
+
+	static {
+		// 加载工具类对象
+		new TextUtils();
+	}
+
 	protected TextUtils() {
+		utils = this;
 	}
 
 	public static int getDataType(String content) {
 		if (isEmpty(content)) {
 			return DATA_TYPE_TEXT;
 		}
+		return utils.getDefaultDataType(content);
+	}
+
+	protected int getDefaultDataType(String content) {
 		content = content.trim();
 		if (content.startsWith(BRACE_START) && content.endsWith(BRACE_END)) {
 			return DATA_TYPE_JSON;
@@ -739,7 +751,7 @@ public class TextUtils {
                     String pattern = resolver.next();
                     if (isSimpleValuePattern) {
                         // 基本类型或日期格式转化
-                        return formatSimpleValue(value, pattern);
+                        return utils.formatSimpleValue(value, pattern);
                     }
                     if (isEmpty(pattern) || "*".equals(pattern)) {
                         return value;
@@ -772,7 +784,7 @@ public class TextUtils {
 	 * @param pattern 格式化模板
 	 * @return 返回格式结果
 	 */
-	private static Object formatSimpleValue(Object value, String pattern) {
+	protected Object formatSimpleValue(Object value, String pattern) {
 		try {
 			if (!isEmpty(pattern)) {
 				if (value instanceof TemporalAccessor) {
@@ -855,10 +867,10 @@ public class TextUtils {
 				appendJsonValue(message, value);
 				break;
 			case DATA_TYPE_QUERY_STRING:
-				message.append(WebUtils.encode(value)) ;
+				message.append(utils.encodeUrlValue(value)) ;
 				break;
 			case DATA_TYPE_XML:
-				message.append(getXmlValue(value));
+				message.append(utils.getXmlValue(value));
 				break;
 			default:
 				message.append(value);
@@ -866,7 +878,11 @@ public class TextUtils {
 		}
 	}
 
-	private static String getXmlValue(String value) {
+	protected String encodeUrlValue(String value) {
+		return WebUtils.encode(value);
+	}
+
+	protected String getXmlValue(String value) {
 		// &"<>'符号转义
 		return value.replace("&", "&amp;").replace("\"", "&quot;")
 				.replace("<", "&lt;").replace(">", "&gt;")
@@ -1536,7 +1552,7 @@ public class TextUtils {
 		StringBuilder result = new StringBuilder();
 		for (Object value : values) {
 			if (value != null) {
-				result.append(value);
+				result.append(utils.objectToString(value));
 			}
 			if (separator != null && !separator.isEmpty()) {
 				result.append(separator);
@@ -1562,7 +1578,7 @@ public class TextUtils {
         for (int i = 0, len = values.length; i < len; i++) {
             Object value = values[i];
             if (value != null) {
-                result.append(value);
+                result.append(utils.objectToString(value));
             }
             if (separator != null && !separator.isEmpty()) {
                 result.append(separator);
@@ -1595,7 +1611,11 @@ public class TextUtils {
 		if (value instanceof Object[]) {
 			return toString((Object[]) value);
 		}
-		return value != null ? value.toString() : null;
+		return value != null ? utils.objectToString(value) : null;
+	}
+
+	protected String objectToString(Object value) {
+		return value.toString();
 	}
 
 	/**

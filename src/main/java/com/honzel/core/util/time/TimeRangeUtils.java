@@ -49,6 +49,8 @@ public class TimeRangeUtils {
 
     private static final long FIRST_BIT = 1L;
 
+    private static TimeRangeUtils utils;
+
     static {
         // 时间位
         long result = NONE;
@@ -70,9 +72,14 @@ public class TimeRangeUtils {
         ALL_WEEKDAYS = result;
         // 班次时间标识
         SHIFT_TIME_FLAG = FIRST_BIT << (TIME_BITS + START_TIME_BITS + WEEKDAY_BITS);
+        // 初始化工具类
+        new TimeRangeUtils();
     }
 
+
+
     protected TimeRangeUtils() {
+        utils = this;
     }
 
     /**
@@ -101,7 +108,8 @@ public class TimeRangeUtils {
      * @return 返回拆分后的时间段列表
      */
     public static List<TimeRange> getTimeRanges(long timeRangeStamp, int divisionDuration, boolean halfDivisionDurationEnabled) {
-        if (timeRangeStamp == NONE || (timeRangeStamp & ALL_TIMES) == NONE) {
+        long times;
+        if (timeRangeStamp == NONE || (times = timeRangeStamp & ALL_TIMES) == NONE) {
             return Collections.emptyList();
         }
         //是否班次时间
@@ -110,12 +118,15 @@ public class TimeRangeUtils {
         TimeRange timeRange = null;
         // 日期起始位
         int offset = getOffsetIndex(timeRangeStamp);
-        for (int i = 0; i < TIME_BITS; i ++) {
-            int seq = (offset + i) % TIME_BITS;
-            if ((timeRangeStamp & (FIRST_BIT << seq)) == NONE) {
+        if (offset > 0) {
+            times = (times >>> offset) | ((((FIRST_BIT << offset) - FIRST_BIT) & times) << (TIME_BITS - offset));
+        }
+        for (int i = 0; i < TIME_BITS; i ++, times >>>= 1) {
+            if ((times & FIRST_BIT) == NONE) {
                 if (timeRange != null) {
+                    int seq = (offset + i) % TIME_BITS;
                     if (shiftFlag) {
-                        timeRange.setEndTime(i == TIME_BITS - 1 && seq == i ? LocalTime.MAX : parseTime(seq + 1));
+                        timeRange.setEndTime(i == TIME_BITS - 1 && seq == i ? utils.dateMaxEndTime() : parseTime(seq + 1));
                     } else {
                         timeRange.setEndTime(parseTime(seq));
                     }
@@ -123,10 +134,13 @@ public class TimeRangeUtils {
                     divideTimeRange(timeRange, timeRangeList, divisionDuration, halfDivisionDurationEnabled);
                     timeRange = null;
                 }
+                if (times == NONE) {
+                    break;
+                }
             } else {
                 if (timeRange == null) {
-                    timeRange = new TimeRange();
-                    timeRange.setStartTime(parseTime(seq));
+                    timeRange = utils.newTimeRange();
+                    timeRange.setStartTime(parseTime((offset + i) % TIME_BITS));
                     timeRangeList.add(timeRange);
                 }
             }
@@ -134,7 +148,7 @@ public class TimeRangeUtils {
         if (timeRange != null) {
             if (offset == 0) {
                 // 如果结束时间为一天的最后，则设置当天最大值
-                timeRange.setEndTime(LocalTime.MAX);
+                timeRange.setEndTime(utils.dateMaxEndTime());
             } else {
                 // 跨天时
                 timeRange.setEndTime(parseTime(offset));
@@ -143,6 +157,14 @@ public class TimeRangeUtils {
             divideTimeRange(timeRange, timeRangeList, divisionDuration, halfDivisionDurationEnabled);
         }
         return timeRangeList;
+    }
+
+    protected TimeRange newTimeRange() {
+        return new TimeRange();
+    }
+
+    protected LocalTime dateMaxEndTime() {
+        return LocalTime.MAX;
     }
 
     /**
@@ -173,7 +195,7 @@ public class TimeRangeUtils {
         // 拆分时间段
         for (int i = 1; i < count; ++ i) {
             // 子时间段
-            TimeRange subRange = new TimeRange();
+            TimeRange subRange = utils.newTimeRange();
             // 计算开始时间
             subRange.setStartTime(startTime.plusMinutes(i * stepDuration));
             if (halfDivisionDurationEnabled) {
@@ -355,13 +377,22 @@ public class TimeRangeUtils {
         StringBuilder buf = new StringBuilder();
         for (int i = 0; i < WEEKDAY_BITS; i ++) {
             if ((timeRangeStamp & (FIRST_BIT << i)) != NONE) {
-                buf.append(i + 1).append(',');
+                buf.append(utils.weekDayName(i + 1)).append(',');
             }
         }
         if (buf.length() > 0) {
             buf.setLength(buf.length() - 1);
         }
         return buf.toString();
+    }
+
+    /**
+     * dayOfWeek of week
+     * @param dayOfWeek
+     * @return
+     */
+    protected String weekDayName(int dayOfWeek) {
+        return String.valueOf(dayOfWeek);
     }
 
     /**
