@@ -203,12 +203,13 @@ public class DefaultResolver implements Resolver {
 	}
 
 	public int getTerminal() {
-		return curTerminal;
+		return curTerminal == 0 && input != null ? getCurrentTerminal() : curTerminal;
 	}
 
 	public Resolver useTerminal(int terminal) {
 		this.terminal = terminal;
 		this.disableTerminal = (terminal < 0);
+        curTerminal = 0;
 		return this;
 	}
 
@@ -221,7 +222,7 @@ public class DefaultResolver implements Resolver {
 	}
 
 	public boolean isFirst() {
-		return start == 0;
+		return type == TYPE_INDEX_OF_START;
 	}
 
 	public Resolver useTypes(int types) {
@@ -576,7 +577,6 @@ public class DefaultResolver implements Resolver {
 		endType = TYPE_INDEX_OF_END;
 		type = TYPE_INDEX_OF_END;
 		hasEscape = false;
-		curTerminal = 0;
 		if (startPos < 0)
 			startPos = 0;
 		start = startPos;
