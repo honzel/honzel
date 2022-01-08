@@ -34,11 +34,8 @@ public class WebUtils {
     private static final int READ_TIMEOUT = 20000;
 
 
-    private static WebUtils utils;
-    static {
-        // 初始化
-        new WebUtils();
-    }
+
+
 
     private HostnameVerifier verifier;
     private SSLSocketFactory socketFactory;
@@ -60,9 +57,18 @@ public class WebUtils {
         }
     }
 
+    private static WebUtils utils;
     protected WebUtils() {
         utils = this;
         initSSLContext();
+    }
+
+
+    private static WebUtils getInstance() {
+        if (utils == null) {
+            utils = new  WebUtils();
+        }
+        return utils;
     }
 
     private void initSSLContext() {
@@ -124,12 +130,12 @@ public class WebUtils {
      */
     public static void setCookieEnabled(boolean enabled) {
         if (enabled) {
-            CookieHandler cookieHandler = utils.cookieHandler;
+            CookieHandler cookieHandler = getInstance().cookieHandler;
             if (cookieHandler == null) {
-                if ((cookieHandler = utils.initDefaultCookieHandler()) == null) {
+                if ((cookieHandler = getInstance().initDefaultCookieHandler()) == null) {
                     cookieHandler = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
                 }
-                utils.cookieHandler = cookieHandler;
+                getInstance().cookieHandler = cookieHandler;
             }
             CookieManager.setDefault(cookieHandler);
         } else {
@@ -570,8 +576,8 @@ public class WebUtils {
             if ("https".equals(endPoint.getProtocol())) {
                 HttpsURLConnection connHttps = (HttpsURLConnection) endPoint.openConnection();
                 conn = connHttps;
-                connHttps.setSSLSocketFactory(utils.socketFactory);
-                connHttps.setHostnameVerifier(utils.verifier);
+                connHttps.setSSLSocketFactory(getInstance().socketFactory);
+                connHttps.setHostnameVerifier(getInstance().verifier);
             } else {
                 conn = (HttpURLConnection) endPoint.openConnection();
             }

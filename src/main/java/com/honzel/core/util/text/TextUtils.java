@@ -57,20 +57,23 @@ public class TextUtils {
 
 	private static TextUtils utils;
 
-	static {
-		// 加载工具类对象
-		new TextUtils();
-	}
 
 	protected TextUtils() {
 		utils = this;
+	}
+
+	private static TextUtils getInstance() {
+		if (utils == null) {
+			utils = new  TextUtils();
+		}
+		return utils;
 	}
 
 	public static int getDataType(String content) {
 		if (isEmpty(content)) {
 			return DATA_TYPE_TEXT;
 		}
-		return utils.getDefaultDataType(content);
+		return getInstance().getDefaultDataType(content);
 	}
 
 	protected int getDefaultDataType(String content) {
@@ -751,7 +754,7 @@ public class TextUtils {
                     String pattern = resolver.next();
                     if (isSimpleValuePattern) {
                         // 基本类型或日期格式转化
-                        return utils.formatSimpleValue(value, pattern);
+                        return getInstance().formatSimpleValue(value, pattern);
                     }
                     if (isEmpty(pattern) || "*".equals(pattern)) {
                         return value;
@@ -867,10 +870,10 @@ public class TextUtils {
 				appendJsonValue(message, value);
 				break;
 			case DATA_TYPE_QUERY_STRING:
-				message.append(utils.encodeUrlValue(value)) ;
+				message.append(getInstance().encodeUrlValue(value)) ;
 				break;
 			case DATA_TYPE_XML:
-				message.append(utils.getXmlValue(value));
+				message.append(getInstance().getXmlValue(value));
 				break;
 			default:
 				message.append(value);
@@ -1552,7 +1555,7 @@ public class TextUtils {
 		StringBuilder result = new StringBuilder();
 		for (Object value : values) {
 			if (value != null) {
-				result.append(utils.objectToString(value));
+				result.append(getInstance().objectToString(value));
 			}
 			if (separator != null && !separator.isEmpty()) {
 				result.append(separator);
@@ -1578,7 +1581,7 @@ public class TextUtils {
         for (int i = 0, len = values.length; i < len; i++) {
             Object value = values[i];
             if (value != null) {
-                result.append(utils.objectToString(value));
+                result.append(getInstance().objectToString(value));
             }
             if (separator != null && !separator.isEmpty()) {
                 result.append(separator);
@@ -1611,7 +1614,7 @@ public class TextUtils {
 		if (value instanceof Object[]) {
 			return toString((Object[]) value);
 		}
-		return value != null ? utils.objectToString(value) : null;
+		return value != null ? getInstance().objectToString(value) : null;
 	}
 
 	protected String objectToString(Object value) {

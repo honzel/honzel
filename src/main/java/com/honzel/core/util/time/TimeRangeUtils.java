@@ -49,7 +49,6 @@ public class TimeRangeUtils {
 
     private static final long FIRST_BIT = 1L;
 
-    private static TimeRangeUtils utils;
 
     static {
         // 时间位
@@ -72,14 +71,20 @@ public class TimeRangeUtils {
         ALL_WEEKDAYS = result;
         // 班次时间标识
         SHIFT_TIME_FLAG = FIRST_BIT << (TIME_BITS + START_TIME_BITS + WEEKDAY_BITS);
-        // 初始化工具类
-        new TimeRangeUtils();
     }
 
 
+    private static TimeRangeUtils utils;
 
     protected TimeRangeUtils() {
         utils = this;
+    }
+
+    private static TimeRangeUtils getInstance() {
+        if (utils == null) {
+            utils = new TimeRangeUtils();
+        }
+        return utils;
     }
 
     /**
@@ -140,7 +145,7 @@ public class TimeRangeUtils {
                 }
             } else {
                 if (timeRange == null) {
-                    timeRange = (TimeRange) utils.newTimeRange();
+                    timeRange = (TimeRange) getInstance().newTimeRange();
                     timeRange.setStartTime(parseTime((offset + i) % TIME_BITS));
                     timeRangeList.add(timeRange);
                 }
@@ -194,7 +199,7 @@ public class TimeRangeUtils {
         // 拆分时间段
         for (int i = 1; i < count; ++ i) {
             // 子时间段
-            T subRange = (T) utils.newTimeRange();
+            T subRange = (T) getInstance().newTimeRange();
             // 计算开始时间
             subRange.setStartTime(startTime.plusMinutes(i * stepDuration));
             if (halfDivisionDurationEnabled) {
@@ -376,7 +381,7 @@ public class TimeRangeUtils {
         StringBuilder buf = new StringBuilder();
         for (int i = 0; i < WEEKDAY_BITS; i ++) {
             if ((timeRangeStamp & (FIRST_BIT << i)) != NONE) {
-                buf.append(utils.weekDayName(i + 1)).append(',');
+                buf.append(getInstance().weekDayName(i + 1)).append(',');
             }
         }
         if (buf.length() > 0) {
