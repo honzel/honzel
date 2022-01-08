@@ -5,6 +5,7 @@ import com.honzel.core.util.resolver.Resolver;
 import com.honzel.core.util.resolver.ResolverUtils;
 import com.honzel.core.util.web.WebUtils;
 
+import javax.annotation.PostConstruct;
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.text.DecimalFormat;
@@ -59,12 +60,16 @@ public class TextUtils {
 
 
 	protected TextUtils() {
+	}
+
+	@PostConstruct
+	private void init() {
 		utils = this;
 	}
 
 	private static TextUtils getInstance() {
 		if (utils == null) {
-			utils = new  TextUtils();
+			new  TextUtils().init();
 		}
 		return utils;
 	}

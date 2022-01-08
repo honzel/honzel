@@ -7,6 +7,7 @@ import com.honzel.core.util.text.TextUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.PostConstruct;
 import javax.net.ssl.*;
 import java.io.*;
 import java.net.*;
@@ -58,7 +59,10 @@ public class WebUtils {
     }
 
     private static WebUtils utils;
-    protected WebUtils() {
+    protected WebUtils() {}
+
+    @PostConstruct
+    private void init() {
         utils = this;
         initSSLContext();
     }
@@ -66,7 +70,7 @@ public class WebUtils {
 
     private static WebUtils getInstance() {
         if (utils == null) {
-            utils = new  WebUtils();
+            new  WebUtils().init();
         }
         return utils;
     }

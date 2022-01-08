@@ -2,6 +2,7 @@ package com.honzel.core.util.time;
 
 import com.honzel.core.util.text.TextUtils;
 
+import javax.annotation.PostConstruct;
 import java.time.DateTimeException;
 import java.time.LocalTime;
 import java.time.temporal.ChronoField;
@@ -76,13 +77,16 @@ public class TimeRangeUtils {
 
     private static TimeRangeUtils utils;
 
-    protected TimeRangeUtils() {
+    protected TimeRangeUtils() {}
+
+    @PostConstruct
+    private void init() {
         utils = this;
     }
 
     private static TimeRangeUtils getInstance() {
         if (utils == null) {
-            utils = new TimeRangeUtils();
+            new TimeRangeUtils().init();
         }
         return utils;
     }
