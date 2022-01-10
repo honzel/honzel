@@ -16,6 +16,8 @@ import java.util.List;
  * @Description: 时间段值转换
  * @date 2021/1/4
  */
+
+@SuppressWarnings("unchecked")
 public class TimeRangeUtils {
     /**
      * 全部时间
@@ -116,7 +118,6 @@ public class TimeRangeUtils {
      * @param halfDivisionDurationEnabled 是否步长为一半切割时长, true-步长为切割时长的一半, false-步长与切割时长相等
      * @return 返回拆分后的时间段列表
      */
-    @SuppressWarnings("unchecked")
     public static<TimeRange extends com.honzel.core.util.time.TimeRange> List<TimeRange> getTimeRanges(long timeRangeStamp, int divisionDuration, boolean halfDivisionDurationEnabled) {
         long times;
         if (timeRangeStamp == NONE || (times = timeRangeStamp & ALL_TIMES) == NONE) {
@@ -175,13 +176,25 @@ public class TimeRangeUtils {
     }
 
     /**
+     * 创建时间段信息
+     * @param startTime 开始时间
+     * @param endTime 结束时间
+     * @return 时间段对象
+     */
+    public static<T extends  TimeRange> T createTimeRange(LocalTime startTime, LocalTime endTime) {
+        T timeRange = (T) getInstance().newTimeRange();
+        timeRange.setStartTime(startTime);
+        timeRange.setEndTime(endTime);
+        return timeRange;
+    }
+
+    /**
      * 按切割时长拆分时间段
      * @param timeRange 准备被切割拆分的时间段
      * @param timeRangeList 时间段列表
      * @param divisionDuration 切割时长（单位为分钟)
      * @param halfDivisionDurationEnabled 是否步长为一半切割时长, true-步长为切割时长的一半, false-步长与切割时长相等
      */
-    @SuppressWarnings("unchecked")
     private static<T extends TimeRange> void divideTimeRange(TimeRange timeRange, List<T> timeRangeList, int divisionDuration, boolean halfDivisionDurationEnabled) {
         if (divisionDuration < 1) {
             // 切割时长小于1时不切割
