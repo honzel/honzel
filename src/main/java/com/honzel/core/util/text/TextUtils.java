@@ -99,7 +99,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 获取格式中的参数占位符map
+	 * 获取格式中的参数占位符map, 使用${xxx}作为第一层占位符
 	 * @param result 结果
 	 * @param pattern 格式模板
 	 * @param params 占位符参数
@@ -110,7 +110,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 获取格式中的参数占位符map
+	 * 获取格式中的参数占位符map, 使用${xxx}作为第一层占位符
 	 * @param pattern 格式模板
 	 * @param params 占位符参数
 	 * @return 每个参数占位符对应的值
@@ -119,7 +119,7 @@ public class TextUtils {
 		return parseParamMap0(new HashMap<>(), false, pattern, params, false);
 	}
 	/**
-	 * 获取格式中的参数占位符map
+	 * 获取格式中的参数占位符map, 使用$(xxx)作为第一层占位符
 	 * @param result 结果
 	 * @param pattern 格式模板
 	 * @param params 占位符参数
@@ -129,7 +129,7 @@ public class TextUtils {
 		return parseParamMap0(result, true, pattern, params, false);
 	}
 	/**
-	 * 获取格式中的参数占位符map
+	 * 获取格式中的参数占位符map, 使用$(xxx)作为第一层占位符
 	 * @param pattern 格式模板
 	 * @param params 占位符参数
 	 * @return 每个参数占位符对应的值
@@ -140,7 +140,7 @@ public class TextUtils {
 
 
 	/**
-	 * 获取格式中的参数占位符map
+	 * 获取格式中的参数占位符map, 使用{xxx}作为第一层占位符
 	 * @param result 结果
 	 * @param pattern 格式模板
 	 * @param params 占位符参数
@@ -150,7 +150,7 @@ public class TextUtils {
 		return parseParamMap0(result, false, pattern, params, true);
 	}
 	/**
-	 * 获取格式中的参数占位符map
+	 * 获取格式中的参数占位符map, 使用{xxx}作为第一层占位符
 	 * @param pattern 格式模板
 	 * @param params 占位符参数
 	 * @return 每个参数占位符对应的值
@@ -160,7 +160,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 获取格式中的参数占位符map
+	 * 获取格式中的参数占位符map, 使用(xxx)作为第一层占位符
 	 * @param pattern 格式模板
 	 * @param params 占位符参数
 	 * @return 每个参数占位符对应的值
@@ -170,7 +170,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 获取格式中的参数占位符map
+	 * 获取格式中的参数占位符map, 使用(xxx)作为第一层占位符
 	 * @param result 结果
 	 * @param pattern 格式模板
 	 * @param params 占位符参数
@@ -185,9 +185,10 @@ public class TextUtils {
 	 * 获取格式中的参数占位符map
 	 *
 	 * @param result 参数结果
-	 * @param alternateHolderEnabled 是否使用备选占位符
+	 * @param alternateHolderEnabled 是否使用备选占位符(即第一层占位符是否使用'()'代替'{}')
 	 * @param pattern 格式模板
 	 * @param params 占位符参数
+	 * @param simplified 是否简化占位符（即占位符不带$)
 	 * @return 每个参数占位符对应的值
 	 */
 	private static Map<String, Object> parseParamMap0(Map<String, Object> result, boolean alternateHolderEnabled, String pattern, Object params, boolean simplified) {
@@ -277,7 +278,7 @@ public class TextUtils {
 		return result;
 	}
 	/**
-	 * 格式化字符串文本
+	 * 格式化字符串文本, 使用${xxx}作为第一层占位符
 	 * @param dataType 数据类型
 	 * @param pattern 待格式化内容
 	 * @param configParams 配置
@@ -289,7 +290,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 格式化字符串文本
+	 * 格式化字符串文本, 使用${xxx}作为第一层占位符
 	 * @param pattern 待格式化内容
 	 * @param param 参数
 	 * @return 返回格式化后内容
@@ -298,7 +299,7 @@ public class TextUtils {
 		return format0(false, getDataType(pattern), pattern, null, param, null, false);
 	}
 	/**
-	 * 格式化字符串文本
+	 * 格式化字符串文本, 使用${xxx}作为第一层占位符
 	 * @param dataType 数据类型
 	 * @param pattern 待格式化内容
 	 * @param param 参数
@@ -309,7 +310,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 格式化字符串文本
+	 * 格式化字符串文本, 使用${xxx}作为第一层占位符
 	 * @param pattern 待格式化内容
 	 * @param params 参数
 	 * @return 返回格式化后内容
@@ -319,7 +320,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 格式化字符串文本
+	 * 格式化字符串文本, 使用{xxx}作为第一层占位符
 	 * @param dataType 数据类型
 	 * @param pattern 待格式化内容
 	 * @param configParams 配置
@@ -331,7 +332,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 格式化字符串文本
+	 * 格式化字符串文本, 使用{xxx}作为第一层占位符
 	 * @param pattern 待格式化内容
 	 * @param param 参数
 	 * @return 返回格式化后内容
@@ -340,7 +341,7 @@ public class TextUtils {
 		return format0(false, getDataType(pattern), pattern, null, param, null, true);
 	}
 	/**
-	 * 格式化字符串文本
+	 * 格式化字符串文本, 使用{xxx}作为第一层占位符
 	 * @param dataType 数据类型
 	 * @param pattern 待格式化内容
 	 * @param param 参数
@@ -351,7 +352,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 格式化字符串文本
+	 * 格式化字符串文本, 使用{xxx}作为第一层占位符
 	 * @param pattern 待格式化内容
 	 * @param params 参数
 	 * @return 返回格式化后内容
@@ -361,7 +362,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 格式化字符串文本
+	 * 格式化字符串文本, 使用(xxx)作为第一层占位符
 	 * @param dataType 数据类型
 	 * @param pattern 待格式化内容
 	 * @param configParams 配置
@@ -373,7 +374,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 格式化字符串文本
+	 * 格式化字符串文本, 使用(xxx)作为第一层占位符
 	 * @param pattern 待格式化内容
 	 * @param param 参数
 	 * @return 返回格式化后内容
@@ -382,7 +383,7 @@ public class TextUtils {
 		return format0(true, getDataType(pattern), pattern, null, param, null, true);
 	}
 	/**
-	 * 格式化字符串文本
+	 * 格式化字符串文本, 使用(xxx)作为第一层占位符
 	 * @param dataType 数据类型
 	 * @param pattern 待格式化内容
 	 * @param param 参数
@@ -393,7 +394,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 格式化字符串文本
+	 * 格式化字符串文本, 使用(xxx)作为第一层占位符
 	 * @param pattern 待格式化内容
 	 * @param params 参数
 	 * @return 返回格式化后内容
@@ -402,7 +403,7 @@ public class TextUtils {
 		return format0(true, getDataType(pattern), pattern, null, params, null, true);
 	}
 	/**
-	 * 格式化字符串文本
+	 * 格式化字符串文本, 使用$(xxx)作为第一层占位符
 	 * @param dataType 数据类型
 	 * @param pattern 待格式化内容
 	 * @param configParams 配置
@@ -413,7 +414,7 @@ public class TextUtils {
 		return format0(true, dataType, pattern, configParams, params, null, false);
 	}
 	/**
-	 * 格式化字符串文本
+	 * 格式化字符串文本, 使用$(xxx)作为第一层占位符
 	 * @param dataType 数据类型
 	 * @param pattern 待格式化内容
 	 * @param params 参数
@@ -423,7 +424,7 @@ public class TextUtils {
 		return format0(true, dataType, pattern, null, params, null, false);
 	}
 	/**
-	 * 格式化字符串文本
+	 * 格式化字符串文本, 使用$(xxx)作为第一层占位符
 	 * @param pattern 待格式化内容
 	 * @param param 参数
 	 * @return 返回格式化后内容
@@ -432,7 +433,7 @@ public class TextUtils {
 		return format0(true, getDataType(pattern), pattern, null, param, null, false);
 	}
 	/**
-	 * 格式化字符串文本
+	 * 格式化字符串文本, 使用$(xxx)作为第一层占位符
 	 * @param pattern 待格式化内容
 	 * @param params 参数
 	 * @return 返回格式化后内容
@@ -442,13 +443,13 @@ public class TextUtils {
 	}
 	/**
 	 * 格式化字符串文本
-	 * @param alternateHolderEnabled 是否使用备选占位符
+	 * @param alternateHolderEnabled 是否使用备选占位符(即第一层占位符是否使用'()'代替'{}')
 	 * @param dataType 数据类型
 	 * @param pattern 待格式化内容
 	 * @param configParams 配置
 	 * @param params 参数
 	 * @param thisValue 当前值
-	 * @param simplified 简化占位符
+	 * @param simplified  是否简化占位符（即占位符不带$)
 	 * @return 返回格式化后内容
 	 */
 	private static String format0(boolean alternateHolderEnabled, int dataType, String pattern, Object configParams, Object params, Object thisValue, boolean simplified) {
