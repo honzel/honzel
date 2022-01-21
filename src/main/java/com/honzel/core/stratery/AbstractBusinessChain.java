@@ -220,7 +220,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
      */
 	public R execute(P param, int chainType) {
 		// 主链
-		ChainMethodList main = lookupMain(chainType);
+		ChainMethodList main = lookupMain(chainType = convertToActualChainType(param, chainType));
 		// 副链
 		ChainMethodList[] secondaries = lookupSecondaries(main, chainType);
 		// 执行处理
@@ -232,7 +232,9 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
      * @return 返回结果
      */
 	public R execute(P param, R processResult, int chainType) {
-		ChainMethodList main = lookupMain(chainType);
+		// 主链
+		ChainMethodList main = lookupMain(chainType = convertToActualChainType(param, chainType));
+		// 执行
 		return execute0(main, lookupSecondaries(main, chainType), param, processResult, chainType);
 	}
     /**
@@ -275,7 +277,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 
 	public<Q> R execute(P param, Q initData, BiConsumer<R, Q> initHandler, int chainType) {
 		// 主链
-		ChainMethodList main = lookupMain(chainType);
+		ChainMethodList main = lookupMain(chainType = convertToActualChainType(param, chainType));
 		// 副链
 		ChainMethodList[] secondaries = lookupSecondaries(main, chainType);
 		// 构建参数上下文
@@ -397,12 +399,21 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 	}
 
 	/**
-	 * 实现类指定业务处理链楼
-	 * @return 业务链类型
+	 * 默认链类型，与输入的维度一致
+	 * @return 默认链类型
 	 * @param param 入参
 	 */
 	protected int getDefaultChainType(P param) {
 		return CHAIN_TYPE_DEFAULT;
+	}
+	/**
+	 * 转换为实际使用的类型
+	 * @return 返回实际使用的业务链类型
+	 * @param param 入参
+	 * @param chainType 输入的链类型
+	 */
+	protected int convertToActualChainType(P param, int chainType) {
+		return chainType;
 	}
 	/**
 	 * 执行前处理
