@@ -18,6 +18,13 @@ import java.util.stream.Stream;
 
 /**
  * 字符文本工具类
+ * 格式化时的转义字符:
+ *  1. 在占位符外的文本需要转义的字符:
+ *  a. format和parseParamMap方法: $
+ *  a. format,parseParamMap方法: $
+ *  a. format,parseParamMap方法: $
+ *  a. format,parseParamMap方法: $
+ * 在
  * @author honzel
  * @date 2021/2/27
  */
@@ -606,7 +613,7 @@ public class TextUtils {
 				Object itemValue = formatValue(resolver, iterator.next(), configParams, params, alternateHolderEnabled, simplified);
 				hasNext = iterator.hasNext();
 				// 附加值
-				originPosition = appendFormatValue(content, resolver, dataType, itemValue, appendForEmpty, originPosition, !hasNext);
+				originPosition = appendFormatValue(content, resolver, dataType, itemValue, appendForEmpty, originPosition, !hasNext).length();
 				if (hasNext) {
 					if (!prefix.isEmpty()) {
 						// 添加前缀
@@ -616,6 +623,7 @@ public class TextUtils {
 					resolver.reset(resolverStart).hasNext();
 				}
 			}
+			value = EMPTY;
 		} else if (value instanceof Object[]) {
 			// 获取解析开始位置
 			int resolverStart = resolver.isInTokens() ? resolver.getStart(false) - 1 : resolver.getStart();
@@ -629,7 +637,7 @@ public class TextUtils {
 				// 是否有新一个
 				boolean hasNext = (i + 1 != len);
 				// 附加值
-				originPosition = appendFormatValue(content, resolver, dataType, itemValue, appendForEmpty, originPosition, !hasNext);
+				originPosition = appendFormatValue(content, resolver, dataType, itemValue, appendForEmpty, originPosition, !hasNext).length();
 				if (hasNext) {
 					if (!prefix.isEmpty()) {
 						// 添加前缀
@@ -640,6 +648,7 @@ public class TextUtils {
 				}
 			}
 			parsed = array.length > 0;
+			value = EMPTY;
 		}
 		if (!parsed) {
 			// 先格式化
@@ -652,7 +661,7 @@ public class TextUtils {
 		return offset;
 	}
 
-	private static int appendFormatValue(StringBuilder content, Resolver resolver, int dataType, Object value, boolean appendForEmpty, int originPosition, boolean isLastValue) {
+	private static StringBuilder appendFormatValue(StringBuilder content, Resolver resolver, int dataType, Object value, boolean appendForEmpty, int originPosition, boolean isLastValue) {
 		// 格式化值
 		String stringValue = toString(value);
 		// 判断是否去掉前缀
@@ -672,9 +681,8 @@ public class TextUtils {
 			int offset = 0;
 			if (format.charAt(start) ==  JOIN_FLAG) {
 				if (isLastValue) {
-					next = resolver.hasNext();
 					// 最后一个元素时不添加该值
-					continue;
+					break;
 				}
 				nonSeparator = false;
 				offset = 1;
@@ -698,7 +706,7 @@ public class TextUtils {
 			content.append(SEPARATOR);
 		}
 		// 需要包含紧接着的逗号
-		return content.length();
+		return content;
 	}
 
 	/**
@@ -755,8 +763,10 @@ public class TextUtils {
 					dataType = parseDataType(resolver);
 					resolver.hasNext();
 					if (dataType == DATA_TYPE_NONE && resolver.isLast()) {
-						// 基本类型或日期格式转化
-						return getInstance().formatSimpleValue(value, resolver.next());
+						if (isEmpty(value) || (stringValue = getInstance().simpleValueFormat(value, resolver.next())) != null) {
+							// 基本类型或日期格式转化
+							return stringValue != null ? stringValue : value;
+						}
 					}
 				}
 				if (!resolver.isLast()) {
@@ -813,13 +823,14 @@ public class TextUtils {
 		return DATA_TYPE_NONE;
 	}
 
+
 	/**
-	 * 日期格式转化
+	 * 值格式转化, 值类型为不支持格式化时，需要返回null
 	 * @param value 数据值
 	 * @param pattern 格式化模板
 	 * @return 返回格式结果
 	 */
-	protected Object formatSimpleValue(Object value, String pattern) {
+	protected String simpleValueFormat(Object value, String pattern) {
 		try {
 			if (!isEmpty(pattern)) {
 				if (value instanceof TemporalAccessor) {
@@ -834,9 +845,9 @@ public class TextUtils {
 			}
 		} catch (Exception e) {
 			System.err.println("数据格式化失败: " + e.getMessage());
-			e.printStackTrace();
+			return EMPTY;
 		}
-		return value;
+		return null;
 	}
 
 	/**
