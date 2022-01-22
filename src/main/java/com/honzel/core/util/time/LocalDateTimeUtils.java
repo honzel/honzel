@@ -1,6 +1,7 @@
 package com.honzel.core.util.time;
 
 import com.honzel.core.constant.NumberConstants;
+import com.honzel.core.util.text.TextUtils;
 
 import java.text.ParsePosition;
 import java.time.*;
@@ -30,6 +31,10 @@ public class LocalDateTimeUtils {
      * 时间格式化
      */
     public static final String TIME_FORMAT_PATTERN = "HH:mm:ss";
+    /**
+     * 时间格式化
+     */
+    public static final String HOUR_MINUTE_FORMAT_PATTERN = "HH:mm";
 
     /**
      * 日期时间格式化
@@ -43,6 +48,10 @@ public class LocalDateTimeUtils {
      * 时间格式化
      */
     public static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern(TIME_FORMAT_PATTERN);
+    /**
+     * 时分格式化
+     */
+    public static final DateTimeFormatter HOUR_MINUTE_FORMATTER = DateTimeFormatter.ofPattern(HOUR_MINUTE_FORMAT_PATTERN);
     // 类型
     private static final Map<TemporalUnit, List<TemporalField>> BASE_UNIT_FIELD_LIST_MAP;
     // 解析标准单位
@@ -73,6 +82,30 @@ public class LocalDateTimeUtils {
     }
 
     protected LocalDateTimeUtils() {
+    }
+
+    /**
+     * 格式化日期
+     * @param temporal 时间
+     * @param pattern 模板
+     * @return 返回格式化后结果
+     */
+    public static String format(TemporalAccessor temporal, String pattern) {
+        if (TextUtils.isEmpty(pattern)) {
+            return pattern;
+        }
+        switch (pattern) {
+            case DATE_TIME_FORMAT_PATTERN:
+                return DATE_TIME_FORMATTER.format(temporal);
+            case DATE_FORMAT_PATTERN:
+                return DATE_FORMATTER.format(temporal);
+            case TIME_FORMAT_PATTERN:
+                return TIME_FORMATTER.format(temporal);
+            case HOUR_MINUTE_FORMAT_PATTERN:
+                return HOUR_MINUTE_FORMATTER.format(temporal);
+            default:
+                return DateTimeFormatter.ofPattern(pattern).format(temporal);
+        }
     }
 
     /**

@@ -3,6 +3,7 @@ package com.honzel.core.util.text;
 import com.honzel.core.util.bean.BeanHelper;
 import com.honzel.core.util.resolver.Resolver;
 import com.honzel.core.util.resolver.ResolverUtils;
+import com.honzel.core.util.time.LocalDateTimeUtils;
 import com.honzel.core.util.web.WebUtils;
 
 import javax.annotation.PostConstruct;
@@ -10,7 +11,6 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -805,8 +805,12 @@ public class TextUtils {
 		} else if (resolver.nextEquals("url")) {
 			return DATA_TYPE_QUERY_STRING;
 		} else {
-			return DATA_TYPE_NONE;
+			return getInstance().getExtraDataType(resolver.next());
 		}
+	}
+
+	protected int getExtraDataType(String typeFlag) {
+		return DATA_TYPE_NONE;
 	}
 
 	/**
@@ -819,7 +823,7 @@ public class TextUtils {
 		try {
 			if (!isEmpty(pattern)) {
 				if (value instanceof TemporalAccessor) {
-					return DateTimeFormatter.ofPattern(pattern).format((TemporalAccessor) value);
+					return LocalDateTimeUtils.format((TemporalAccessor) value, pattern);
 				} else if (value instanceof Date) {
 					return new SimpleDateFormat(pattern).format((Date) value);
 				} else if (value instanceof Calendar) {
@@ -903,10 +907,18 @@ public class TextUtils {
 			case DATA_TYPE_XML:
 				message.append(getInstance().getXmlValue(value));
 				break;
-			default:
+			case DATA_TYPE_NONE:
+			case DATA_TYPE_TEXT:
 				message.append(value);
 				break;
+			default:
+				message.append(getInstance().getExtraDataTypeValue(value, dataType));
+				break;
 		}
+	}
+
+	protected String getExtraDataTypeValue(String value, int dataType) {
+		return value;
 	}
 
 	protected String encodeUrlValue(String value) {
