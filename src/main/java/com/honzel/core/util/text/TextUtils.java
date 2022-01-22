@@ -48,6 +48,8 @@ public class TextUtils {
 
 	private static final int HOLDER_FLAG_TYPE = 1;
 
+	private static final int DATA_TYPE_NONE = 0;
+
 	public static final int DATA_TYPE_JSON = 1;
 
 	public static final int DATA_TYPE_QUERY_STRING = 2;
@@ -55,6 +57,8 @@ public class TextUtils {
 	public static final int DATA_TYPE_XML = 3;
 
 	public static final int DATA_TYPE_TEXT = 4;
+
+
 
 	private static TextUtils utils;
 
@@ -92,7 +96,7 @@ public class TextUtils {
 		if (content.startsWith("<") && content.endsWith(">")) {
 			return DATA_TYPE_XML;
 		}
-		if (content.startsWith("&") || content.startsWith("http")) {
+		if (content.startsWith("http")) {
 			return DATA_TYPE_QUERY_STRING;
 		}
 		return DATA_TYPE_TEXT;
@@ -195,7 +199,7 @@ public class TextUtils {
 		// 判断是否可能有占位符
 		if (isNormalText(pattern, alternateHolderEnabled, simplified)) {
 			// 如果没有占位符
-			return Collections.emptyMap();
+			return result;
 		}
 		// 使用解析器
 		Resolver resolver = createResolver(alternateHolderEnabled, simplified);
@@ -214,10 +218,15 @@ public class TextUtils {
 					continue;
 				}
 				// 解析当前小段内容
-				resolver.resetToCurrent(simplified ? 0 : 1).useTokens(BRACKET_START).hasNext();
-				if (!resolver.isInTokens() && resolver.isEmpty() && !resolver.isLast()) {
-					// 忽略空串解析下一部分
-					resolver.hasNext();
+				resolver.resetToCurrent(simplified ? 0 : 1).useTokens(BRACKET_START);
+				if (resolver.hasNext(BRACKET_START + SEMICOLON)) {
+					if (resolver.endsInTokens(SEMICOLON)) {
+						resolver.hasNext();
+					}
+					if (!resolver.isInTokens() && resolver.isEmpty() && !resolver.isLast()) {
+						// 忽略空串解析下一部分
+						resolver.hasNext();
+					}
 				}
 				//判断是否前置常量串
 				if (resolver.isInTokens() && resolver.getInput().charAt(resolver.getStart()) != EXPR_FLAG) {
@@ -246,25 +255,20 @@ public class TextUtils {
 					int outerTerminal = resolver.getTerminal();
 					resolver.resetToCurrent(1).useTokens(EQUAL + SEMICOLON);
 					// 获取映射值
-					boolean isSimpleValuePattern = true;
+					boolean first = true;
 					while (resolver.hasNext()) {
-						if (isSimpleValuePattern) {
-							if (resolver.isEmpty() && resolver.endsInTokens(SEMICOLON)) {
+						if (first) {
+							if (resolver.endsInTokens(SEMICOLON)) {
+								int dataType = parseDataType(resolver);
 								resolver.hasNext();
-							} else {
-								isSimpleValuePattern = false;
-							}
-							if (resolver.isLast()) {
-								// 最后一个
-								if (!isSimpleValuePattern) {
-									// 如果不是简单格式化模板，获取参数
-									parseParamMap0(result, !alternateHolderEnabled, resolver.next(), params, simplified);
+								if (dataType == DATA_TYPE_NONE && resolver.isLast()) {
+									// 基本类型或日期格式转化
+									break;
 								}
-								break;
 							}
-							isSimpleValuePattern = false;
+							first = false;
 						}
-						if (resolver.endsInTokens(EQUAL) && resolver.hasNext(SEMICOLON)) {
+						if (resolver.isLast() || resolver.endsInTokens(EQUAL) && resolver.hasNext(SEMICOLON)) {
 							// 获取表达式参数
 							parseParamMap0(result, !alternateHolderEnabled, resolver.next(), params, simplified);
 						}
@@ -488,6 +492,7 @@ public class TextUtils {
 		return content.toString();
 	}
 
+
 	private static char getHolderStartChar(boolean alternateHolderEnabled, boolean simplified) {
 		if (simplified) {
 			return  '\0';
@@ -547,9 +552,15 @@ public class TextUtils {
 		// 初始位置
 		int originPosition = content.length();
 		resolver.resetToCurrent(simplified ? 0 : 1).useTokens(BRACKET_START);
-		if (resolver.hasNext() && !resolver.isInTokens() && resolver.isEmpty() && !resolver.isLast()) {
-			// 忽略空串解析下一部分
-			resolver.hasNext();
+		if (resolver.hasNext(BRACKET_START + SEMICOLON)) {
+			if (resolver.endsInTokens(SEMICOLON)) {
+				dataType = parseDataType(resolver);
+				resolver.hasNext();
+			}
+			if (!resolver.isInTokens() && resolver.isEmpty() && !resolver.isLast()) {
+				// 忽略空串解析下一部分
+				resolver.hasNext();
+			}
 		}
 		// 是否值为null进行附加内容
 		boolean appendForEmpty = false;
@@ -732,53 +743,47 @@ public class TextUtils {
 		return value;
 	}
 
+
 	private static Object getMappingValue(Resolver resolver, Object value, Object configParams, Object params, boolean alternateHolderEnabled, boolean simplified) {
         //
         String stringValue = null;
-        boolean isSimpleValuePattern = true;
-        int dataType = 0;
+        boolean first = true;
+        int dataType = DATA_TYPE_NONE;
         while (resolver.hasNext()) {
-            if (isSimpleValuePattern) {
-                if (resolver.endsInTokens(SEMICOLON)) {
-                    if (!resolver.isEmpty()) {
-                        if (resolver.nextEquals("json")) {
-                            dataType = DATA_TYPE_JSON;
-                        } else if (resolver.nextEquals("xml")) {
-                            dataType = DATA_TYPE_XML;
-                        } else if (resolver.nextEquals("txt")) {
-                            dataType = DATA_TYPE_TEXT;
-                        } else if (resolver.nextEquals("url")) {
-                            dataType = DATA_TYPE_QUERY_STRING;
-                        }
-                        isSimpleValuePattern = false;
-                    }
-                    resolver.hasNext();
-                } else {
-                    isSimpleValuePattern = false;
-                }
-                if (resolver.isLast()) {
-                    String pattern = resolver.next();
-                    if (isSimpleValuePattern) {
-                        // 基本类型或日期格式转化
-                        return getInstance().formatSimpleValue(value, pattern);
-                    }
-                    if (isEmpty(pattern) || "*".equals(pattern)) {
-                        return value;
-                    }
-                    int useDataType = dataType > 0 ? dataType : getDataType(pattern);
-                    return format0(!alternateHolderEnabled, useDataType, pattern, configParams, params, value, simplified);
-                }
-                stringValue = (value != null) ? toString(value) : "null";
-                isSimpleValuePattern = false;
+            if (first) {
+				if (resolver.endsInTokens(SEMICOLON)) {
+					dataType = parseDataType(resolver);
+					resolver.hasNext();
+					if (dataType == DATA_TYPE_NONE && resolver.isLast()) {
+						// 基本类型或日期格式转化
+						return getInstance().formatSimpleValue(value, resolver.next());
+					}
+				}
+				if (!resolver.isLast()) {
+					stringValue = toString(value);
+					if (stringValue == null) {
+						stringValue = "null";
+					}
+				}
+            	first = false;
             }
-            if (resolver.nextEquals(stringValue) || resolver.nextEquals("*")) {
-                if (resolver.isLast() || !resolver.endsInTokens(EQUAL)) {
-                    // 返回原值
-                    return value;
-                }
-                resolver.hasNext(SEMICOLON);
+			int start = resolver.getStart();
+			int end = resolver.getEnd();
+            if (resolver.isLast() || resolver.nextEquals(stringValue) || end == start + 1 && resolver.getInput().charAt(start) == '*') {
+                if (!resolver.isLast()) {
+                	if (!resolver.endsInTokens(EQUAL)) {
+						// 返回原值
+						return value;
+					}
+					resolver.hasNext(SEMICOLON);
+                } else {
+                	if (end == start + 1 && resolver.getInput().charAt(start) == '*') {
+                		// 只有一个星号时
+                		return value;
+					}
+				}
                 String pattern = resolver.next();
-                int useDataType = dataType > 0 ? dataType : getDataType(pattern);
+                int useDataType = dataType != DATA_TYPE_NONE ? dataType : getDataType(pattern);
                 stringValue = format0(!alternateHolderEnabled, useDataType, pattern, configParams, params, value, simplified);
                 // 映射值
                 return "null".equals(stringValue) ? null : stringValue;
@@ -786,6 +791,23 @@ public class TextUtils {
         }
         return null;
     }
+
+	private static int parseDataType(Resolver resolver) {
+		if (resolver.containsEscape() || resolver.isEmpty()) {
+			return DATA_TYPE_NONE;
+		}
+		if (resolver.nextEquals("json")) {
+			return DATA_TYPE_JSON;
+		} else if (resolver.nextEquals("xml")) {
+			return DATA_TYPE_XML;
+		} else if (resolver.nextEquals("txt")) {
+			return DATA_TYPE_TEXT;
+		} else if (resolver.nextEquals("url")) {
+			return DATA_TYPE_QUERY_STRING;
+		} else {
+			return DATA_TYPE_NONE;
+		}
+	}
 
 	/**
 	 * 日期格式转化

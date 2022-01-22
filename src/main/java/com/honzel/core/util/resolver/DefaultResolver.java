@@ -180,7 +180,7 @@ public class DefaultResolver implements Resolver {
 		if (isPair && type != TYPE_INDEX_OF_LINK)
 			endIndex -= 1;
 		if (trim) {
-			int startIndex = getStart(trim);
+			int startIndex = getStart(true);
 			if (startIndex >= endIndex)
 				return endIndex;
 			int originalEnd = endIndex;

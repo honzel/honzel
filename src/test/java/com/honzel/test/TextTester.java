@@ -16,8 +16,12 @@ public class TextTester {
 	private void testFormat() {
 		// {"a":"${Action}","b":"{Version}"}
 		String format = "\\{\"a\":[\"${Format[+\",\"]}\"],\"b\":\"${Version}\",\"c\":\"${time[#;yyyy-MM-dd]}\"}";
+		String format2="{\"touser\":\"${$receiver[^%s]}\",\"data\":{\"first\":{\"value\":\"您的${;channelName}店铺审核${;auditStatus[#1=已通过;2=不通过]}\"},\"keyword1\":{\"value\":\"${auditStatus[#1=已通过;2=不通过]}\"},\"keyword2\":{\"value\":\"绑定${channelName}店铺审核\"},\"keyword3\":{\"value\":\"${time[#yyyy-MM-dd]}\"},\"remark\":{\"value\":\"${xml;auditStatus[#1=$(channelName)可以打印订单&&啦;2=不通过原因:$(reason)]}\"}},\"template_id\":\"ppppp\"}";
 		java.util.Map<String, Object> paras = new java.util.TreeMap<>();
 		// 1. 系统参数
+		paras.put("channelName", "美团");
+		paras.put("auditStatus", "1");
+		paras.put("reason", "没有可能通过");
 		paras.put("SignatureMethod", "HMAC-SHA1");
 		paras.put("SignatureNonce", "${$nonce}");
 		paras.put("AccessKeyId", "${$accessKeyId}");
@@ -38,6 +42,7 @@ public class TextTester {
 		paras.put("code", "SMS00008");
 
 		System.out.println(TextUtils.simplifiedFormat("原格式: {}", format));
+
 		System.out.println(TextUtils.simplifiedFormat("parseParamMap解析参数结果: {}", TextUtils.parseParamMap(format, paras)));
 		System.out.println(TextUtils.simplifiedFormat("parseSimplifiedParamMap解析参数结果: {}", TextUtils.parseSimplifiedParamMap(format, paras)));
 
@@ -48,6 +53,12 @@ public class TextTester {
 		System.out.println(TextUtils.alternateFormat("\\https://localhost/$(type[#1=aa;*=bb/%s])$([?code=]code)"));
 		System.out.println(TextUtils.alternateFormat(String.format("\\https://localhost/$(type[#1=aa;*=bb/%s])$([?code=]code)", "me")));
 		System.out.println(String.format("\\https://localhost/$(type[#1=aa;*=bb/%s])$([?code=]code)", "me"));
+
+		System.out.println(TextUtils.simplifiedFormat("原格式2: {}", format2));
+		System.out.println(TextUtils.simplifiedFormat("parseParamMap2解析参数结果: {}", TextUtils.parseParamMap(format2, paras)));
+		System.out.println(TextUtils.simplifiedFormat("format2解析参数结果: {}", TextUtils.format(TextUtils.DATA_TYPE_QUERY_STRING, format2, paras)));
+
+
 	}
 
 }
