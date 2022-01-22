@@ -60,6 +60,7 @@ public class TextTester {
 		System.out.println(TextUtils.simplifiedFormat("format2解析参数结果: {}", TextUtils.format(TextUtils.DATA_TYPE_XML, format2, paras)));
 		System.out.println(TextUtils.simplifiedFormat("format2解析参数结果: {}", TextUtils.format(TextUtils.DATA_TYPE_TEXT, format2, paras)));
 		System.out.println(TextUtils.simplifiedFormat("format2解析参数结果: {}", TextUtils.format(TextUtils.DATA_TYPE_JSON, format2, paras)));
+		System.out.println(TextUtils.simplifiedFormat("format2解析参数结果: {}", TextUtils.format(TextUtils.DATA_TYPE_NONE, format2, paras)));
 
 
 	}
