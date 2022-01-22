@@ -112,7 +112,7 @@ public class TextUtils {
 
 	private static final int HOLDER_FLAG_TYPE = 1;
 
-	private static final int DATA_TYPE_NONE = 0;
+	public static final int DATA_TYPE_NONE = 0;
 
 	public static final int DATA_TYPE_JSON = 1;
 
@@ -323,12 +323,7 @@ public class TextUtils {
 					while (resolver.hasNext()) {
 						if (first) {
 							if (resolver.endsInTokens(SEMICOLON)) {
-								int dataType = parseDataType(resolver);
 								resolver.hasNext();
-								if (dataType == DATA_TYPE_NONE && resolver.isLast()) {
-									// 基本类型或日期格式转化
-									break;
-								}
 							}
 							first = false;
 						}
@@ -876,7 +871,7 @@ public class TextUtils {
 		}
 	}
 
-	protected int getExtraDataType(String typeFlag) {
+	protected int getExtraDataType(String dataTypeName) {
 		return DATA_TYPE_NONE;
 	}
 
