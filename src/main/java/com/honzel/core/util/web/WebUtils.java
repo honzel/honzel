@@ -77,7 +77,7 @@ public class WebUtils {
 
     private void initSSLContext() {
         try {
-            SSLContext ctx = SSLContext.getInstance("TLS");
+            SSLContext ctx = SSLContext.getInstance(sslProtocol());
             KeyManager[] km;
             if ((km = initSSLKeyManagers()) == null) {
                 km = new KeyManager[0];
@@ -105,6 +105,11 @@ public class WebUtils {
         }
     }
 
+
+
+    protected String sslProtocol() {
+        return "TLS";
+    }
 
     protected KeyManager[] initSSLKeyManagers() {
         return null;
