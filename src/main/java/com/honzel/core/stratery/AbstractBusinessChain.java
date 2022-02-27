@@ -16,8 +16,7 @@ import java.util.function.BiConsumer;
 
 import static com.honzel.core.constant.NumberConstants.INTEGER_ONE;
 import static com.honzel.core.constant.NumberConstants.INTEGER_ZERO;
-import static com.honzel.core.stratery.ChainConstants.CHAIN_TYPE_DEFAULT;
-import static com.honzel.core.stratery.ChainConstants.MASK_LOW_FLAG;
+import static com.honzel.core.stratery.ChainConstants.*;
 import static com.honzel.core.stratery.ChainProcessUtils.getMaskHigh;
 import static com.honzel.core.stratery.ChainProcessUtils.getMaskLow;
 
@@ -98,7 +97,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 		this.specifiedChainMethodMap = chainMethodMap.isEmpty() ? Collections.emptyMap() :  chainMethodMap;
 	}
 
-	protected boolean isMaskIfNecessary() {
+	protected final boolean isMaskIfNecessary() {
 		return maskIfNecessary;
 	}
 
@@ -168,7 +167,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 		ProcessType processType = annotation.processType();
 		boolean maskLow = annotation.maskLow();
 		for (int chainType : annotation.chainType()) {
-			int maskChainType = maskLow ? MASK_LOW_FLAG | chainType : chainType;
+			int maskChainType = maskLow ? MASK_LOW_FLAG | (chainType & CHAIN_MASK_LOW) : chainType;
 			// 获取之前解析的对象
 			ChainMethodList chainMethodList = chainMethodMap.get(maskChainType);
 			if (chainMethodList == null) {
@@ -290,13 +289,22 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 
 	/**
 	 * 按对应链类型获取初始化的结果对象
+	 * @param param 入参
 	 * @param chainType 业务链类型
 	 * @return 返回结果对象
 	 */
-	public R initProcessResult(int chainType) {
+	public R initProcessResult(P param, int chainType) {
 		// 构建参数上下文
-		ChainMethodList main = lookupMain(chainType);
+		ChainMethodList main = lookupMain(chainType = convertToActualChainType(param, chainType));
 		return main.initProcessResult(lookupSecondaries(main, chainType));
+	}
+	/**
+	 * 按对应链类型获取初始化的结果对象
+	 * @param param 入参
+	 * @return 返回结果对象
+	 */
+	public R initProcessResult(P param) {
+		return initProcessResult(param, getDefaultChainType(param));
 	}
 
 	/**
