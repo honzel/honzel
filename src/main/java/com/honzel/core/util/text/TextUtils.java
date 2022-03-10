@@ -850,6 +850,9 @@ public class TextUtils {
                 // 映射值
                 return "null".equals(stringValue) ? null : stringValue;
             }
+			if (resolver.endsInTokens(EQUAL)) {
+				resolver.hasNext(SEMICOLON);
+			}
         }
         return null;
     }
