@@ -881,7 +881,7 @@ public class DefaultResolver implements Resolver {
 	}
 
 	public boolean endsInTokens(String tokens) {
-		return inTokens(endType, tokens, opened);
+		return inTokens(endType, tokens, endType >= 0 && endType < closed.length() ? closed : opened);
 	}
 
 

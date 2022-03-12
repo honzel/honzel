@@ -1,13 +1,16 @@
 package com.honzel.core.util.bean;
 
+import com.honzel.core.constant.ArrayConstants;
 import com.honzel.core.util.text.TextUtils;
 import com.honzel.core.util.converter.Converter;
 import com.honzel.core.util.converter.TypeConverter;
+import org.apache.commons.lang3.ArrayUtils;
 
 import java.beans.PropertyDescriptor;
-import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 /**
  * Utility methods for using Java Reflection APIs to facilitate generic
@@ -329,4 +332,65 @@ public class BeanHelper {
 		}
 		return Object.class;
 	}
+
+//	public static Class<?>[] getGenericActualTypes(Class<?> impClass, final Class<?> rootClass) {
+//		Object[] types;
+//		if (!rootClass.isAssignableFrom(impClass) || (types = rootClass.getTypeParameters()).length == 0) {
+//			return ArrayConstants.EMPTY_CLASS_ARRAY;
+//		}
+//		//
+//		List<Type> superTypes;
+//		if (rootClass.equals(impClass.getSuperclass())) {
+//			//
+//			Type type = impClass.getGenericSuperclass();
+//			if (type instanceof Class) {
+//				superTypes = Collections.emptyList();
+//			} else {
+//				superTypes = Collections.singletonList(type);
+//			}
+//		} else {
+//			superTypes = new ArrayList<>();
+//			while (impClass != null && !impClass.equals(rootClass) && !Object.class.equals(impClass)) {
+//				Class superClass;
+//				Type type;
+//				if ((superClass = impClass.getSuperclass()) != null && rootClass.isAssignableFrom(superClass)) {
+//					if ((type = impClass.getGenericSuperclass()) instanceof Class) {
+//						superTypes.clear();
+//					} else {
+//						superTypes.add(type);
+//					}
+//				} else {
+//					Class<?>[] interfaces;
+//					superClass = null;
+//					if (rootClass.isInterface() && ArrayUtils.isNotEmpty(interfaces = impClass.getInterfaces())) {
+//						for (int i = 0; i < interfaces.length; i++) {
+//							if (rootClass.isAssignableFrom(superClass = interfaces[i])) {
+//								if ((type = impClass.getGenericInterfaces()[i]) instanceof Class) {
+//									superTypes.clear();
+//								} else {
+//									superTypes.add(type);
+//								}
+//								break;
+//							}
+//						}
+//					}
+//				}
+//				impClass = superClass;
+//			}
+//		}
+//		if (impClass != null && !superTypes.isEmpty()) {
+//			boolean first = true;
+//			for (int i = superTypes.size() - 1; i >= 0; i--) {
+//				Type superType = superTypes.get(i);
+//				if (superType instanceof ParameterizedType) {
+//
+//					Type[] actualTypes = ((ParameterizedType) superType).getActualTypeArguments();
+//
+//				} else {
+//
+//				}
+//			}
+//		}
+//		return classArray;
+//	}
 }
