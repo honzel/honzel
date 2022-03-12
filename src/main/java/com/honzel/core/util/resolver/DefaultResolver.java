@@ -454,18 +454,19 @@ public class DefaultResolver implements Resolver {
 		while (true) {
 			if (result < closed.length()) { //the closed token
 				end = findNextPosition(closed.charAt(result), start + 1);
-				isPair = true;
 				if (end >= curTerminal) {
 					endType = TYPE_INDEX_OF_END;
-					if (fetchOne || targets == NONE_OF_TYPES)
-						return TYPE_INDEX_OF_LINK;
-					result = opened.indexOf(input.charAt(start), result + 1);
-					if (result > 0 && ((targets & (1 << result)) != 0)) {
-						end = start;
-						continue;
+					if (!fetchOne && targets != NONE_OF_TYPES) {
+						result = opened.indexOf(input.charAt(start), result + 1);
+						if (result > 0 && ((targets & (1 << result)) != 0)) {
+							end = start;
+							continue;
+						}
 					}
+					isPair = true;
 					return TYPE_INDEX_OF_LINK;
 				}
+				isPair = true;
 				end += 1;
 			} else { //the opened token
 				if (isPair && type != TYPE_INDEX_OF_LINK)
@@ -881,7 +882,7 @@ public class DefaultResolver implements Resolver {
 	}
 
 	public boolean endsInTokens(String tokens) {
-		return inTokens(endType, tokens, endType >= 0 && endType < closed.length() ? closed : opened);
+		return inTokens(endType, tokens, type >= 0 && type < closed.length() ? closed : opened);
 	}
 
 
