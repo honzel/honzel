@@ -64,7 +64,7 @@ public class FileItem {
 
     public String getMimeType() throws IOException {
         if (this.mimeType == null) {
-            this.mimeType = WebUtils.getMimeType(getContent());
+            this.mimeType = FileTypeEnum.getFileType(getContent()).getMineType();
         }
         return this.mimeType;
     }
