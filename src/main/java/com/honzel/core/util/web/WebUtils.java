@@ -875,20 +875,7 @@ public class WebUtils {
      * @return JPG, GIF, PNG or null
      */
     public static String getFileSuffix(byte[] fileBytes) {
-        if (fileBytes == null || fileBytes.length < 10) {
-            return null;
-        }
-        if (fileBytes[0] == 'G' && fileBytes[1] == 'I' && fileBytes[2] == 'F') {
-            return "gif";
-        } else if (fileBytes[1] == 'P' && fileBytes[2] == 'N' && fileBytes[3] == 'G') {
-            return "png";
-        } else if (fileBytes[6] == 'J' && fileBytes[7] == 'F' && fileBytes[8] == 'I' && fileBytes[9] == 'F') {
-            return "jpg";
-        } else if (fileBytes[0] == 'B' && fileBytes[1] == 'M') {
-            return "bmp";
-        } else {
-            return null;
-        }
+        return FileTypeEnum.getFileType(fileBytes).getSuffix();
     }
 
     /**
@@ -898,20 +885,7 @@ public class WebUtils {
      * @return 媒体类型(MEME-TYPE)
      */
     public static String getMimeType(byte[] fileBytes) {
-        String suffix = getFileSuffix(fileBytes);
-        String mimeType;
-        if ("jpg".equals(suffix)) {
-            mimeType = "image/jpeg";
-        } else if ("gif".equals(suffix)) {
-            mimeType = "image/gif";
-        } else if ("png".equals(suffix)) {
-            mimeType = "image/png";
-        } else if ("bmp".equals(suffix)) {
-            mimeType = "image/bmp";
-        } else {
-            mimeType = "application/octet-stream";
-        }
-        return mimeType;
+        return FileTypeEnum.getFileType(fileBytes).getMineType();
     }
 
 }
