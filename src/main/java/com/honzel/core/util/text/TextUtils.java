@@ -1195,7 +1195,7 @@ public class TextUtils {
 				startIndex = endIndex + separator.length();
 				valueIndex --;
 			}
-			if (startIndex > 0) {
+			if (startIndex >= 0) {
 				startIndex -= separator.length();
 			}
 		} else {
