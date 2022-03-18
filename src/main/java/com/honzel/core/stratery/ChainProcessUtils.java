@@ -31,10 +31,6 @@ import static com.honzel.core.stratery.ChainConstants.*;
 public class ChainProcessUtils {
 
     private static final Logger log = LoggerFactory.getLogger(ChainProcessUtils.class);
-
-    private static final SoftReference<Annotation[]> EMPTY_ANNOTATION_ARRAY_REF = new SoftReference(EMPTY_ANNOTATION_ARRAY);
-
-    private static final SoftReference<Map<String, String>> EMPTY_MAP_REF = new SoftReference(Collections.emptyMap());
     /**
      * 获取底位
      * @param chainType 链类型
@@ -193,7 +189,7 @@ public class ChainProcessUtils {
             // 转成数组
             annotations = (annotationList == null) ? EMPTY_ANNOTATION_ARRAY : annotationList.toArray(EMPTY_ANNOTATION_ARRAY);
             // 放入临时缓存
-            declaredProcessorAnnotationCache.putIfAbsent(annotatedElement, annotationList == null ? EMPTY_ANNOTATION_ARRAY_REF : new SoftReference<>(annotations));
+            declaredProcessorAnnotationCache.putIfAbsent(annotatedElement, new SoftReference<>(annotations));
         }
         return annotations;
     }
@@ -346,7 +342,7 @@ public class ChainProcessUtils {
                     }
                 }
             }
-            processorAttributesAliasCache.put(annotationType, aliasNameMap == null ? EMPTY_MAP_REF : new SoftReference<>(aliasNameMap));
+            processorAttributesAliasCache.put(annotationType, new SoftReference<>(aliasNameMap == null ? Collections.emptyMap() : aliasNameMap));
         }
         // 有有效别名时设置别名属性
         if (aliasNameMap != null && !aliasNameMap.isEmpty()) {
