@@ -263,7 +263,7 @@ public class WebUtils {
             throw new IOException("connection is null");
         }
         try {
-            return getResponseAsString(getConnectionInputStream(conn, content, charset), getResponseCharset(conn.getContentType(), charset));
+            return readAsString(getConnectionInputStream(conn, content, charset), getResponseCharset(conn.getContentType(), charset));
         } finally {
             conn.disconnect();
         }
@@ -306,7 +306,7 @@ public class WebUtils {
         } else {
             // 异常返回数据
             InputStream input = convertInputStream(conn.getErrorStream(), conn.getContentEncoding());
-            String msg = getResponseAsString(input, getResponseCharset(conn.getContentType(), charset));
+            String msg = readAsString(input, getResponseCharset(conn.getContentType(), charset));
             if (TextUtils.isEmpty(msg)) {
                 throw new IOException(conn.getResponseCode() + ":" + conn.getResponseMessage());
             } else {
@@ -327,7 +327,7 @@ public class WebUtils {
     }
 
 
-    private static void closeQuietly(Closeable closeable) {
+    public static void closeQuietly(Closeable closeable) {
         try {
             if (closeable != null) {
                 closeable.close();
@@ -349,7 +349,7 @@ public class WebUtils {
             throw new IOException("connection is null");
         }
         try {
-            return getResponseAsStream(getConnectionInputStream(conn, content, charset));
+            return readAsOutputStream(getConnectionInputStream(conn, content, charset));
         } finally {
             conn.disconnect();
         }
@@ -453,7 +453,7 @@ public class WebUtils {
             // 添加请求结束标志
             byte[] endBoundaryBytes = ("\r\n--" + boundary + "--\r\n").getBytes(charset);
             out.write(endBoundaryBytes);
-            return getResponseAsString(getConnectionInputStream(conn, null, charset), getResponseCharset(conn.getContentType(), charset));
+            return readAsString(getConnectionInputStream(conn, null, charset), getResponseCharset(conn.getContentType(), charset));
         } finally {
             closeQuietly(out);
             if (conn != null) {
@@ -644,7 +644,7 @@ public class WebUtils {
         return getConnection(url, method, contentType, CONNECT_TIMEOUT, READ_TIMEOUT, headerMap);
     }
 
-    private static String buildGetUrl(String strUrl, String query) {
+    public static String buildGetUrl(String strUrl, String query) {
         if (TextUtils.isEmpty(query)) {
             return strUrl;
         }
@@ -717,8 +717,13 @@ public class WebUtils {
     }
 
 
-
-    private static ByteArrayOutputStream getResponseAsStream(InputStream input) throws IOException {
+    /**
+     * 读取成流
+     * @param input 输入流，读取后会关闭流
+     * @return
+     * @throws IOException
+     */
+    public static ByteArrayOutputStream readAsOutputStream(InputStream input) throws IOException {
         try {
             int available = input.available();
             //
@@ -733,8 +738,13 @@ public class WebUtils {
             closeQuietly(input);
         }
     }
-
-    private static String getResponseAsString(InputStream input, Charset charset) throws IOException {
+    /**
+     * 读取成流
+     * @param input 输入流，读取后会关闭流
+     * @return
+     * @throws IOException
+     */
+    public static String readAsString(InputStream input, Charset charset) throws IOException {
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(input, charset));
             StringWriter writer = new StringWriter();
@@ -749,7 +759,13 @@ public class WebUtils {
         }
     }
 
-    private static Charset getResponseCharset(String contentType, Charset defaultCharset) {
+    /**
+     * 获取内容类型中指定的字符集
+     * @param contentType 内容类型
+     * @param defaultCharset 默认字符集
+     * @return
+     */
+    public static Charset getResponseCharset(String contentType, Charset defaultCharset) {
         Charset charset = defaultCharset != null ? defaultCharset : DEFAULT_CHARSET;
         if (TextUtils.isEmpty(contentType)) {
             return charset;

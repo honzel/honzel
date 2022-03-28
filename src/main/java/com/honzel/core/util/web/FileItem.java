@@ -71,13 +71,7 @@ public class FileItem {
 
     public byte[] getContent() throws IOException {
         if (this.content == null && this.file != null && this.file.exists()) {
-            InputStream in = new FileInputStream(this.file);
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            int ch;
-            while ((ch = in.read()) != -1) {
-                out.write(ch);
-            }
-            this.content = out.toByteArray();
+            this.content = WebUtils.readAsOutputStream(new FileInputStream(this.file)).toByteArray();
         }
         return this.content;
     }
