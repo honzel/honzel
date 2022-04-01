@@ -613,7 +613,12 @@ public class TextUtils {
 		resolver.resetToCurrent(simplified ? 0 : 1).useTokens(BRACKET_START);
 		if (resolver.hasNext(BRACKET_START + SEMICOLON)) {
 			if (resolver.endsInTokens(SEMICOLON)) {
-				dataType = parseDataType(resolver);
+				int localDataType = parseDataType(resolver);
+				if (localDataType != DATA_TYPE_NONE || resolver.isEmpty()) {
+					dataType = localDataType;
+				} else {
+					resolver.reset(resolver.getStart());
+				}
 				resolver.hasNext();
 			}
 			if (!resolver.isInTokens() && resolver.isEmpty() && !resolver.isLast()) {
@@ -813,11 +818,12 @@ public class TextUtils {
             if (first) {
 				if (resolver.endsInTokens(SEMICOLON)) {
 					dataType = parseDataType(resolver);
-					resolver.hasNext();
-					if (dataType == DATA_TYPE_NONE && resolver.isLast()) {
-						if (isEmpty(value) || (stringValue = getInstance().simpleValueFormat(value, resolver.next())) != null) {
-							// 基本类型或日期格式转化
-							return stringValue != null ? stringValue : value;
+					if (dataType != DATA_TYPE_NONE || resolver.isEmpty()) {
+						if (resolver.hasNext() && dataType == DATA_TYPE_NONE && resolver.isLast()) {
+							if (isEmpty(value) || (stringValue = getInstance().simpleValueFormat(value, resolver.next())) != null) {
+								// 基本类型或日期格式转化
+								return stringValue != null ? stringValue : value;
+							}
 						}
 					}
 				}
