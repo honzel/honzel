@@ -57,7 +57,6 @@ public class LocalDateTimeUtils {
     // 解析标准单位
     private static final TemporalUnit[] UNITS = Arrays.copyOf(ChronoUnit.values(), ChronoUnit.FOREVER.ordinal());
 
-    private static final LocalDate EPOCH = LocalDate.ofEpochDay(0L);
     static {
         BASE_UNIT_FIELD_LIST_MAP = new HashMap<>();
         ChronoField[] fields = ChronoField.values();
@@ -91,20 +90,30 @@ public class LocalDateTimeUtils {
      * @return 返回格式化后结果
      */
     public static String format(TemporalAccessor temporal, String pattern) {
+        DateTimeFormatter formatter;
+        return (formatter = getFormatter(pattern)) != null ? formatter.format(temporal) : pattern;
+    }
+
+    /**
+     * 获取模板对应格式化器
+     * @param pattern 模板内容
+     * @return 格式化对象
+     */
+    public static DateTimeFormatter getFormatter(String pattern) {
         if (TextUtils.isEmpty(pattern)) {
-            return pattern;
+            return null;
         }
         switch (pattern) {
             case DATE_TIME_FORMAT_PATTERN:
-                return DATE_TIME_FORMATTER.format(temporal);
+                return DATE_TIME_FORMATTER;
             case DATE_FORMAT_PATTERN:
-                return DATE_FORMATTER.format(temporal);
+                return DATE_FORMATTER;
             case TIME_FORMAT_PATTERN:
-                return TIME_FORMATTER.format(temporal);
+                return TIME_FORMATTER;
             case HOUR_MINUTE_FORMAT_PATTERN:
-                return HOUR_MINUTE_FORMATTER.format(temporal);
+                return HOUR_MINUTE_FORMATTER;
             default:
-                return DateTimeFormatter.ofPattern(pattern).format(temporal);
+                return DateTimeFormatter.ofPattern(pattern);
         }
     }
 
@@ -264,7 +273,7 @@ public class LocalDateTimeUtils {
             localDate = null;
         }
         if (localDate == null && !fieldValues.isEmpty()) {
-            localDate = EPOCH;
+            localDate = LocalDate.EPOCH;
             for (Map.Entry<TemporalField, Long> entry : fieldValues.entrySet()) {
                 localDate = localDate.with(entry.getKey(), entry.getValue());
             }
@@ -359,7 +368,7 @@ public class LocalDateTimeUtils {
         if (!field.range().isValidValue(value)) {
             return 0;
         }
-        long nano = field.getBaseUnit().getDuration().getNano();
+        long nano = field.getBaseUnit().getDuration().toNanos();
         return value * nano;
     }
 
@@ -424,7 +433,7 @@ public class LocalDateTimeUtils {
         LocalDate date = resolveDate(parsed, formatter);
         LocalTime time = resolveTime(parsed, formatter);
         if (date != null || time != null) {
-            return LocalDateTime.of(date != null ? date : EPOCH, time != null ? time : LocalTime.MIN);
+            return LocalDateTime.of(date != null ? date : LocalDate.EPOCH, time != null ? time : LocalTime.MIN);
         }
         // 日期数字无效
         return null;
