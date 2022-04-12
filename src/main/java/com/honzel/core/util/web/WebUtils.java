@@ -635,6 +635,15 @@ public class WebUtils {
     /**
      * 获取连接
      * @param url 请求url
+     * @return 返回连接
+     */
+    public static HttpURLConnection getConnection(String url) throws IOException {
+        return getConnection(url, null, null, null);
+    }
+
+    /**
+     * 获取连接
+     * @param url 请求url
      * @param method 请求方法
      * @param contentType Content Type
      * @param headerMap 请求头
