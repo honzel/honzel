@@ -308,36 +308,44 @@ public class LocalDateTimeConverter extends AbstractConverter {
 				|| Calendar.class.equals(toType) || Date.class.equals(toType)) {
 			long seconds;
 			if (temporal.isSupported(ChronoField.INSTANT_SECONDS)) {
-				seconds = temporal.get(ChronoField.INSTANT_SECONDS);
+				seconds = temporal.getLong(ChronoField.INSTANT_SECONDS);
 			} else {
 				if (temporal.isSupported(ChronoField.EPOCH_DAY)) {
-					seconds = TimeUnit.DAYS.toSeconds(temporal.get(ChronoField.EPOCH_DAY));
+					seconds = TimeUnit.DAYS.toSeconds(temporal.getLong(ChronoField.EPOCH_DAY));
 				} else {
 					seconds = 0L;
 				}
 				if (temporal.isSupported(ChronoField.SECOND_OF_DAY)) {
-					seconds += temporal.get(ChronoField.SECOND_OF_DAY);
+					seconds += temporal.getLong(ChronoField.SECOND_OF_DAY);
 				}
 			}
 			long nano;
 			if (temporal.isSupported(ChronoField.NANO_OF_SECOND)) {
-				nano = temporal.get(ChronoField.NANO_OF_SECOND);
+				nano = temporal.getLong(ChronoField.NANO_OF_SECOND);
 			} else {
 				nano = 0L;
 			}
+			Instant instant = Instant.ofEpochSecond(seconds, nano);
 			if (Instant.class.equals(toType)) {
-				return Instant.ofEpochSecond(seconds, nano);
+				return instant;
 			}
-			long time = TimeUnit.SECONDS.toMillis(seconds) + TimeUnit.NANOSECONDS.toMillis(nano);
+			if (Long.class.equals(toType) || Long.TYPE.equals(toType)) {
+				return instant.toEpochMilli();
+			}
+			ZoneId zoneId = temporal.query(TemporalQueries.zone());
+			if (zoneId == null) {
+				zoneId = ZoneOffset.UTC;
+			}
+			ZoneId systemDefault = ZoneId.systemDefault();
+			if (!zoneId.equals(systemDefault)) {
+				instant = LocalDateTime.ofInstant(instant, zoneId).atZone(systemDefault).toInstant();
+			}
 			if (Date.class.equals(toType)) {
-				return new Date(time);
+				return new Date(instant.toEpochMilli());
 			}
-			if (Calendar.class.equals(toType)) {
-				Calendar calendar = Calendar.getInstance();
-				calendar.setTimeInMillis(time);
-				return calendar;
-			}
-			return time;
+			Calendar calendar = Calendar.getInstance();
+			calendar.setTimeInMillis(instant.toEpochMilli());
+			return calendar;
 		}
 		return null;
 	}

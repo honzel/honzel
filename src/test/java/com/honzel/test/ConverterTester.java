@@ -5,6 +5,8 @@ import com.honzel.core.util.converter.DateConverter;
 
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Calendar;
 import java.util.Date;
 
@@ -13,15 +15,15 @@ public class ConverterTester {
 	public static void main(String[] args) {
 		ConverterTester tester = new ConverterTester();
 		tester.testAbstractArrayConverter();
-		tester.testDateConverter();
+//		tester.testDateConverter();
 	}
 	
 	public void testAbstractArrayConverter() {
 		registerConverters();
-		String input = "2014-11-20, 2014-11-22";
-		Object result = BeanHelper.convert(input, java.sql.Date[].class);
+		String input = "2014-11-20 23:00,2014-11-22 22:222";
+		Object result = BeanHelper.convert(input, LocalDateTime[].class);
 		System.out.println(BeanHelper.convert(result, Date.class));
-		System.out.println(BeanHelper.convert(result, Date[].class));
+		System.out.println(BeanHelper.convert(BeanHelper.convert(result, Calendar[].class), String.class));
 		System.out.println(BeanHelper.convert(result, String.class));
 	}
 

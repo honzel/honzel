@@ -78,7 +78,7 @@ public class TypeConverter extends AbstractConverter {
 		}
 		Converter converter = defaultConverter;
 		int top = converters.size();
-		while (top-- > 0 && converter instanceof AbstractConverter) {
+		while (converter instanceof AbstractConverter && top-- > 0) {
 			Converter nextConverter;
 			if ((nextConverter = ((AbstractConverter) converter).defaultConverter) == findConverter) {
 				return null;
@@ -124,7 +124,7 @@ public class TypeConverter extends AbstractConverter {
 	protected Converter lookup(Object value, Class targetType) {
 		Converter converter = (Converter) converters.get(targetType);
 		if (converter == null && targetType.isArray()) {
-			converter = getArrayConverter();
+			return getArrayConverter();
 		}
 		if (converter == null && targetType.isEnum()) {
 			converter = (Converter) converters.get(Enum.class);

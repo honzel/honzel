@@ -16,5 +16,5 @@ public interface Converter {
      * @param toType Data type to which this value should be converted
 	 * @return The converted  value.
 	 */
-	public Object convert(Object value, Class toType); 
+	Object convert(Object value, Class toType);
 }
