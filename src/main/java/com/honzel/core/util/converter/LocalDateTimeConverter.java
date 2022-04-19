@@ -196,12 +196,10 @@ public class LocalDateTimeConverter extends AbstractConverter {
 
 	private LocalDateTime parseByFormatter(String text, Class<?> toType) {
 		int index = beginIndexOfPatterns(toType);
+		ParsePosition pos = new ParsePosition(NumberConstants.INTEGER_ZERO);
 		if (index >= 0) {
-			ParsePosition pos = new ParsePosition(NumberConstants.INTEGER_ZERO);
 			do {
 				try {
-					pos.setErrorIndex(NumberConstants.INTEGER_MINUS_ONE);
-					pos.setIndex(NumberConstants.INTEGER_ZERO);
 					DateTimeFormatter formatter = formatters[index];
 					LocalDateTime time;
 					if (formatter != null && (time = LocalDateTimeUtils.parse(text, pos, formatter)) != null) {
@@ -211,9 +209,23 @@ public class LocalDateTimeConverter extends AbstractConverter {
 				} catch (RuntimeException e) {
 					throwException(e, null);
 				}
+				pos.setErrorIndex(NumberConstants.INTEGER_MINUS_ONE);
+				pos.setIndex(NumberConstants.INTEGER_ZERO);
 			} while (index >= 0);
 		}
-		return null;
+		LocalDate localDate  = LocalDateTimeUtils.parseDate(text, pos, DateTimeFormatter.ISO_LOCAL_DATE, "T ");
+		if (LocalDate.class.equals(toType)) {
+			return localDate != null ? LocalDateTime.of(localDate, LocalTime.MIN) : null;
+		}
+		if (localDate == null) {
+			pos.setErrorIndex(NumberConstants.INTEGER_MINUS_ONE);
+			pos.setIndex(NumberConstants.INTEGER_ZERO);
+		}
+		LocalTime localTime = LocalDateTimeUtils.parseTime(text, pos, DateTimeFormatter.ISO_LOCAL_TIME, TextUtils.EMPTY);
+		if (pos.getErrorIndex() >= NumberConstants.INTEGER_ZERO || (localDate == null && localTime == null)) {
+			return null;
+		}
+		return LocalDateTime.of(localDate != null ? localDate : LocalDateTimeUtils.EPOCH_DATE, localTime != null ? localTime : LocalTime.MIN);
 	}
 
 	protected Object convertToType(Object value, Class toType) throws ConversionException {
@@ -287,7 +299,7 @@ public class LocalDateTimeConverter extends AbstractConverter {
 			LocalDate localDate = temporal.query(TemporalQueries.localDate());
 			LocalTime localTime = temporal.query(TemporalQueries.localTime());
 			if (localDate != null || localTime != null) {
-				return LocalDateTime.of(localDate != null ? localDate : LocalDate.EPOCH, localTime != null ? localTime : LocalTime.MIDNIGHT);
+				return LocalDateTime.of(localDate != null ? localDate : LocalDateTimeUtils.EPOCH_DATE, localTime != null ? localTime : LocalTime.MIN);
 			} else {
 				return null;
 			}

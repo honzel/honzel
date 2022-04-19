@@ -198,7 +198,6 @@ public class TypeConverter extends AbstractConverter {
 		register(Enum.class, standardConverter);
 		// local date time converter
 		LocalDateTimeConverter dateTimeConverter = new LocalDateTimeConverter(standardConverter);
-		dateTimeConverter.setPatterns(new Class[]{LocalDateTime.class}, new String[]{LocalDateTimeUtils.DATE_TIME_FORMAT_PATTERN});
 		register(LocalDate.class, dateTimeConverter);
 		register(LocalTime.class, dateTimeConverter);
 		register(LocalDateTime.class, dateTimeConverter);

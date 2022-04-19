@@ -56,6 +56,7 @@ public class LocalDateTimeUtils {
     private static final Map<TemporalUnit, List<TemporalField>> BASE_UNIT_FIELD_LIST_MAP;
     // 解析标准单位
     private static final TemporalUnit[] UNITS = Arrays.copyOf(ChronoUnit.values(), ChronoUnit.FOREVER.ordinal());
+    public static final LocalDate EPOCH_DATE = LocalDate.of(1970, 1, 1);;
 
     static {
         BASE_UNIT_FIELD_LIST_MAP = new HashMap<>();
@@ -273,7 +274,7 @@ public class LocalDateTimeUtils {
             localDate = null;
         }
         if (localDate == null && !fieldValues.isEmpty()) {
-            localDate = LocalDate.EPOCH;
+            localDate = EPOCH_DATE;
             for (Map.Entry<TemporalField, Long> entry : fieldValues.entrySet()) {
                 localDate = localDate.with(entry.getKey(), entry.getValue());
             }
@@ -433,7 +434,7 @@ public class LocalDateTimeUtils {
         LocalDate date = resolveDate(parsed, formatter);
         LocalTime time = resolveTime(parsed, formatter);
         if (date != null || time != null) {
-            return LocalDateTime.of(date != null ? date : LocalDate.EPOCH, time != null ? time : LocalTime.MIN);
+            return LocalDateTime.of(date != null ? date : EPOCH_DATE, time != null ? time : LocalTime.MIN);
         }
         // 日期数字无效
         return null;
