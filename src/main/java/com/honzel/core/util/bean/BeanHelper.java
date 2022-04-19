@@ -426,7 +426,7 @@ public class BeanHelper {
 			return copyOnCondition(origin, target, (BiPredicate<PropertyDescriptor, Object>) null);
 		}
 		return copyOnCondition(origin, target, (d, v) -> {
-					if (!matchTargetProperty(names, d.getName())) {
+					if (matchTargetProperty(names, d.getName())) {
 						return false;
 					}
 					if (preValueCondition == null) {
