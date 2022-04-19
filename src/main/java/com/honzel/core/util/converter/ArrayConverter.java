@@ -1,6 +1,7 @@
 package com.honzel.core.util.converter;
 
 import com.honzel.core.util.exception.ConversionException;
+import com.honzel.core.util.text.TextUtils;
 
 import java.lang.reflect.Array;
 
@@ -76,15 +77,15 @@ public class ArrayConverter extends AbstractConverter {
 		if (value.getClass().isArray()) {
 			int length = Array.getLength(value);
 			if (length == 0)
-				return "";
+				return TextUtils.EMPTY;
 			String item = (String) elementConverter.convert(Array.get(value, 0), String.class);
 			if (length == 1) {
-				return item == null ? "" : item;
+				return item == null ? TextUtils.EMPTY : item;
 			}
-			StringBuffer buf = new StringBuffer(item == null ? "" : item);
+			StringBuilder buf = new StringBuilder(item == null ? TextUtils.EMPTY : item);
 			for (int i = 1; i < length; i++) {
 				item = (String) elementConverter.convert(Array.get(value, i), String.class);
-				buf.append(delimiter).append(item == null ? "" : item);
+				buf.append(delimiter).append(item == null ? TextUtils.EMPTY : item);
 			}
 			return buf.toString();
 		}

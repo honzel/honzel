@@ -1,6 +1,7 @@
 package com.honzel.core.util.converter;
 
 import com.honzel.core.util.exception.ConversionException;
+import com.honzel.core.util.text.TextUtils;
 
 import java.lang.reflect.Array;
 import java.math.BigDecimal;
@@ -54,7 +55,7 @@ public class StandardConverter  extends AbstractConverter  {
 	protected Object convertToType(Object value, Class toType)
 			throws ConversionException {
 		Object firstValue = fetchFirst(value, toType);
-		if(firstValue == null || "".equals(firstValue)) {
+		if (TextUtils.isEmpty(firstValue)) {
 			return getDefault(firstValue, toType);
 		}
 		if (toType.isPrimitive()) {
@@ -73,8 +74,8 @@ public class StandardConverter  extends AbstractConverter  {
 		
 		if ((toType == Long.class) || (toType == Long.TYPE))
 			return longValue(firstValue);
-		
-		if(toType == Class.class) {
+
+		if (toType == Class.class) {
 			return classValue(convertToString(firstValue));
 		}
 		if ((toType == Byte.class) || (toType == Byte.TYPE))
@@ -100,9 +101,9 @@ public class StandardConverter  extends AbstractConverter  {
 		
 		return super.convertToType(value, toType);
 	}
-	
-	
-	 public boolean booleanValue(Object value) {
+
+
+	private boolean booleanValue(Object value) {
 	        if (value == null) return false;
 	        
 	        Class c = value.getClass();
@@ -121,7 +122,7 @@ public class StandardConverter  extends AbstractConverter  {
 	        return true; // non-null
 	    }
 	    
-		public Enum enumValue(Class toClass, Object o) {
+		private Enum enumValue(Class toClass, Object o) {
 	        if(o != null) {
 	        	return Enum.valueOf(toClass, convertToString(o));
 	        }
@@ -166,7 +167,7 @@ public class StandardConverter  extends AbstractConverter  {
 	     * @throws NumberFormatException
 	     *             if the given object can't be understood as a long integer
 	     */
-	    public long longValue(Object value) throws NumberFormatException {
+		private long longValue(Object value) throws NumberFormatException {
 	        if (value == null)
 	            return 0L;
 
@@ -178,10 +179,10 @@ public class StandardConverter  extends AbstractConverter  {
 	            return ((Number) value).longValue();
 
 	        if (c == Boolean.class)
-	            return ((Boolean) value).booleanValue() ? 1 : 0;
+	            return (Boolean) value ? 1 : 0;
 
 	        if (c == Character.class)
-	            return ((Character) value).charValue();
+	            return (Character) value;
 
 	        return Long.parseLong(convertToString(value));
 	    }
@@ -195,7 +196,7 @@ public class StandardConverter  extends AbstractConverter  {
 	     * @throws NumberFormatException
 	     *             if the given object can't be understood as a double
 	     */
-	    public double doubleValue(Object value) throws NumberFormatException {
+		private double doubleValue(Object value) throws NumberFormatException {
 	        if (value == null)  return 0.0;
 	        
 	        if(value instanceof String)
@@ -223,7 +224,7 @@ public class StandardConverter  extends AbstractConverter  {
 	     * @throws NumberFormatException
 	     *             if the given object can't be understood as a BigInteger
 	     */
-	    public BigInteger bigIntValue(Object value)
+		private BigInteger bigIntValue(Object value)
 	            throws NumberFormatException {
 	        if (value == null)
 	            return BigInteger.valueOf(0L);
@@ -259,7 +260,7 @@ public class StandardConverter  extends AbstractConverter  {
 	     * @throws NumberFormatException
 	     *             if the given object can't be understood as a BigDecimal
 	     */
-	    public BigDecimal bigDecValue(Object value)
+		private BigDecimal bigDecValue(Object value)
 	            throws NumberFormatException {
 	        if (value == null)
 	            return BigDecimal.valueOf(0L);
@@ -300,14 +301,14 @@ public class StandardConverter  extends AbstractConverter  {
 	     */
 		private String getTypeName(Class type) {
 			int dimensions = 0;
-			while(type.isArray()) {
+			while (type.isArray()) {
 				type = type.getComponentType();
 				dimensions ++;
 			}
-			String typeName = type.getName();
+			StringBuilder typeName = new StringBuilder(type.getName());
 			for(int i = 0; i < dimensions; i ++)
-				typeName += "[]";
-			return typeName;
+				typeName.append("[]");
+			return typeName.toString();
 		}
 	
 		public Object getDefault(Object value, Class toType) {

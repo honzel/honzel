@@ -4,14 +4,17 @@ import com.honzel.core.constant.ArrayConstants;
 import com.honzel.core.util.ConcurrentReferenceHashMap;
 import com.honzel.core.util.converter.TypeConverter;
 import com.honzel.core.util.exception.PropertyException;
+import com.honzel.core.vo.Entry;
 
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.Array;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.function.BiPredicate;
 
 /**
  * 
@@ -122,16 +125,12 @@ public class SimplePropertyUtilsBean {
 	     						+ beanClass.getName() + "' isn't exists.");
 	     			}
 	     		}
-	     		if (typeConverter != null) {
-	     			value = typeConverter.convert(value, descriptor.getPropertyType());
-	     		}
 				Method writeMethod = descriptor.getWriteMethod();
 	     		if (writeMethod == null) {
 					throw new PropertyException("The setter of property  '" + key + "' of bean type  '"
 							+ beanClass.getName() + "' isn't exists.");
 				}
-				writeMethod.invoke(bean, value);
-	     		return true;
+	     		return invokeWriteMethod(bean, descriptor, value);
 	     	} catch (PropertyException e) {
 				error(e, null);
 	     	} catch (Exception e) {
@@ -304,7 +303,7 @@ public class SimplePropertyUtilsBean {
 		return null;
 	}
 
-	public void copyBeanByBean(Object target, Object source) {
+	void copyBeanByBean(Object target, Object source) {
 		PropertyDescriptor[] descriptors0 = this.getPropertyDescriptors(source.getClass());
 		if (descriptors0.length == 0) {
 			return;
@@ -314,42 +313,32 @@ public class SimplePropertyUtilsBean {
 		if (descriptors == null) {
             return;
 		}
-		for (int i = 0; i < descriptors0.length; ++ i) {
-			PropertyDescriptor descriptor0 = descriptors0[i];
+		for (PropertyDescriptor descriptor0 : descriptors0) {
 			if (descriptor0 != null && descriptor0.getReadMethod() != null) {
-				PropertyDescriptor descriptor = (PropertyDescriptor)descriptors.get(descriptor0.getName());
-				if(descriptor != null && descriptor.getWriteMethod() != null) {
-					try {
-						Object value = descriptor0.getReadMethod().invoke(source, (Object[])null);
-						if (typeConverter != null) {
-							value = this.typeConverter.convert(value, descriptor.getPropertyType());
-						}
-						descriptor.getWriteMethod().invoke(target, value);
-					} catch (Exception e) {
-						this.error(e, "Fail to set the specified property '" + descriptor.getName() + "' for the specified bean of the type '" + targetType.getName() + "', reason: " + e.toString());
-					}
+				PropertyDescriptor descriptor = (PropertyDescriptor) descriptors.get(descriptor0.getName());
+				if (descriptor != null && descriptor.getWriteMethod() != null) {
+					invokeWriteMethod(target, descriptor, invokeReadMethod(source, descriptor0));
 				}
 			}
 		}
 	}
 
-	public void copyMapByBean(Map target, Object source) {
+	void copyMapByBean(Map target, Object source) {
 		Class sourceType = source.getClass();
 		PropertyDescriptor[] descriptors0 = getPropertyDescriptors(sourceType);
-		for(int i = 0; i < descriptors0.length; ++ i) {
-			PropertyDescriptor descriptor = descriptors0[i];
+		for (PropertyDescriptor descriptor : descriptors0) {
 			if (descriptor == null || descriptor.getReadMethod() == null) {
 				continue;
 			}
 			if ("class".equals(descriptor.getName())) {
 				continue;
 			}
-            try {
-                Object value = descriptor.getReadMethod().invoke(source, (Object[])null);
-                target.put(descriptor.getName(), value);
-            } catch (Exception e) {
-                this.error(e, "Fail to get the specified property '" + descriptor.getName() + "' for  the specified bean of the type '" + sourceType.getName() + "', reason: " + e.toString());
-            }
+			try {
+				Object value = descriptor.getReadMethod().invoke(source, (Object[]) null);
+				target.put(descriptor.getName(), value);
+			} catch (Exception e) {
+				this.error(e, "Fail to get the specified property '" + descriptor.getName() + "' for  the specified bean of the type '" + sourceType.getName() + "', reason: " + e.toString());
+			}
 		}
 
 	}
@@ -378,7 +367,7 @@ public class SimplePropertyUtilsBean {
        if (descriptorArray  !=  null) {
            return descriptorArray;
        }
-       BeanInfo beanInfo = null;
+       BeanInfo beanInfo;
        try {
            beanInfo = Introspector.getBeanInfo(beanClass);
        } catch (IntrospectionException e) {
@@ -392,21 +381,21 @@ public class SimplePropertyUtilsBean {
        descriptorArray = new Object[2];
        descriptorArray[DESCRIPTOR_MAP] = descriptorMap;
        descriptorArray[DESCRIPTORS] = descriptors;
-       for (int i = 0; i < descriptors.length; i++) {
-	       if (descriptors[i] != null) {
-	       		descriptorMap.put(descriptors[i].getName(), descriptors[i]);
-	       		try {
-					Method method = descriptors[i].getReadMethod();
+		for (PropertyDescriptor descriptor : descriptors) {
+			if (descriptor != null) {
+				descriptorMap.put(descriptor.getName(), descriptor);
+				try {
+					Method method = descriptor.getReadMethod();
 					if (method != null) {
 						method.setAccessible(true);
 					}
-					method = descriptors[i].getWriteMethod();
+					method = descriptor.getWriteMethod();
 					if (method != null) {
 						method.setAccessible(true);
 					}
-				} catch (SecurityException e) {}
-	       }
-       }
+				} catch (SecurityException ignored) {}
+			}
+		}
        getInstance().descriptorsCache.put(beanClass, descriptorArray);
        return descriptorArray;
 	}
@@ -419,7 +408,7 @@ public class SimplePropertyUtilsBean {
      * @param beanClass Bean class for which property descriptors are requested
 	 * @return the property descriptors for the specified class
 	 */
-	public Map getDescriptorMap(Class beanClass) {
+	Map getDescriptorMap(Class beanClass) {
 		Object[] descriptorArray = getDescriptorArray(beanClass);
 		if (descriptorArray != null) {
 			return (Map) descriptorArray[DESCRIPTOR_MAP];
@@ -449,22 +438,158 @@ public class SimplePropertyUtilsBean {
 	 * @param info error info
 	 */
 	public void error(Throwable e, String info) {
-		PropertyException exception = null;
+		PropertyException exception;
 		if (e == null) {
 			exception = new PropertyException(info);
 		} else if (info == null) {
 			if (e instanceof PropertyException) {
 				exception = (PropertyException) e;
 			} else {
-				exception = new PropertyException(e);
+				exception = new PropertyException(e instanceof InvocationTargetException ? ((InvocationTargetException) e).getTargetException() : e);
 			}
 		} else {
-			exception = new PropertyException(info, e);
+			exception = new PropertyException(info, e instanceof InvocationTargetException ? ((InvocationTargetException) e).getTargetException() : e);
 		}
 		if (disableException) {
 			exception.printStackTrace();
 		} else {
 			throw exception;
 		}
+	}
+
+//	@SuppressWarnings("unchecked")
+	public boolean copyOnCondition(Object source, Object target, BiPredicate<PropertyDescriptor, Object> condition) {
+		if (source == null || target == null) {
+			return false;
+		}
+		Map<String, PropertyDescriptor> targetDescriptorMap = getDescriptorMap(target.getClass());
+		if (targetDescriptorMap == null) {
+			return false;
+		}
+		boolean result = false;
+		if (source instanceof Map) {
+			// 原类型为map
+			for (Map.Entry<String, Object> entry : ((Map<String, Object>) source).entrySet()) {
+				PropertyDescriptor targetDescriptor = targetDescriptorMap.get(entry.getKey());
+				if (targetDescriptor == null || targetDescriptor.getWriteMethod() == null) {
+					// 没有目标setter
+					continue;
+				}
+				// 获取原属性值
+				Object value = entry.getValue();
+				// 条件校验
+				if (condition != null && !condition.test(targetDescriptor, value)) {
+					continue;
+				}
+				if (invokeWriteMethod(target, targetDescriptor, value)) {
+					result = true;
+				}
+			}
+		} else {
+			// 原始类型为bean
+			PropertyDescriptor[] sourceDescriptors = getPropertyDescriptors(source.getClass());
+			for (PropertyDescriptor sourceDescriptor : sourceDescriptors) {
+				if (sourceDescriptor.getReadMethod() == null) {
+					// 没有getter
+					continue;
+				}
+				PropertyDescriptor targetDescriptor = targetDescriptorMap.get(sourceDescriptor.getName());
+				if (targetDescriptor == null || targetDescriptor.getWriteMethod() == null) {
+					// 没有目标setter
+					continue;
+				}
+				// 获取原属性值
+				Object value = invokeReadMethod(source, sourceDescriptor);
+				// 条件校验
+				if (condition != null && !condition.test(targetDescriptor, value)) {
+					continue;
+				}
+				if (invokeWriteMethod(target, targetDescriptor, value)) {
+					result = true;
+				}
+			}
+		}
+		return result;
+	}
+
+	private boolean invokeWriteMethod(Object bean, PropertyDescriptor descriptor, Object value) {
+		if (typeConverter != null) {
+			typeConverter.convert(value, descriptor.getPropertyType());
+		}
+		try {
+			descriptor.getWriteMethod().invoke(bean, value);
+			return true;
+		} catch (Exception e) {
+			error(e, "Fail to set the property '" + descriptor.getName() + "' for the bean of the type '"
+					+ bean.getClass().getName() + "', reason: " + e.toString());
+		}
+		return false;
+	}
+	Object invokeReadMethod(Object bean, PropertyDescriptor descriptor) {
+		try {
+			return descriptor.getReadMethod().invoke(bean, ArrayConstants.EMPTY_OBJECT_ARRAY);
+		} catch (Exception e) {
+			error(e, "Fail to get the property '" + descriptor.getName() + "' for the bean of the type '"
+					+ bean.getClass().getName() + "', reason: " + e.toString());
+		}
+		return null;
+	}
+
+	/**
+	 * 复制原对象中符合条件的属性到目标对象
+	 *
+	 * @param source    原对象
+	 * @param target    目标对象
+	 * @param condition 条件
+	 * @return 如果所有属性都没进行复制操作则返回false, 否则返回true
+	 */
+//	@SuppressWarnings("unchecked")
+	public boolean copyToMapOnCondition(Object source, Map<String, Object> target, BiPredicate<Entry<String, Object>, Object> condition) {
+		if (source == null || target == null) {
+			return false;
+		}
+		boolean result = false;
+		if (source instanceof Map) {
+			if (condition == null) {
+				if (((Map) source).isEmpty()) {
+					return false;
+				}
+				target.putAll((Map<String, Object>) source);
+				return true;
+			}
+			Entry<String, Object> targetEntry = new Entry();
+			// 原类型为map
+			for (Map.Entry<String, Object> entry : ((Map<String, Object>) source).entrySet()) {
+				// 获取原属性值
+				targetEntry.setKey(entry.getKey());
+				targetEntry.setValue(target.get(entry.getKey()));
+				// 条件校验
+				if (condition.test(targetEntry, entry.getValue())) {
+					target.put(entry.getKey(), entry.getValue());
+					result = true;
+				}
+			}
+		} else {
+			// 原始类型为bean
+			Entry<String, Object> targetEntry = new Entry();
+			PropertyDescriptor[] sourceDescriptors = getPropertyDescriptors(source.getClass());
+			for (PropertyDescriptor sourceDescriptor : sourceDescriptors) {
+				if (sourceDescriptor.getReadMethod() == null) {
+					// 没有getter
+					continue;
+				}
+				targetEntry.setKey(sourceDescriptor.getName());
+				targetEntry.setValue(target.get(targetEntry.getKey()));
+				// 获取原属性值
+				Object value = invokeReadMethod(source, sourceDescriptor);
+				// 条件校验
+				if (condition != null && !condition.test(targetEntry, value)) {
+					continue;
+				}
+				target.put(sourceDescriptor.getName(), value);
+				result = true;
+			}
+		}
+		return result;
 	}
 }

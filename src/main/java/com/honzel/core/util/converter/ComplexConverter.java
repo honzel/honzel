@@ -86,34 +86,31 @@ public class ComplexConverter extends TypeConverter {
 	
 
 	private Converter lookupAncestors(Class sourceType, Map sourceConverters, boolean fetchSuperClass) {
-		Converter converter = null;
-		if(fetchSuperClass && !sourceType.isInterface()) {
+		Converter converter;
+		if (fetchSuperClass && !sourceType.isInterface()) {
 			Class supperClass = sourceType.getSuperclass();
-			if(supperClass != null) {
+			if (supperClass != null) {
 				converter = (Converter) sourceConverters.get(supperClass);
-				if(converter == null && !Object.class.equals(supperClass)) {
+				if (converter == null && !Object.class.equals(supperClass)) {
 					converter = lookupAncestors(supperClass, sourceConverters, true);
-				}
-				if(converter != null) {
-					return converter;
-				}
-			}
-		}
-		Class[] superTypes = sourceType.getInterfaces();
-		if (superTypes != null) {
-			for (int i = 0; i < superTypes.length; i++) {
-				converter = (Converter) sourceConverters.get(superTypes[i]);
-				if (converter == null) {
-					 converter = lookupAncestors(superTypes[i], sourceConverters, false);
 				}
 				if (converter != null) {
 					return converter;
 				}
 			}
 		}
-		if (converter == null) {
-			converter = (Converter) sourceConverters.get(null);
+		Class[] superTypes = sourceType.getInterfaces();
+		if (superTypes != null) {
+			for (Class superType : superTypes) {
+				converter = (Converter) sourceConverters.get(superType);
+				if (converter == null) {
+					converter = lookupAncestors(superType, sourceConverters, false);
+				}
+				if (converter != null) {
+					return converter;
+				}
+			}
 		}
-		return converter;
+		return (Converter) sourceConverters.get(null);
 	}
 }

@@ -9,7 +9,6 @@ import com.honzel.core.vo.Entry;
 
 import java.beans.PropertyDescriptor;
 import java.lang.invoke.SerializedLambda;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -311,249 +310,203 @@ public class BeanHelper {
 		return null;
 	}
 
-	@SuppressWarnings("unchecked")
+	/**
+	 * <p>Copy property values from the "origin" bean to the "destination" bean
+	 * for all cases where the property names are the same and on the specified condition (even though the
+	 * actual getter and setter methods might have been customized via
+	 * <code>BeanInfo</code> classes or specified).
+	 *
+	 * <p>If the origin "bean" is actually a <code>Map</code>, it is assumed
+	 * to contain String-valued <strong>simple</strong> property names as the keys, pointing
+	 * at the corresponding property values that will be set in the destination
+	 * bean.
+	 *
+	 * @param source Origin bean whose properties are retrieved
+	 * @param target Destination bean whose properties are modified
+	 * @param condition the condition
+	 * @return returns false when none property is copied, otherwise returns true
+	 */
 	public static boolean copyOnCondition(Object source, Object target, BiPredicate<PropertyDescriptor, Object> condition) {
-		if (source == null || target == null) {
-			return false;
-		}
-		boolean result = false;
-		try {
-			Map<String, PropertyDescriptor> targetDescriptorMap = BeanHelper.getPropertyDescriptorMap(target.getClass());
-			if (source instanceof Map) {
-				// 原类型为map
-				for (Map.Entry<String, Object> entry : ((Map<String, Object>) source).entrySet()) {
-					PropertyDescriptor targetDescriptor = targetDescriptorMap.get(entry.getKey());
-					if (targetDescriptor == null || targetDescriptor.getWriteMethod() == null) {
-						// 没有目标setter
-						continue;
-					}
-					// 获取原属性值
-					Object value = entry.getValue();
-					// 条件校验
-					if (condition != null && !condition.test(targetDescriptor, value)) {
-						continue;
-					}
-					Class<?> propertyType = targetDescriptor.getPropertyType();
-					targetDescriptor.getWriteMethod().invoke(target, BeanHelper.convert(value, propertyType));
-					result = true;
-				}
-			} else {
-				// 原始类型为bean
-				PropertyDescriptor[] sourceDescriptors = getPropertyDescriptors(source.getClass());
-				for (PropertyDescriptor sourceDescriptor : sourceDescriptors) {
-					if (sourceDescriptor.getReadMethod() == null) {
-						// 没有getter
-						continue;
-					}
-					PropertyDescriptor targetDescriptor = targetDescriptorMap.get(sourceDescriptor.getName());
-					if (targetDescriptor == null || targetDescriptor.getWriteMethod() == null) {
-						// 没有目标setter
-						continue;
-					}
-					// 获取原属性值
-					Object value = sourceDescriptor.getReadMethod().invoke(source, ArrayConstants.EMPTY_OBJECT_ARRAY);
-					// 条件校验
-					if (condition != null && !condition.test(targetDescriptor, value)) {
-						continue;
-					}
-					Class<?> propertyType = targetDescriptor.getPropertyType();
-					targetDescriptor.getWriteMethod().invoke(target, BeanHelper.convert(value, propertyType));
-					result = true;
-				}
-			}
-		} catch (Exception e) {
-			throw getInvokeException(e);
-		}
-		return result;
+		return SimplePropertyUtilsBean.getInstance().copyOnCondition(source, target, condition);
 	}
 
 	/**
-	 * 复制原对象中符合条件的属性到目标对象
+	 * <p>Copy property values from the "origin" bean to the "destination" map
+	 * for all cases where the property names are the same with map key and on the specified value condition is pass.
 	 *
-	 * @param source    原对象
-	 * @param target    目标对象
-	 * @param condition 条件
-	 * @return 如果所有属性都没进行复制操作则返回false, 否则返回true
+	 * <p>If the origin "bean" is actually a <code>Map</code>, it is assumed
+	 * to contain String-valued <strong>simple</strong> property names as the keys, pointing
+	 * at the corresponding property values that will be put in the destination
+	 * map.
+	 *
+	 * @param origin Origin bean whose properties are retrieved
+	 * @param target Destination bean whose properties are modified
+	 * @param condition the condition
+	 * @return returns false when none property is copied, otherwise returns true
 	 */
-	@SuppressWarnings("unchecked")
-	public static boolean copyToMapOnCondition(Object source, Map<String, Object> target, BiPredicate<Entry<String, Object>, Object> condition) {
-		if (source == null || target == null) {
-			return false;
-		}
-		boolean result = false;
-		if (source instanceof Map) {
-			if (condition == null) {
-				if (((Map) source).isEmpty()) {
-					return false;
-				}
-				target.putAll((Map<String, Object>) source);
-				return true;
-			}
-			Entry<String, Object> targetEntry = new Entry();
-			// 原类型为map
-			for (Map.Entry<String, Object> entry : ((Map<String, Object>) source).entrySet()) {
-				// 获取原属性值
-				targetEntry.setKey(entry.getKey());
-				targetEntry.setValue(target.get(entry.getKey()));
-				// 条件校验
-				if (condition.test(targetEntry, entry.getValue())) {
-					target.put(entry.getKey(), entry.getValue());
-					result = true;
-				}
-			}
-		} else {
-			try {
-				// 原始类型为bean
-				Entry<String, Object> targetEntry = new Entry();
-				PropertyDescriptor[] sourceDescriptors = getPropertyDescriptors(source.getClass());
-				for (PropertyDescriptor sourceDescriptor : sourceDescriptors) {
-					if (sourceDescriptor.getReadMethod() == null) {
-						// 没有getter
-						continue;
-					}
-					targetEntry.setKey(sourceDescriptor.getName());
-					targetEntry.setValue(target.get(targetEntry.getKey()));
-					// 获取原属性值
-					Object value = sourceDescriptor.getReadMethod().invoke(source, ArrayConstants.EMPTY_OBJECT_ARRAY);
-					// 条件校验
-					if (condition != null && !condition.test(targetEntry, value)) {
-						continue;
-					}
-					target.put(sourceDescriptor.getName(), value);
-					result = true;
-				}
-			} catch (Exception e) {
-				throw getInvokeException(e);
-			}
-		}
-		return result;
+	public static boolean copyToMapOnCondition(Object origin, Map<String, Object> target, BiPredicate<Entry<String, Object>, Object> condition) {
+		return SimplePropertyUtilsBean.getInstance().copyToMapOnCondition(origin, target, condition);
 	}
 
 	/**
-	 * 复制原对象中符合值条件的属性到目标对象
+	 * <p>Copy property values from the "origin" bean to the "destination" bean
+	 * for all cases where the property names are the same and on the specified condition (even though the
+	 * actual getter and setter methods might have been customized via
+	 * <code>BeanInfo</code> classes or specified).
 	 *
-	 * @param source         原对象
-	 * @param target         目标对象
-	 * @param valueCondition 属性值条件
-	 * @return 如果所有属性都没进行复制操作则返回false, 否则返回true
+	 * <p>If the origin "bean" is actually a <code>Map</code>, it is assumed
+	 * to contain String-valued <strong>simple</strong> property names as the keys, pointing
+	 * at the corresponding property values that will be set in the destination
+	 * bean.
+	 *
+	 * @param origin Origin bean whose properties are retrieved
+	 * @param target Destination bean whose properties are modified
+	 * @param valueCondition the origin value condition
+	 * @return returns false when none property is copied, otherwise returns true
 	 */
 	@SuppressWarnings("unchecked")
-	public static boolean copyOnCondition(Object source, Object target, Predicate<Object> valueCondition) {
+	public static boolean copyOnCondition(Object origin, Object target, Predicate<Object> valueCondition) {
 		if (target instanceof Map) {
-			return copyToMapOnCondition(source, (Map<String, Object>) target, (e, v) -> valueCondition == null || valueCondition.test(v));
+			return copyToMapOnCondition(origin, (Map<String, Object>) target, (e, v) -> valueCondition == null || valueCondition.test(v));
 		} else {
-			return copyOnCondition(source, target, (d, v) -> valueCondition == null || valueCondition.test(v));
+			return copyOnCondition(origin, target, (d, v) -> valueCondition == null || valueCondition.test(v));
 		}
 	}
 
 	/**
-	 * 复制原对象中除了忽略属性之外的其他符合值条件的属性到目标对象
+	 * <p>Copy property values from the "origin" bean to the "destination" bean
+	 * for all cases where the property names are the same and on the specified condition (even though the
+	 * actual getter and setter methods might have been customized via
+	 * <code>BeanInfo</code> classes or specified).
 	 *
-	 * @param source           原对象
-	 * @param target           目标对象
-	 * @param valueCondition   复制的属性值条件
-	 * @param ignoreProperties 忽略不复制的属性, 如果不传或为空表示复制全部属性
-	 * @return 如果所有属性都没进行复制操作则返回false, 否则返回true
+	 * <p>If the origin "bean" is actually a <code>Map</code>, it is assumed
+	 * to contain String-valued <strong>simple</strong> property names as the keys, pointing
+	 * at the corresponding property values that will be set in the destination
+	 * bean.
+	 *
+	 * @param origin Origin bean whose properties are retrieved
+	 * @param target Destination bean whose properties are modified
+	 * @param valueCondition the origin value condition
+	 * @param ignoreProperties the ignore properties
+	 * @return returns false when none property is copied, otherwise returns true
 	 */
 	@SafeVarargs
-	public static <T> boolean copyOnCondition(Object source, T target, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
+	public static <T> boolean copyOnCondition(Object origin, T target, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
 		String[] names = parseGetterOrSetterNames(ignoreProperties);
 		if (names.length == 0 && valueCondition == null) {
 			// 没有条件
-			return copyOnCondition(source, target, (BiPredicate<PropertyDescriptor, Object>) null);
+			return copyOnCondition(origin, target, (BiPredicate<PropertyDescriptor, Object>) null);
 		}
-		return copyOnCondition(source, target, (d, v) -> !matchTargetProperty(names, d.getName()) && (valueCondition == null || valueCondition.test(v)));
+		return copyOnCondition(origin, target, (d, v) -> !matchTargetProperty(names, d.getName()) && (valueCondition == null || valueCondition.test(v)));
 	}
+
+
 	/**
-	 * 复制原对象中除了忽略属性之外的其他符合值条件的属性到目标对象
+	 * <p>Copy property values from the "origin" bean to the "destination" bean
+	 * for all cases where the property names are the same and on the specified condition (even though the
+	 * actual getter and setter methods might have been customized via
+	 * <code>BeanInfo</code> classes or specified).
 	 *
-	 * @param source           原对象
-	 * @param target           目标Map
-	 * @param valueCondition   复制的属性值条件
-	 * @param ignoreProperties 忽略不复制的属性, 如果不传或为空表示复制全部属性
-	 * @return 如果所有属性都没进行复制操作则返回false, 否则返回true
+	 * <p>If the origin "bean" is actually a <code>Map</code>, it is assumed
+	 * to contain String-valued <strong>simple</strong> property names as the keys, pointing
+	 * at the corresponding property values that will be set in the destination
+	 * bean.
+	 *
+	 * @param origin Origin bean whose properties are retrieved
+	 * @param target Destination bean whose properties are modified
+	 * @param oldValueCondition the target old value condition
+	 * @param ignoreProperties the ignore properties
+	 * @return returns false when none property is copied, otherwise returns true
 	 */
 	@SafeVarargs
-	public static <T> boolean copyToMapOnCondition(T source, Map<String, Object> target, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
+	public static <T> boolean copyOnOldValueCondition(Object origin, T target, Predicate<Object> oldValueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
+		String[] names = parseGetterOrSetterNames(ignoreProperties);
+		if (names.length == 0 && oldValueCondition == null) {
+			// 没有条件
+			return copyOnCondition(origin, target, (BiPredicate<PropertyDescriptor, Object>) null);
+		}
+		return copyOnCondition(origin, target, (d, v) -> {
+					if (!matchTargetProperty(names, d.getName())) {
+						return false;
+					}
+					if (oldValueCondition == null) {
+						return true;
+					}
+					Method readMethod = d.getReadMethod();
+					return readMethod != null && oldValueCondition.test(SimplePropertyUtilsBean.getInstance().invokeReadMethod(target, d));
+				});
+	}
+	/**
+	 * <p>Copy property values from the "origin" bean to the "destination" map
+	 * for all cases where the property names are the same with map key and on the specified value condition is pass.
+	 *
+	 * <p>If the origin "bean" is actually a <code>Map</code>, it is assumed
+	 * to contain String-valued <strong>simple</strong> property names as the keys, pointing
+	 * at the corresponding property values that will be put in the destination
+	 * map.
+	 *
+	 * @param origin Origin bean whose properties are retrieved
+	 * @param target Destination Map whose properties are modified
+	 * @param valueCondition the origin value condition
+	 * @param ignoreProperties the ignore properties
+	 * @return returns false when none property is copied, otherwise returns true
+	 */
+	@SafeVarargs
+	public static <T> boolean copyToMapOnCondition(T origin, Map<String, Object> target, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
 		String[] names = parseGetterOrSetterNames(ignoreProperties);
 		if (names.length == 0 && valueCondition == null) {
-			return copyToMapOnCondition(source, target, null);
+			return copyToMapOnCondition(origin, target, null);
 		}
-		return copyToMapOnCondition(source, target, (e, v) -> !matchTargetProperty(names, e.getKey()) && (valueCondition == null || valueCondition.test(v)));
-	}
-	/**
-	 * 复制原对象中除了忽略属性之外的其他符合值条件的属性到目标类型
-	 *
-	 * @param source           原对象
-	 * @param targetType           目标类型
-	 * @param valueCondition   复制的属性值条件
-	 * @param ignoreProperties 忽略不复制的属性, 如果不传或为空表示复制全部属性
-	 * @return 返回目标对象
-	 */
-	@SafeVarargs
-	public static <T> T mapOnCondition(Object source, Class<T> targetType, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
-		try {
-			T target = targetType.getConstructor(ArrayConstants.EMPTY_CLASS_ARRAY).newInstance(ArrayConstants.EMPTY_OBJECT_ARRAY);
-			copyOnCondition(source, target, valueCondition, ignoreProperties);
-			return target;
-		} catch (Exception e) {
-			throw getInvokeException(e);
-		}
-	}
-	/**
-	 * 复制原对象中除了忽略属性之外的其他符合值条件的属性到目标类型
-	 *
-	 * @param source           原对象
-	 * @param targetType           目标类型
-	 * @param ignoreProperties 忽略不复制的属性, 如果不传或为空表示复制全部属性
-	 * @return 返回目标对象
-	 */
-	@SafeVarargs
-	public static <T> T map(Object source, Class<T> targetType, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
-		return mapOnCondition(source, targetType, null, ignoreProperties);
+		return copyToMapOnCondition(origin, target, (e, v) -> !matchTargetProperty(names, e.getKey()) && (valueCondition == null || valueCondition.test(v)));
 	}
 
 	/**
-	 * 复制原对象中除了忽略属性之外的其他符合值条件的属性到目标对象, 只复制值有变化的属性
+	 * <p>Copy property values from the "origin" bean to the "destination" bean
+	 * for the value has changed where the property names are the same with map key and on the specified value condition is pass.
 	 *
-	 * @param source           原对象
-	 * @param target           目标对象
-	 * @param valueCondition   复制的属性值条件
-	 * @param ignoreProperties 忽略不复制的属性, 如果不传或为空表示复制全部属性
-	 * @return 如果所有属性都没进行复制操作则返回false, 否则返回true
+	 * <p>If the origin "bean" is actually a <code>Map</code>, it is assumed
+	 * to contain String-valued <strong>simple</strong> property names as the keys, pointing
+	 * at the corresponding property values that will be put in the destination
+	 * map.
+	 *
+	 * @param origin Origin bean whose properties are retrieved
+	 * @param target Destination bean whose properties are modified
+	 * @param valueCondition the origin value condition
+	 * @param ignoreProperties the ignore properties
+	 * @return returns false when none property is copied, otherwise returns true
 	 */
 	@SafeVarargs
-	public static <T> boolean copyChangeOnCondition(Object source, T target, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
+	public static <T> boolean copyChangeOnCondition(Object origin, T target, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
 		String[] names = parseGetterOrSetterNames(ignoreProperties);
-		return copyOnCondition(source, target, (d, v) -> {
+		return copyOnCondition(origin, target, (d, v) -> {
 			if (matchTargetProperty(names, d.getName()) || (valueCondition != null && !valueCondition.test(v))) {
 				return false;
 			}
 			Method readMethod = d.getReadMethod();
-			try {
-				if (readMethod != null && Objects.equals(readMethod.invoke(target, ArrayConstants.EMPTY_OBJECT_ARRAY), v)) {
-					// 值没有变化
-					return false;
-				}
-			} catch (Exception e) {
-				throw getInvokeException(e);
-			}
-			return true;
+			// 值没有变化
+			return readMethod == null || !Objects.equals(SimplePropertyUtilsBean.getInstance().invokeReadMethod(target, d), v);
 		});
 	}
+
 	/**
-	 * 复制原对象中除了忽略属性之外的其他符合值条件的属性到目标对象, 只复制值有变化的属性
+	 * <p>Copy property values from the "origin" bean to the "destination" Map
+	 * for the value has changed where the property names are the same with map key and on the specified value condition is pass.
 	 *
-	 * @param source           原对象
-	 * @param target           目标Map
-	 * @param valueCondition   复制的属性值条件
-	 * @param ignoreProperties 忽略不复制的属性, 如果不传或为空表示复制全部属性
-	 * @return 如果所有属性都没进行复制操作则返回false, 否则返回true
+	 * <p>If the origin "bean" is actually a <code>Map</code>, it is assumed
+	 * to contain String-valued <strong>simple</strong> property names as the keys, pointing
+	 * at the corresponding property values that will be put in the destination
+	 * map.
+	 *
+	 * @param origin Origin bean whose properties are retrieved
+	 * @param target Destination Map whose properties are modified
+	 * @param valueCondition the origin value condition
+	 * @param ignoreProperties the ignore properties
+	 * @return returns false when none property is copied, otherwise returns true
 	 */
 	@SafeVarargs
-	public static <T> boolean copyChangeToMapOnCondition(T source, Map<String, Object> target, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
+	public static <T> boolean copyChangeToMapOnCondition(T origin, Map<String, Object> target, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
 		String[] names = parseGetterOrSetterNames(ignoreProperties);
-		return copyToMapOnCondition(source, target, (d, v) -> {
+		return copyToMapOnCondition(origin, target, (d, v) -> {
 			if (matchTargetProperty(names, d.getKey()) || (valueCondition != null && !valueCondition.test(v))) {
 				return false;
 			}
@@ -561,34 +514,26 @@ public class BeanHelper {
 		});
 	}
 
-	private static RuntimeException getInvokeException(Exception e) {
-		if (e instanceof InvocationTargetException) {
-			if (((InvocationTargetException) e).getTargetException() instanceof RuntimeException) {
-				return  (RuntimeException) ((InvocationTargetException) e).getTargetException();
-			} else {
-				return new RuntimeException(((InvocationTargetException) e).getTargetException());
-			}
-		}
-		if (e instanceof RuntimeException) {
-			return  (RuntimeException) e;
-		} else {
-			return new RuntimeException(e);
-		}
-	}
 	/**
-	 * 复制原对象中符合值条件的属性到目标对象, 只复制值有变化的属性
+	 * <p>Copy property values from the "origin" bean to the "destination" bean
+	 * for the value has changed where the property names are the same with map key and on the specified value condition is pass.
 	 *
-	 * @param source         原对象
-	 * @param target         目标对象
-	 * @param valueCondition 复制的属性值条件
-	 * @return 如果所有属性都没进行复制操作则返回false, 否则返回true
+	 * <p>If the origin "bean" is actually a <code>Map</code>, it is assumed
+	 * to contain String-valued <strong>simple</strong> property names as the keys, pointing
+	 * at the corresponding property values that will be put in the destination
+	 * map.
+	 *
+	 * @param origin Origin bean whose properties are retrieved
+	 * @param target Destination bean whose properties are modified
+	 * @param valueCondition the origin value condition
+	 * @return returns false when none property is copied, otherwise returns true
 	 */
 	@SuppressWarnings("unchecked")
-	public static boolean copyChangeOnCondition(Object source, Object target, Predicate<Object> valueCondition) {
+	public static boolean copyChangeOnCondition(Object origin, Object target, Predicate<Object> valueCondition) {
 		if (target instanceof Map) {
-			return copyChangeToMapOnCondition(source, (Map<String, Object>) target, valueCondition, (LambdaUtils.SerializeFunction<Object, ?>[]) null);
+			return copyChangeToMapOnCondition(origin, (Map<String, Object>) target, valueCondition, (LambdaUtils.SerializeFunction<Object, ?>[]) null);
 		} else {
-			return copyChangeOnCondition(source, target, valueCondition, (LambdaUtils.SerializeFunction<Object, ?>[]) null);
+			return copyChangeOnCondition(origin, target, valueCondition, (LambdaUtils.SerializeFunction<Object, ?>[]) null);
 		}
 	}
 
@@ -597,10 +542,8 @@ public class BeanHelper {
 		if (getterOrSetterNames.length == 0 || name == null || name.isEmpty()) {
 			return false;
 		}
-		for (int i = 0; i < getterOrSetterNames.length; i++) {
-			String getterOrSetterName = getterOrSetterNames[i];
-			for (int j = 0; j < GETTER_SETTER_PREFIXES.length; j++) {
-				String prefix = GETTER_SETTER_PREFIXES[j];
+		for (String getterOrSetterName : getterOrSetterNames) {
+			for (String prefix : GETTER_SETTER_PREFIXES) {
 				if (!getterOrSetterName.startsWith(prefix)) {
 					continue;
 				}

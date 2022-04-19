@@ -21,7 +21,6 @@ import java.util.TimeZone;
  * extends conversion to the following types :
  * <ul>
  *     <li><code>java.lang.Long</code></li>
- *     <li><code>java.lang.String</code></li>
  * </ul>
  * @author honzel
  *

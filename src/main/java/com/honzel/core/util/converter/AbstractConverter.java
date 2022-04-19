@@ -21,7 +21,7 @@ public abstract  class AbstractConverter implements Converter {
 	/**
 	 * the default converter
 	 */
-    private Converter defaultConverter;
+    Converter defaultConverter;
     /**
      * whether or not disable to throw exception when error ocurrs that 
      * 	this converter and the default converter (if exists) converting the input object to the target type.
@@ -34,7 +34,7 @@ public abstract  class AbstractConverter implements Converter {
 		return defaultConverter;
 	}
 
-    public AbstractConverter() {
+    protected AbstractConverter() {
 	}
     /**
      *Construct an <code>Converter</code> with a default converter
@@ -42,7 +42,7 @@ public abstract  class AbstractConverter implements Converter {
      * using the specified one as a default converter.
      * @param defaultConverter the specified default converter, may be null.
      */
-    public AbstractConverter(Converter defaultConverter) {
+    protected AbstractConverter(Converter defaultConverter) {
  	   this.defaultConverter = defaultConverter;
     }
     /**
@@ -54,7 +54,7 @@ public abstract  class AbstractConverter implements Converter {
      * 		this converter and the default converter (if exists) converting the input object to the target type.
      *
      */
-    public AbstractConverter(Converter defaultConverter, boolean disableException) {
+    protected AbstractConverter(Converter defaultConverter, boolean disableException) {
     	this.defaultConverter = defaultConverter;
     	this.disableException = disableException;
     }
@@ -84,8 +84,8 @@ public abstract  class AbstractConverter implements Converter {
 			throwException(null, "Target type is missing");
 			return null;
 		}
-		if(value == null) {
-			return getDefault(value, toType);
+		if (value == null) {
+			return getDefault(null, toType);
 		}
 		try {
 			if (toType.equals(value.getClass())) {
@@ -119,7 +119,6 @@ public abstract  class AbstractConverter implements Converter {
     protected Object convertToType(Object value, Class toType) throws ConversionException {
     	return getDefault(value, toType);
     }
-
 
     /**
      * Convert the input object(usually not null)  into a String.

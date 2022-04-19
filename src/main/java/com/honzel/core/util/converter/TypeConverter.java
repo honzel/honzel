@@ -1,9 +1,14 @@
 package com.honzel.core.util.converter;
 
 import com.honzel.core.util.exception.ConversionException;
+import com.honzel.core.util.time.LocalDateTimeUtils;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 /**
@@ -57,6 +62,14 @@ public class TypeConverter extends AbstractConverter {
 		if (converter == this) {
 			throw new IllegalArgumentException("Cannot resister this converter self. ");
 		}
+		if (converter instanceof AbstractConverter) {
+			if ((((AbstractConverter) converter).defaultConverter) == null) {
+				Converter defaultConverter = (Converter) converters.get(String.class);
+				if (defaultConverter != null && converter != defaultConverter) {
+					((AbstractConverter) converter).defaultConverter = defaultConverter;
+				}
+			}
+		}
 		converters.put(targetType, converter);
 	}
 
@@ -108,8 +121,9 @@ public class TypeConverter extends AbstractConverter {
 		return convert(value, toType, lookup(value, toType));
 	}
 
+
 	protected String convertToString(Object value) throws ConversionException {
-		Converter converter = this.lookup(value, value.getClass());
+		Converter converter = lookup(value, value.getClass());
 		if (converter == null) {
 			converter = this.lookup(value, String.class);
 		}
@@ -164,14 +178,14 @@ public class TypeConverter extends AbstractConverter {
 	private void registerStandard() {
 		register(Integer.TYPE, standardConverter);
 		register(Short.TYPE, standardConverter);
-		register(Long.TYPE, standardConverter);
 		register(Boolean.TYPE, standardConverter);
 		register(Byte.TYPE, standardConverter);
 		register(Character.TYPE, standardConverter);
 		register(Float.TYPE, standardConverter);
 		register(Double.TYPE, standardConverter);
 		register(Short.class, standardConverter);
-		register(Long.class, standardConverter);
+//		register(Long.TYPE, standardConverter);
+//		register(Long.class, standardConverter);
 		register(Boolean.class, standardConverter);
 		register(Byte.class, standardConverter);
 		register(Character.class, standardConverter);
@@ -182,6 +196,15 @@ public class TypeConverter extends AbstractConverter {
 		register(BigDecimal.class, standardConverter);
 		register(Class.class, standardConverter);
 		register(Enum.class, standardConverter);
-		register(String.class, arrayConverter);
+		// local date time converter
+		LocalDateTimeConverter dateTimeConverter = new LocalDateTimeConverter(standardConverter);
+		dateTimeConverter.setPatterns(new Class[]{LocalDateTime.class}, new String[]{LocalDateTimeUtils.DATE_TIME_FORMAT_PATTERN});
+		register(LocalDate.class, dateTimeConverter);
+		register(LocalTime.class, dateTimeConverter);
+		register(LocalDateTime.class, dateTimeConverter);
+		register(Instant.class, dateTimeConverter);
+		register(Long.class, dateTimeConverter);
+		register(Long.TYPE, dateTimeConverter);
+		register(String.class, dateTimeConverter);
 	}
 }
