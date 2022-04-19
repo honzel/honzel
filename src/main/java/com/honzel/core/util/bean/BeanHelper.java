@@ -414,14 +414,14 @@ public class BeanHelper {
 	 *
 	 * @param origin Origin bean whose properties are retrieved
 	 * @param target Destination bean whose properties are modified
-	 * @param oldValueCondition the target old value condition
+	 * @param preValueCondition the target previous value condition
 	 * @param ignoreProperties the ignore properties
 	 * @return returns false when none property is copied, otherwise returns true
 	 */
 	@SafeVarargs
-	public static <T> boolean copyOnOldValueCondition(Object origin, T target, Predicate<Object> oldValueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
+	public static <T> boolean copyOnPreValueCondition(Object origin, T target, Predicate<Object> preValueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
 		String[] names = parseGetterOrSetterNames(ignoreProperties);
-		if (names.length == 0 && oldValueCondition == null) {
+		if (names.length == 0 && preValueCondition == null) {
 			// 没有条件
 			return copyOnCondition(origin, target, (BiPredicate<PropertyDescriptor, Object>) null);
 		}
@@ -429,11 +429,11 @@ public class BeanHelper {
 					if (!matchTargetProperty(names, d.getName())) {
 						return false;
 					}
-					if (oldValueCondition == null) {
+					if (preValueCondition == null) {
 						return true;
 					}
 					Method readMethod = d.getReadMethod();
-					return readMethod != null && oldValueCondition.test(SimplePropertyUtilsBean.getInstance().invokeReadMethod(target, d));
+					return readMethod != null && preValueCondition.test(SimplePropertyUtilsBean.getInstance().invokeReadMethod(target, d));
 				});
 	}
 	/**
