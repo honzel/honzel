@@ -63,14 +63,29 @@ public class TypeConverter extends AbstractConverter {
 			throw new IllegalArgumentException("Cannot resister this converter self. ");
 		}
 		if (converter instanceof AbstractConverter) {
-			if ((((AbstractConverter) converter).defaultConverter) == null) {
-				Converter defaultConverter = (Converter) converters.get(String.class);
-				if (defaultConverter != null && converter != defaultConverter) {
-					((AbstractConverter) converter).defaultConverter = defaultConverter;
-				}
+			Converter defaultConverter;
+			if ((((AbstractConverter) converter).defaultConverter) == null && (defaultConverter = findDefaultConverter(converter)) != null) {
+				((AbstractConverter) converter).defaultConverter = defaultConverter;
 			}
 		}
 		converters.put(targetType, converter);
+	}
+
+	private Converter findDefaultConverter(Converter findConverter) {
+		Converter defaultConverter = (Converter) converters.get(String.class);
+		if (defaultConverter == null || findConverter == defaultConverter) {
+			return null;
+		}
+		Converter converter = defaultConverter;
+		int top = converters.size();
+		while (top-- > 0 && converter instanceof AbstractConverter) {
+			Converter nextConverter;
+			if ((nextConverter = ((AbstractConverter) converter).defaultConverter) == findConverter) {
+				return null;
+			}
+			converter = nextConverter;
+		}
+		return defaultConverter;
 	}
 
 	/**
