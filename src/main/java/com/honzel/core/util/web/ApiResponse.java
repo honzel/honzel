@@ -50,7 +50,7 @@ public interface ApiResponse<C, T, THIS extends ApiResponse<C, T, THIS>> extends
     /**
      * 处理错误结果
      */
-    default THIS handleError(Consumer<THIS> consumer) {
+    default THIS handleError(Consumer<? super THIS> consumer) {
         THIS r = (THIS) this;
         if (!isSuccess()) {
             consumer.accept(r);
@@ -70,7 +70,7 @@ public interface ApiResponse<C, T, THIS extends ApiResponse<C, T, THIS>> extends
     /**
      * 处理错误
      */
-    default T getOrHandleError(Function<THIS, T> errorHandler) {
+    default T getOrHandleError(Function<? super THIS, T> errorHandler) {
         return isSuccess() ? getData() : errorHandler.apply((THIS) this);
     }
     /**
@@ -82,7 +82,7 @@ public interface ApiResponse<C, T, THIS extends ApiResponse<C, T, THIS>> extends
     /**
      * 获取结果或处理空值
      */
-    default T getOrHandleEmpty(Function<THIS, T> emptyHandler) {
+    default T getOrHandleEmpty(Function<? super THIS, T> emptyHandler) {
        return getOrHandleEmpty(null, emptyHandler);
     }
 
@@ -109,7 +109,7 @@ public interface ApiResponse<C, T, THIS extends ApiResponse<C, T, THIS>> extends
     /**
      * 获取结果或处理空值
      */
-    default<R> R getOrHandleEmpty(Function<T, R> getter, Function<THIS, R> emptyHandler) {
+    default<R> R getOrHandleEmpty(Function<T, R> getter, Function<? super THIS, R> emptyHandler) {
         R data = getter != null ? mapData(getter) : (R) getData();
         boolean empty = TextUtils.isEmpty(data);
         if (!empty) {
