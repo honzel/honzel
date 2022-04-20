@@ -14,7 +14,8 @@ import java.util.function.Function;
  * @param <C> 错误编码类型
  * @param <T> 数据类型
  */
-public interface ApiResponse<C, T> extends Serializable {
+@SuppressWarnings("unchecked")
+public interface ApiResponse<C, T, THIS extends ApiResponse<C, T, THIS>> extends Serializable {
 
     /**
      * 是否请求成功，实现返回是否正确返回期望的数据
@@ -49,27 +50,28 @@ public interface ApiResponse<C, T> extends Serializable {
     /**
      * 处理错误结果
      */
-    default ApiResponse<C, T> handleError(Consumer<ApiResponse<C, T>> consumer) {
+    default THIS handleError(Consumer<THIS> consumer) {
+        THIS r = (THIS) this;
         if (!isSuccess()) {
-            consumer.accept(this);
+            consumer.accept(r);
         }
-        return this;
+        return r;
     }
     /**
      * 处理成功结果
      */
-    default ApiResponse<C, T> handleSuccess(Consumer<T> consumer) {
+    default THIS handleSuccess(Consumer<T> consumer) {
         if (isSuccess()) {
             consumer.accept(getData());
         }
-        return this;
+        return (THIS) this;
     }
 
     /**
      * 处理错误
      */
-    default T getOrHandleError(Function<ApiResponse<C, T>, T> errorHandler) {
-        return isSuccess() ? getData() : errorHandler.apply(this);
+    default T getOrHandleError(Function<THIS, T> errorHandler) {
+        return isSuccess() ? getData() : errorHandler.apply((THIS) this);
     }
     /**
      * 处理错误
@@ -80,7 +82,7 @@ public interface ApiResponse<C, T> extends Serializable {
     /**
      * 获取结果或处理空值
      */
-    default T getOrHandleEmpty(Function<ApiResponse<C, T>, T> emptyHandler) {
+    default T getOrHandleEmpty(Function<THIS, T> emptyHandler) {
        return getOrHandleEmpty(null, emptyHandler);
     }
 
@@ -107,7 +109,7 @@ public interface ApiResponse<C, T> extends Serializable {
     /**
      * 获取结果或处理空值
      */
-    default<R> R getOrHandleEmpty(Function<T, R> getter, Function<ApiResponse<C, T>, R> emptyHandler) {
+    default<R> R getOrHandleEmpty(Function<T, R> getter, Function<THIS, R> emptyHandler) {
         R data = getter != null ? mapData(getter) : (R) getData();
         boolean empty = TextUtils.isEmpty(data);
         if (!empty) {
@@ -117,6 +119,6 @@ public interface ApiResponse<C, T> extends Serializable {
                 empty = ((Map) data).isEmpty();
             }
         }
-        return empty ? emptyHandler.apply(this) : data;
+        return empty ? emptyHandler.apply((THIS) this) : data;
     }
 }
