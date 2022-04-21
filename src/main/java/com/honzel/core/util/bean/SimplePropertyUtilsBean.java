@@ -514,7 +514,7 @@ public class SimplePropertyUtilsBean {
 
 	private boolean invokeWriteMethod(Object bean, PropertyDescriptor descriptor, Object value) {
 		if (typeConverter != null) {
-			typeConverter.convert(value, descriptor.getPropertyType());
+			value = typeConverter.convert(value, descriptor.getPropertyType());
 		}
 		try {
 			descriptor.getWriteMethod().invoke(bean, value);
