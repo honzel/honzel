@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
  * </ul>
  * extends conversion to the following types :
  * <ul>
+ *     <li><code>java.lang.Integer</code></li>
  *     <li><code>java.lang.Long</code></li>
  *     <li><code>java.util.Date</code></li>
  *     <li><code>java.util.Calendar</code></li>
@@ -247,6 +248,8 @@ public class LocalDateTimeConverter extends AbstractConverter {
 			targetValue =  convertInstant(cal.toInstant(), toType, cal.getTimeZone() != null ? cal.getTimeZone().toZoneId() : null);
 		} else if (firstValue instanceof Long) {
 			targetValue =  convertInstant(Instant.ofEpochMilli((Long) firstValue), toType, null);
+		} else if (firstValue instanceof Integer) {
+			targetValue =  convertInstant(Instant.ofEpochSecond((Integer) firstValue), toType, null);
 		} else {
 			targetValue = null;
 		}
@@ -256,23 +259,26 @@ public class LocalDateTimeConverter extends AbstractConverter {
 
 
 	private Object convertInstant(Instant instant, Class<?> toType, ZoneId zoneId) {
-		if (toType.isAssignableFrom(instant.getClass())) {
+		if (toType.isInstance(instant)) {
 			return instant;
 		}
 		if (zoneId == null) {
 			zoneId = ZoneId.systemDefault();
 		}
 		if (LocalDateTime.class.equals(toType)) {
-			return instant.atZone(zoneId).toLocalDateTime();
+			return LocalDateTime.ofInstant(instant, zoneId);
 		}
 		if (LocalDate.class.equals(toType)) {
-			return instant.atZone(zoneId).toLocalDate();
+			return LocalDateTime.ofInstant(instant, zoneId).toLocalDate();
 		}
 		if (LocalTime.class.equals(toType)) {
-			return instant.atZone(zoneId).toLocalTime();
+			return LocalDateTime.ofInstant(instant, zoneId).toLocalTime();
 		}
 		if (Long.class.equals(toType) || Long.TYPE.equals(toType)) {
 			return instant.toEpochMilli();
+		}
+		if (Integer.class.equals(toType) || Integer.TYPE.equals(toType)) {
+			return (int) instant.getEpochSecond();
 		}
 		if (Date.class.equals(toType)) {
 			return Date.from(instant);
@@ -286,7 +292,7 @@ public class LocalDateTimeConverter extends AbstractConverter {
 	}
 
 	private Object convertTemporal(TemporalAccessor temporal, Class toType) {
-		if (toType.isInstance(temporal.getClass())) {
+		if (toType.isInstance(temporal)) {
 			return temporal;
 		}
 		if (LocalDate.class.equals(toType)) {
@@ -304,48 +310,29 @@ public class LocalDateTimeConverter extends AbstractConverter {
 				return null;
 			}
 		}
-		if (Long.class.equals(toType) || Long.TYPE.equals(toType) || Instant.class.equals(toType)
-				|| Calendar.class.equals(toType) || Date.class.equals(toType)) {
-			long seconds;
-			if (temporal.isSupported(ChronoField.INSTANT_SECONDS)) {
-				seconds = temporal.getLong(ChronoField.INSTANT_SECONDS);
+		long seconds;
+		boolean supported;
+		if (supported = temporal.isSupported(ChronoField.INSTANT_SECONDS)) {
+			seconds = temporal.getLong(ChronoField.INSTANT_SECONDS);
+		} else {
+			if (supported = temporal.isSupported(ChronoField.EPOCH_DAY)) {
+				seconds = TimeUnit.DAYS.toSeconds(temporal.getLong(ChronoField.EPOCH_DAY));
 			} else {
-				if (temporal.isSupported(ChronoField.EPOCH_DAY)) {
-					seconds = TimeUnit.DAYS.toSeconds(temporal.getLong(ChronoField.EPOCH_DAY));
-				} else {
-					seconds = 0L;
-				}
-				if (temporal.isSupported(ChronoField.SECOND_OF_DAY)) {
-					seconds += temporal.getLong(ChronoField.SECOND_OF_DAY);
-				}
+				seconds = 0L;
 			}
+			if (temporal.isSupported(ChronoField.SECOND_OF_DAY)) {
+				seconds += temporal.getLong(ChronoField.SECOND_OF_DAY);
+				supported = true;
+			}
+		}
+		if (supported) {
 			long nano;
 			if (temporal.isSupported(ChronoField.NANO_OF_SECOND)) {
 				nano = temporal.getLong(ChronoField.NANO_OF_SECOND);
 			} else {
 				nano = 0L;
 			}
-			Instant instant = Instant.ofEpochSecond(seconds, nano);
-			if (Instant.class.equals(toType)) {
-				return instant;
-			}
-			if (Long.class.equals(toType) || Long.TYPE.equals(toType)) {
-				return instant.toEpochMilli();
-			}
-			ZoneId zoneId = temporal.query(TemporalQueries.zone());
-			if (zoneId == null) {
-				zoneId = ZoneOffset.UTC;
-			}
-			ZoneId systemDefault = ZoneId.systemDefault();
-			if (!zoneId.equals(systemDefault)) {
-				instant = LocalDateTime.ofInstant(instant, zoneId).atZone(systemDefault).toInstant();
-			}
-			if (Date.class.equals(toType)) {
-				return new Date(instant.toEpochMilli());
-			}
-			Calendar calendar = Calendar.getInstance();
-			calendar.setTimeInMillis(instant.toEpochMilli());
-			return calendar;
+			return convertInstant(Instant.ofEpochSecond(seconds, nano), toType, temporal.query(TemporalQueries.zone()));
 		}
 		return null;
 	}
