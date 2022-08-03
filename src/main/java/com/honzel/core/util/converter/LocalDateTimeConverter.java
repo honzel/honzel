@@ -168,36 +168,7 @@ public class LocalDateTimeConverter extends AbstractConverter {
 	}
 
 
-
-	/**
-	 * Parse a String date value using the set of patterns.
-	 *
-	 * @param text The String date value.
-	 * @param toType the target type.
-	 *
-	 * @return The converted Date object.
-	 */
-	private Object parse(String text, Class<?> toType)  {
-		if (TextUtils.isEmpty(text)) {
-			return null;
-		}
-		LocalDateTime localDateTime;
-		if (LocalDateTime.class.equals(toType)) {
-			return Objects.nonNull(localDateTime = parseByFormatter(text, toType)) ? localDateTime : LocalDateTime.parse(text);
-		}
-		if (LocalDate.class.equals(toType)) {
-			return Objects.nonNull(localDateTime = parseByFormatter(text, toType)) ? localDateTime.toLocalDate() : LocalDate.parse(text);
-		}
-		if (LocalTime.class.equals(toType)) {
-			return Objects.nonNull(localDateTime = parseByFormatter(text, toType)) ? localDateTime.toLocalTime() : LocalTime.parse(text);
-		}
-		if (Instant.class.equals(toType)) {
-			return Objects.nonNull(localDateTime = parseByFormatter(text, toType)) ? localDateTime.atZone(ZoneId.systemDefault()).toInstant() : Instant.parse(text);
-		}
-		return null;
-	}
-
-	private LocalDateTime parseByFormatter(CharSequence text, Class<?> toType) {
+    private LocalDateTime parseByFormatter(CharSequence text, Class<?> toType) {
 		int index = beginIndexOfPatterns(toType);
 		ParsePosition pos = new ParsePosition(NumberConstants.INTEGER_ZERO);
 		if (index >= 0) {
