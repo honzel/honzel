@@ -4,6 +4,7 @@ import com.honzel.core.constant.NumberConstants;
 import com.honzel.core.util.exception.ConversionException;
 import com.honzel.core.util.text.TextUtils;
 import com.honzel.core.util.time.LocalDateTimeUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.text.ParsePosition;
 import java.time.*;
@@ -12,6 +13,7 @@ import java.time.temporal.ChronoField;
 import java.time.temporal.Temporal;
 import java.time.temporal.TemporalAccessor;
 import java.time.temporal.TemporalQueries;
+import java.time.zone.ZoneRules;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Objects;
@@ -195,7 +197,7 @@ public class LocalDateTimeConverter extends AbstractConverter {
 		return null;
 	}
 
-	private LocalDateTime parseByFormatter(String text, Class<?> toType) {
+	private LocalDateTime parseByFormatter(CharSequence text, Class<?> toType) {
 		int index = beginIndexOfPatterns(toType);
 		ParsePosition pos = new ParsePosition(NumberConstants.INTEGER_ZERO);
 		if (index >= 0) {
@@ -232,30 +234,186 @@ public class LocalDateTimeConverter extends AbstractConverter {
 	protected Object convertToType(Object value, Class toType) throws ConversionException {
 		Object firstValue = fetchFirst(value, toType);
 		if (TextUtils.isEmpty(value)) {
+			// 获取默认值
 			return getDefault(value, toType);
 		}
 		Object targetValue;
-		if (firstValue instanceof CharSequence) {
-			targetValue =  parse(firstValue.toString(), toType);
-		} else if (firstValue instanceof Instant) {
-			targetValue =  convertInstant((Instant) firstValue, toType, null);
-		} else if (firstValue instanceof TemporalAccessor) {
-			targetValue =  convertTemporal((TemporalAccessor) firstValue, toType);
-		} else if (firstValue instanceof Date) {
-			targetValue =  convertInstant(((Date) firstValue).toInstant(), toType, null);
-		} else if (firstValue instanceof Calendar) {
-			Calendar cal = (Calendar) firstValue;
-			targetValue =  convertInstant(cal.toInstant(), toType, cal.getTimeZone() != null ? cal.getTimeZone().toZoneId() : null);
-		} else if (firstValue instanceof Long) {
-			targetValue =  convertInstant(Instant.ofEpochMilli((Long) firstValue), toType, null);
-		} else if (firstValue instanceof Integer) {
-			targetValue =  convertInstant(Instant.ofEpochSecond((Integer) firstValue), toType, null);
+		if (LocalDateTime.class.equals(toType)) {
+			// LocalDateTime
+			targetValue = convertToLocalDateTime(firstValue);
+		} else if (LocalDate.class.equals(toType)) {
+			// LocalDate
+			targetValue =  convertToLocalDate(firstValue);
+		} else if (LocalTime.class.equals(toType)) {
+			// LocalTime
+			targetValue =  convertToLocalTime(firstValue);
+		} else if (Instant.class.equals(toType)) {
+			// Instant
+			targetValue =  convertToInstant(firstValue);
+
+		} else if (value instanceof TemporalAccessor) {
+			// 时间转其他
+			targetValue = temporalToOther((TemporalAccessor) value, toType);
 		} else {
 			targetValue = null;
 		}
 		return targetValue != null ? targetValue : super.convertToType(value, toType);
 	}
 
+	private Instant convertToInstant(Object value) {
+		if (value instanceof CharSequence) {
+			LocalDateTime localDateTime;
+			return Objects.nonNull(localDateTime = parseByFormatter((CharSequence) value, LocalDateTime.class)) ? localDateTime.atZone(ofZoneId(localDateTime)).toInstant() : Instant.parse((CharSequence) value);
+		}
+		if (value instanceof LocalDateTime) {
+			return ((LocalDateTime) value).atZone(ofZoneId(value)).toInstant();
+		}
+		if (value instanceof LocalDate) {
+			return ((LocalDate) value).atStartOfDay(ofZoneId(value)).toInstant();
+		}
+		if (value instanceof LocalTime) {
+			return ((LocalTime) value).atDate(LocalDateTimeUtils.EPOCH_DATE).atZone(ofZoneId(value)).toInstant();
+		}
+		return ofInstant(value);
+	}
+
+	private Object temporalToOther(TemporalAccessor value, Class toType) {
+		Instant instant;
+		if (Long.class.equals(toType) || Long.TYPE.equals(toType)) {
+			// Long
+			if ((instant = convertToInstant(value)) != null) {
+				return instant.toEpochMilli();
+			}
+		} else if (Integer.class.equals(toType) || Integer.TYPE.equals(toType)) {
+			// Integer
+			if ((instant = convertToInstant(value)) != null) {
+				return instant.getEpochSecond();
+			}
+		} else if (Date.class.equals(toType)) {
+			// Date
+			if ((instant = ofInstant(value)) != null) {
+				return Date.from(instant);
+			}
+		} else if (Calendar.class.equals(toType)) {
+			// Calendar
+			if ((instant = ofInstant(value)) != null) {
+				Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(ofZoneId(value)));
+				cal.setTimeInMillis(instant.toEpochMilli());
+				return cal;
+			}
+		}
+		return null;
+	}
+
+
+	private LocalTime convertToLocalTime(Object value) {
+		if (value instanceof CharSequence) {
+			LocalDateTime localDateTime;
+			return Objects.nonNull(localDateTime = parseByFormatter((CharSequence) value, LocalTime.class)) ? localDateTime.toLocalTime() : LocalTime.parse((CharSequence) value);
+		}
+		LocalTime localTime;
+		if (value instanceof TemporalAccessor && Objects.nonNull(localTime = ((TemporalAccessor) value).query(TemporalQueries.localTime()))) {
+			return localTime;
+		}
+		Instant instant = ofInstant(value);
+		if (instant != null) {
+			ZoneOffset offset = ofZoneId(value).getRules().getOffset(instant);
+			return LocalTime.ofNanoOfDay(TimeUnit.SECONDS.toNanos((instant.getEpochSecond() + (long)offset.getTotalSeconds()) % TimeUnit.DAYS.toSeconds(1L)) + instant.getNano());
+		}
+		return null;
+	}
+
+	private LocalDate convertToLocalDate(Object value) {
+		if (value instanceof CharSequence) {
+			LocalDateTime localDateTime;
+			return Objects.nonNull(localDateTime = parseByFormatter((CharSequence) value, LocalDate.class)) ? localDateTime.toLocalDate() : LocalDate.parse((CharSequence) value);
+		}
+		LocalDate localDate;
+		if (value instanceof TemporalAccessor && Objects.nonNull(localDate = ((TemporalAccessor) value).query(TemporalQueries.localDate()))) {
+			return localDate;
+		}
+		Instant instant = ofInstant(value);
+		if (instant != null) {
+			ZoneOffset offset = ofZoneId(value).getRules().getOffset(instant);
+			return LocalDate.ofEpochDay((instant.getEpochSecond() + (long)offset.getTotalSeconds()) / TimeUnit.DAYS.toSeconds(1L));
+		}
+		return null;
+	}
+
+	private ZoneId ofZoneId(Object value) {
+		ZoneId zoneId = null;
+		if (value instanceof TemporalAccessor) {
+			TemporalAccessor temporal = (TemporalAccessor) value;
+			zoneId =  temporal.query(TemporalQueries.zone());
+		} else if (value instanceof Calendar) {
+			zoneId = ((Calendar) value).getTimeZone().toZoneId();
+		}
+		return zoneId != null ? zoneId : ZoneId.systemDefault();
+	}
+
+	private LocalDateTime convertToLocalDateTime(Object value) {
+		LocalDateTime localDateTime;
+		if (value instanceof CharSequence) {
+			return Objects.nonNull(localDateTime = parseByFormatter((CharSequence) value, LocalDateTime.class)) ? localDateTime : LocalDateTime.parse((CharSequence) value);
+		}
+		if (value instanceof TemporalAccessor) {
+			TemporalAccessor temporal = (TemporalAccessor) value;
+			LocalDate localDate = temporal.query(TemporalQueries.localDate());
+			LocalTime localTime = temporal.query(TemporalQueries.localTime());
+			if (localDate != null || localTime != null) {
+				return LocalDateTime.of(localDate != null ? localDate : LocalDateTimeUtils.EPOCH_DATE, localTime != null ? localTime : LocalTime.MIN);
+			}
+		}
+		Instant instant = ofInstant(value);
+		return instant != null ? LocalDateTime.ofInstant(instant, ofZoneId(value)) : null;
+	}
+
+	private Instant ofInstant(Object value) {
+
+		if (value instanceof Instant) {
+			return  (Instant) value;
+		}
+		if (value instanceof Date) {
+			return  ((Date) value).toInstant();
+		}
+		if (value instanceof Calendar) {
+			return  ((Calendar) value).toInstant();
+		}
+		if (value instanceof Long) {
+			return Instant.ofEpochMilli((Long) value);
+		}
+		if (value instanceof Integer) {
+			return Instant.ofEpochSecond((Integer) value);
+		}
+		if (value instanceof TemporalAccessor) {
+			TemporalAccessor temporal = (TemporalAccessor) value;
+			long seconds;
+			boolean supported;
+			if (supported = temporal.isSupported(ChronoField.INSTANT_SECONDS)) {
+				seconds = temporal.getLong(ChronoField.INSTANT_SECONDS);
+			} else {
+				if (supported = temporal.isSupported(ChronoField.EPOCH_DAY)) {
+					seconds = TimeUnit.DAYS.toSeconds(temporal.getLong(ChronoField.EPOCH_DAY));
+				} else {
+					seconds = 0L;
+				}
+				if (temporal.isSupported(ChronoField.SECOND_OF_DAY)) {
+					seconds += temporal.getLong(ChronoField.SECOND_OF_DAY);
+					supported = true;
+				}
+			}
+			if (supported) {
+				long nano;
+				if (temporal.isSupported(ChronoField.NANO_OF_SECOND)) {
+					nano = temporal.getLong(ChronoField.NANO_OF_SECOND);
+				} else {
+					nano = 0L;
+				}
+				return Instant.ofEpochSecond(seconds, nano);
+			}
+		}
+		return null;
+	}
 
 
 	private Object convertInstant(Instant instant, Class<?> toType, ZoneId zoneId) {
