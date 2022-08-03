@@ -7,7 +7,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.github.honzel</groupId>
     <artifactId>honzel</artifactId>
-    <version>1.6.15</version>
+    <version>1.6.16</version>
     <description>Java Type Converter Tool</description>
     <url>https://github.com/honzel/honzel</url>
     <properties>
