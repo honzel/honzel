@@ -4,7 +4,6 @@ import com.honzel.core.constant.NumberConstants;
 import com.honzel.core.util.exception.ConversionException;
 import com.honzel.core.util.text.TextUtils;
 import com.honzel.core.util.time.LocalDateTimeUtils;
-import org.apache.commons.lang3.StringUtils;
 
 import java.text.ParsePosition;
 import java.time.*;
@@ -13,7 +12,6 @@ import java.time.temporal.ChronoField;
 import java.time.temporal.Temporal;
 import java.time.temporal.TemporalAccessor;
 import java.time.temporal.TemporalQueries;
-import java.time.zone.ZoneRules;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Objects;
@@ -116,7 +114,7 @@ public class LocalDateTimeConverter extends AbstractConverter {
 			int begin = beginIndexOfPatterns(type);
 			DateTimeFormatter formatter;
 			if (begin >= 0 && (formatter = formatters[begin]) != null) {
-				return formatter.format((Temporal) value);
+				return formatter.format((TemporalAccessor) value);
 			}
 			return value.toString();
 		}
@@ -385,87 +383,6 @@ public class LocalDateTimeConverter extends AbstractConverter {
 		}
 		return null;
 	}
-
-
-	private Object convertInstant(Instant instant, Class<?> toType, ZoneId zoneId) {
-		if (toType.isInstance(instant)) {
-			return instant;
-		}
-		if (zoneId == null) {
-			zoneId = ZoneId.systemDefault();
-		}
-		if (LocalDateTime.class.equals(toType)) {
-			return LocalDateTime.ofInstant(instant, zoneId);
-		}
-		if (LocalDate.class.equals(toType)) {
-			return LocalDateTime.ofInstant(instant, zoneId).toLocalDate();
-		}
-		if (LocalTime.class.equals(toType)) {
-			return LocalDateTime.ofInstant(instant, zoneId).toLocalTime();
-		}
-		if (Long.class.equals(toType) || Long.TYPE.equals(toType)) {
-			return instant.toEpochMilli();
-		}
-		if (Integer.class.equals(toType) || Integer.TYPE.equals(toType)) {
-			return (int) instant.getEpochSecond();
-		}
-		if (Date.class.equals(toType)) {
-			return Date.from(instant);
-		}
-		if (Calendar.class.equals(toType)) {
-			Calendar cal = Calendar.getInstance(TimeZone.getTimeZone(zoneId));
-			cal.setTimeInMillis(instant.toEpochMilli());
-			return cal;
-		}
-		return null;
-	}
-
-	private Object convertTemporal(TemporalAccessor temporal, Class toType) {
-		if (toType.isInstance(temporal)) {
-			return temporal;
-		}
-		if (LocalDate.class.equals(toType)) {
-			return temporal.query(TemporalQueries.localDate());
-		}
-		if (LocalTime.class.equals(toType)) {
-			return temporal.query(TemporalQueries.localTime());
-		}
-		if (LocalDateTime.class.equals(toType)) {
-			LocalDate localDate = temporal.query(TemporalQueries.localDate());
-			LocalTime localTime = temporal.query(TemporalQueries.localTime());
-			if (localDate != null || localTime != null) {
-				return LocalDateTime.of(localDate != null ? localDate : LocalDateTimeUtils.EPOCH_DATE, localTime != null ? localTime : LocalTime.MIN);
-			} else {
-				return null;
-			}
-		}
-		long seconds;
-		boolean supported;
-		if (supported = temporal.isSupported(ChronoField.INSTANT_SECONDS)) {
-			seconds = temporal.getLong(ChronoField.INSTANT_SECONDS);
-		} else {
-			if (supported = temporal.isSupported(ChronoField.EPOCH_DAY)) {
-				seconds = TimeUnit.DAYS.toSeconds(temporal.getLong(ChronoField.EPOCH_DAY));
-			} else {
-				seconds = 0L;
-			}
-			if (temporal.isSupported(ChronoField.SECOND_OF_DAY)) {
-				seconds += temporal.getLong(ChronoField.SECOND_OF_DAY);
-				supported = true;
-			}
-		}
-		if (supported) {
-			long nano;
-			if (temporal.isSupported(ChronoField.NANO_OF_SECOND)) {
-				nano = temporal.getLong(ChronoField.NANO_OF_SECOND);
-			} else {
-				nano = 0L;
-			}
-			return convertInstant(Instant.ofEpochSecond(seconds, nano), toType, temporal.query(TemporalQueries.zone()));
-		}
-		return null;
-	}
-
 
 
 }
