@@ -663,7 +663,7 @@ public class TextUtils {
 			// 前缀
 			String prefix = startLen == originPosition ? EMPTY : content.substring(originPosition);
 			// 循环处理项
-			Iterator<?> iterator = ((Iterable) value).iterator();
+			Iterator<?> iterator = ((Iterable<?>) value).iterator();
 			boolean hasNext = (parsed = iterator.hasNext());
 			while (hasNext) {
 				// 先格式化
@@ -794,17 +794,15 @@ public class TextUtils {
 	}
 
 	private static Object formatValue(Resolver resolver, Object value, Object configParams, Object params, boolean alternateHolderEnabled, boolean simplified) {
-		if (!resolver.isInTokens() || resolver.getInput().charAt(resolver.getStart()) != EXPR_FLAG) {
-			// 没有指定格式化格式
-			return value;
-		}
-		// 起始位置
 		int outerTerminal = resolver.getTerminal();
-		resolver.resetToCurrent(1).useTokens(EQUAL + SEMICOLON);
-		// 获取映射值
-		value =  getMappingValue(resolver, value, configParams, params, alternateHolderEnabled, simplified);
-		// 返回
-		resolver.resetToBeyond(1).useTerminal(outerTerminal).useTokens(BRACKET_START).hasNext();
+		while (resolver.isInTokens() && resolver.getInput().charAt(resolver.getStart()) == EXPR_FLAG) {
+			// 起始位置
+			resolver.resetToCurrent(1).useTokens(EQUAL + SEMICOLON);
+			// 获取映射值
+			value = getMappingValue(resolver, value, configParams, params, alternateHolderEnabled, simplified);
+			// 获取下一个表达式
+			resolver.resetToBeyond(1).useTerminal(outerTerminal).useTokens(BRACKET_START).hasNext();
+		}
 		return value;
 	}
 
@@ -1038,7 +1036,12 @@ public class TextUtils {
 					content.append("\\f");
 					break;
 				default:
-					content.append("\\u").append(Integer.toHexString(ch));
+					String s = Integer.toHexString(ch);
+					content.append("\\u");
+					for (int offset = s.length(); offset < 4; ++offset) {
+						content.append('0');
+					}
+					content.append(s);
 					break;
 			}
 		}
