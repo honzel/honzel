@@ -56,7 +56,9 @@ public class LocalDateTimeUtils {
     private static final Map<TemporalUnit, List<TemporalField>> BASE_UNIT_FIELD_LIST_MAP;
     // 解析标准单位
     private static final TemporalUnit[] UNITS = Arrays.copyOf(ChronoUnit.values(), ChronoUnit.FOREVER.ordinal());
-    public static final LocalDate EPOCH_DATE = LocalDate.of(1970, 1, 1);;
+    public static final LocalDate EPOCH_DATE = LocalDate.of(1970, 1, 1);
+
+    public static final LocalTime MAX_SECOND_TIME = LocalTime.of(23, 59, 59);
 
     static {
         BASE_UNIT_FIELD_LIST_MAP = new HashMap<>();
