@@ -94,7 +94,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 		// 默认处理链
 		this.defaultMethodList = parseChainMethodList(processors, chainMethodMap);
 		// 其他业务链方法
-		this.specifiedChainMethodMap = chainMethodMap.isEmpty() ? Collections.emptyMap() :  chainMethodMap;
+		this.specifiedChainMethodMap = chainMethodMap.isEmpty() ? Collections.emptyMap() : chainMethodMap;
 	}
 
 	protected final boolean isMaskIfNecessary() {
@@ -146,7 +146,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 			}
 		}
 		// 默认业务链
-		ChainMethodList defaultResult = chainMethodMap.remove(CHAIN_TYPE_DEFAULT);
+		ChainMethodList defaultResult = chainMethodMap.isEmpty() ? new ChainMethodList(processors, log) : chainMethodMap.remove(CHAIN_TYPE_DEFAULT);
 		if (defaultResult != null) {
 			// 完成解析
 			defaultResult.finish(allArgumentTypes);
