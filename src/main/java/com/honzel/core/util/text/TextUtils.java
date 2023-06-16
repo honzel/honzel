@@ -954,7 +954,7 @@ public class TextUtils {
 
 
 	private static Object getItemValue(Object params, int index) {
-		if (params.getClass().isArray()) {
+		if (Objects.nonNull(params) && params.getClass().isArray()) {
 			return index < Array.getLength(params) ? Array.get(params, index) : null;
 		}
 		if (params instanceof List) {
