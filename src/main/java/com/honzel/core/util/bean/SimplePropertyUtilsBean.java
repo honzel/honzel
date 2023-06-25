@@ -17,7 +17,7 @@ import java.util.*;
 import java.util.function.BiPredicate;
 
 /**
- * 
+ * 简单bean工具类
  * @author honzel
  *
  */

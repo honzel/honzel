@@ -4,6 +4,7 @@ import java.beans.PropertyDescriptor;
 import java.lang.annotation.Annotation;
 
 /**
+ * 数组常量
  * @author honzel
  */
 public interface ArrayConstants {

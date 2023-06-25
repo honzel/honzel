@@ -29,7 +29,10 @@ public abstract  class AbstractConverter implements Converter {
 //    private boolean enableException;
     private boolean disableException;
 
-
+	/**
+	 * the specified default converter, may be null.
+	 * @return the specified default converter
+	 */
     public Converter getDefaultConverter() {
 		return defaultConverter;
 	}

@@ -1,8 +1,9 @@
 package com.honzel.core.constant;
 
 /**
+ * 数字常量
  * @author honzel
- * @date 2022/1/4
+ * date 2022/1/4
  */
 public interface NumberConstants {
     /**
@@ -47,7 +48,7 @@ public interface NumberConstants {
      */
     int INTEGER_NIGH = 9;
     /**
-     *
+     * 十
      */
     int INTEGER_TEN = 10;
     /**

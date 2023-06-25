@@ -19,7 +19,7 @@ import java.util.stream.Stream;
 /**
  * 字符文本工具类<br>
  * 一. 格式化时某些字符有特殊功能，需要转义后才能输出(转义字符为'\'):
- *  <ul><b>1. 在占位符外的文本需要转义的字符:</b>
+ *  <br>1. 在占位符外的文本需要转义的字符:<ul>
  *    <li>
  *        format,alternateFormat方法: '$', 如AAA\$BBB${ccc[XXX]}, 第一个$需要转义
  *    </li>
@@ -30,7 +30,7 @@ import java.util.stream.Stream;
  *       alternateSimplifiedFormat方法: '(', 如AAA\(BBB(ccc[XXX]), 第一个'('需要转义
  *   </li>
  *  </ul>
- *  <ul><b>2. 在占位符内并在[]之外的字符串需要转义的字符:</b>
+ *  <br>2. 在占位符内并在[]之外的字符串需要转义的字符:<ul>
  *    <li>
  *        format,simplifiedFormat方法: '}[;', 如AAA${bbb\;ccc[XXX]}, 分号';'需要转义
  *    </li>
@@ -38,7 +38,7 @@ import java.util.stream.Stream;
  *        alternateFormat,alternateSimplifiedFormat方法: ')[;', 如AAA$(bbb\)ccc[XXX]), 第一个')'需要转义
  *    </li>
  *  </ul>
- *  <ul><b>3. 在占位符内并在[]内的字符串需要转义的字符:</b>
+ *  <br>3. 在占位符内并在[]内的字符串需要转义的字符:<ul>
  *    <li>
  *        format,simplifiedFormat方法: '}]=;', 如AAA${bbb[ccc\]XXX]}, 第一个']'需要转义
  *    </li>
@@ -47,7 +47,7 @@ import java.util.stream.Stream;
  *    </li>
  *  </ul>
  *  二. 数据格式的文本标识(dataType:json,xml,url,txt): json-Json值;xml-XML标签内容或属性内容;url-url参数;txt-普通文本
- *  <ul><b>格式化时某些字符作为开头字符的意义:</b>
+ *  <ul>格式化时某些字符作为开头字符的意义:
  *    <li>
  *        dataType+';'放占位符最前面: 如AAABBB${json;ccc[XXX]},
  *        表示ccc占位符按json转码再输出; 如果dataType为空当成普通文本输出;
@@ -69,7 +69,7 @@ import java.util.stream.Stream;
  *        其中XXX,YYY,ZZZ都为常量串,直接输出不会进行转码; 需要转码时请使用上两条规则处理
  *    </li>
  *  </ul>
- *  <ul><b>格式化文本与子格式化文本的占位符</b>
+ *  <ul>格式化文本与子格式化文本的占位符
  *    <li>
  *        format(占位符:${})与alternateFormat(占位符:$())互为父子格式,
  *        当外层格式为format内层格式会使用alternateFormat,两者反过来也一样。
@@ -83,7 +83,7 @@ import java.util.stream.Stream;
  *  </ul>
  *
  * @author honzel
- * @date 2021/2/27
+ * date 2021/2/27
  */
 public class TextUtils {
 

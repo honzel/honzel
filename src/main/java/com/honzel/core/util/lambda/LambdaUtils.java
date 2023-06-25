@@ -68,49 +68,49 @@ public class LambdaUtils {
 
     /**
      * 无参数
-     * @param <R>
+     * @param <R> 返回类型
      */
     @FunctionalInterface
     public interface SerializeSupplier<R> extends Supplier<R>, Serializable {}
 
     /**
      * 单参数
-     * @param <T>
-     * @param <R>
+     * @param <T> 参数类型
+     * @param <R> 返回类型
      */
     @FunctionalInterface
     public interface SerializeFunction<T, R> extends Function<T, R>, Serializable {}
 
     /**
      * 二参数
-     * @param <T>
-     * @param <U>
-     * @param <R>
+     * @param <T> 参数1类型
+     * @param <U> 参数2类型
+     * @param <R> 返回类型
      */
     @FunctionalInterface
     public interface SerializeBiFunction<T, U, R> extends BiFunction<T, U, R>, Serializable {}
 
     /**
      * 单参数
-     * @param <T>
+     * @param <T> 参数类型
      */
     @FunctionalInterface
     public interface SerializeConsumer<T> extends Consumer<T>, Serializable {}
 
     /**
      * 二参数
-     * @param <T>
-     * @param <R>
+     * @param <T> 参数1类型
+     * @param <R> 返回类型
      */
     @FunctionalInterface
     public interface SerializeBiConsumer<T, R> extends BiConsumer<T, R>, Serializable {}
 
     /**
      * 三参数
-     * @param <T>
-     * @param <U>
-     * @param <P>
-     * @param <R>
+     * @param <T> 参数1类型
+     * @param <U> 参数2类型
+     * @param <P> 参数3类型
+     * @param <R> 返回类型
      */
     @FunctionalInterface
     public interface SerializeTiFunction<T, U, P, R>  extends Serializable {
@@ -118,9 +118,9 @@ public class LambdaUtils {
     }
     /**
      * 三参数
-     * @param <T>
-     * @param <U>
-     * @param <P>
+     * @param <T> 参数1类型
+     * @param <U> 参数2类型
+     * @param <P> 参数3类型
      */
     @FunctionalInterface
     public interface SerializeTiConsumer<T, U, P>  extends Serializable {
@@ -128,9 +128,9 @@ public class LambdaUtils {
     }
     /**
      * 三参数
-     * @param <T>
-     * @param <U>
-     * @param <P>
+     * @param <T> 参数1类型
+     * @param <U> 参数2类型
+     * @param <P> 参数3类型
      */
     @FunctionalInterface
     public interface SerializeTiPredicate<T, U, P>  extends Serializable {

@@ -13,6 +13,7 @@ import java.util.function.Function;
  * @author honzel
  * @param <C> 错误编码类型
  * @param <T> 数据类型
+ * @param <THIS> 本对象子类型
  */
 @SuppressWarnings("unchecked")
 public interface ApiResponse<C, T, THIS extends ApiResponse<C, T, THIS>> extends Serializable {

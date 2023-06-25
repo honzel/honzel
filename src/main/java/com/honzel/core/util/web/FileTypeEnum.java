@@ -7,7 +7,7 @@ import com.honzel.core.util.text.TextUtils;
 /**
  * 文件类型
  * @author luhz@trendit.cn
- * @date 2022/3/15
+ * date 2022/3/15
  */
 public enum FileTypeEnum {
     /**

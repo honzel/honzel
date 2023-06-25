@@ -19,7 +19,7 @@ import static com.honzel.core.constant.ArrayConstants.EMPTY_CLASS_ARRAY;
 import static com.honzel.core.constant.ArrayConstants.EMPTY_OBJECT_ARRAY;
 
 /**
- * 
+ * 嵌套bean工具类
  * @author honzel
  *
  */

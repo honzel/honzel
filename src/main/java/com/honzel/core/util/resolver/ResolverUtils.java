@@ -1,10 +1,7 @@
 package com.honzel.core.util.resolver;
 
-import com.honzel.core.util.resolver.DefaultResolver;
-import com.honzel.core.util.resolver.Resolver;
-
 /**
- * 
+ * 字符串解析器工具类
  * @author honzel
  *
  */
