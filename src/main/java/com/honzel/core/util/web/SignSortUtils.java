@@ -148,6 +148,10 @@ public class SignSortUtils {
 	public static String getSortedValueContent(Map<String, Object> params, String separator, String secret) {
 		return getSortedValueContent(params, separator, secret, ArrayConstants.EMPTY_STRING_ARRAY);
 	}
-	
+
+	/**
+	 * 忽略空值
+	 */
+	public static final Function<Object, String> EMPTY_TO_NULL = v -> TextUtils.isEmpty(v) ? null : TextUtils.toString(v);
 }
 
