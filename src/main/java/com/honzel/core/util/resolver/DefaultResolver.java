@@ -934,7 +934,7 @@ public class DefaultResolver implements Resolver {
 		return reset(getTerminal() + offset).useTerminal(DISABLED_TERMINAL);
 	}
 
-	private boolean appendTo(Appendable appendable, boolean trim, int startOffset, int endOffset) {
+	public boolean appendTo(Appendable appendable, boolean trim, int startOffset, int endOffset) {
 		if(input == null) {
 			return false;
 		}

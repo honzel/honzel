@@ -440,4 +440,6 @@ public interface Resolver {
 	boolean appendTo(Appendable appendable, int startOffset);
 
 	boolean appendTo(Appendable appendable, int startOffset, int endOffset);
+
+	boolean appendTo(Appendable appendable, boolean trim, int startOffset, int endOffset);
 }

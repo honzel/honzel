@@ -144,7 +144,7 @@ class ChainMethodList {
             boolean topDefault;
             if ((topDefault = topDefaults[typeIndex]) == isDefault) {
                 if (log.isWarnEnabled()) {
-                    log.warn("同一处理器下对应相同的链类型有重复的处理方法, 后面一个将被忽略掉: [{}]<==>[{}]", toShortName(methods[offset], actTypes), toShortName(method, actTypes));
+                    log.warn("同一处理器下对应相同的链类型有重复的处理方法, 后面一个将被忽略掉: [{}]<==>[{}]", toShortName(methods[offset], null), toShortName(method, actTypes));
                 }
                 return false;
             }
