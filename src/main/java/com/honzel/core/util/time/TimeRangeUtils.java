@@ -4,6 +4,8 @@ import com.honzel.core.util.text.TextUtils;
 
 import javax.annotation.PostConstruct;
 import java.time.DateTimeException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
@@ -333,6 +335,29 @@ public class TimeRangeUtils {
             return result | time;
         }
         return result;
+    }
+    /**
+     * 时间段内是否包含有该时间
+     * @param timeRangeStamp  时间段值
+     * @param time 指定的时间
+     * @return 是否时间段值包含该时间
+     */
+    public static boolean containsDateTime(long timeRangeStamp, LocalDateTime time) {
+        return containsDay(timeRangeStamp, time.toLocalDate()) && containsTime(timeRangeStamp, time.toLocalTime());
+    }
+    /**
+     * 是否包含指定日期
+     * @param timeRangeStamp  时间段值
+     * @param date 指定日期
+     * @return 是否包含指定日期
+     */
+    public static boolean containsDay(long timeRangeStamp, LocalDate date) {
+        if (timeRangeStamp != NONE) {
+            // 获取星期几
+            int day = date.getDayOfWeek().getValue() % WEEKDAY_BITS;
+            return ((timeRangeStamp >>> (TIME_BITS + START_TIME_BITS + day)) & FIRST_BIT) != NONE;
+        }
+        return false;
     }
     /**
      * 时间段内是否包含有该时间
