@@ -90,25 +90,25 @@ public class TextUtils {
 	public static final String SEPARATOR = ",";
 	public static final String EMPTY = "";
 
-	private static final String HOLDER_FLAG = "$";
+	public static final String HOLDER_FLAG = "$";
 
-	private static final String BRACE_START = "{";
-	private static final String BRACE_END = "}";
+	public static final String BRACE_START = "{";
+	public static final String BRACE_END = "}";
 
-	private static final String PARENTHESES_START = "(";
-	private static final String PARENTHESES_END = ")";
+	public static final String PARENTHESES_START = "(";
+	public static final String PARENTHESES_END = ")";
 
-	private static final String BRACKET_START = "[";
-	private static final String BRACKET_END = "]";
+	public static final String BRACKET_START = "[";
+	public static final String BRACKET_END = "]";
 
-	private static final String EQUAL = "=";
-	private static final String SEMICOLON = ";";
+	public static final String EQUAL = "=";
+	public static final String SEMICOLON = ";";
 
-	private static final char EXPR_FLAG = '#';
+	public static final char EXPR_FLAG = '#';
 
-	private static final char JOIN_FLAG = '+';
+	public static final char JOIN_FLAG = '+';
 
-	private static final char FOR_EMPTY_FLAG = '^';
+	public static final char FOR_EMPTY_FLAG = '^';
 
 	private static final int HOLDER_FLAG_TYPE = 1;
 
@@ -958,7 +958,7 @@ public class TextUtils {
 			return index < Array.getLength(params) ? Array.get(params, index) : null;
 		}
 		if (params instanceof List) {
-			return index < ((List) params).size() ? ((List) params).get(index) : null;
+			return index < ((List<?>) params).size() ? ((List<?>) params).get(index) : null;
 		}
 		return params;
 	}
@@ -1107,11 +1107,11 @@ public class TextUtils {
 	 * @return int
 	 */
 	public static int indexOfValue(String valueList, Object value, boolean valueIndexOfList, String separator) {
-		String item = value != null ? value.toString() : null;
-		if (item == null) {
-			return -1;
+		String item = toString(value);
+		if (item != null) {
+			return indexOfValue(valueList, item, 0, item.length(), valueIndexOfList, separator);
 		}
-		return indexOfValue(valueList, item, 0, item.length(), valueIndexOfList, separator);
+		return -1;
 	}
 
 	private static int indexOfValue(String valueList, String value, int offset, int len, boolean valueIndexOfList, String separator) {
@@ -1161,7 +1161,7 @@ public class TextUtils {
 	 * @return 返回移除后的值列表, 如果不变, 则返回原列表串对象
 	 */
 	public static String removeValue(String valueList, Object value, String separator) {
-		String item = value != null ? value.toString() : null;
+		String item = toString(value);
 		if (item == null) {
 			return valueList;
 		}
@@ -1264,7 +1264,7 @@ public class TextUtils {
 	 * @return 返回添加后的值列表, 如果不变, 则返回原列表串对象
 	 */
 	public static String addValue(String valueList, Object value, String separator) {
-		String item = value != null ? value.toString() : null;
+		String item = toString(value);
 		if (isEmpty(item) || indexOfValue(valueList, item, 0, item.length(), false, separator) >= 0) {
 			return valueList;
 		}

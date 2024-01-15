@@ -1,11 +1,13 @@
 package com.honzel.core.util.web;
 
+import com.honzel.core.constant.ArrayConstants;
 import com.honzel.core.util.bean.BeanHelper;
 import com.honzel.core.util.resolver.Resolver;
 import com.honzel.core.util.resolver.ResolverUtils;
 import com.honzel.core.util.text.TextUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import sun.net.www.protocol.ftp.FtpURLConnection;
 
 import javax.annotation.PostConstruct;
 import javax.net.ssl.*;
@@ -258,14 +260,17 @@ public class WebUtils {
      * @return 响应字符串
      * @throws IOException 异常
      */
-    public static String doRequest(HttpURLConnection conn, String content, Charset charset) throws IOException {
+    public static String doRequest(URLConnection conn, String content, Charset charset) throws IOException {
         if (conn == null) {
             throw new IOException("connection is null");
         }
+        byte[] data = content != null && content.length() > 0 ? content.getBytes(charset != null ? charset : DEFAULT_CHARSET) : ArrayConstants.EMPTY_BYTE_ARRAY;
         try {
-            return readAsString(getConnectionInputStream(conn, content, charset), getResponseCharset(conn.getContentType(), charset));
+            return readAsString(getConnectionInputStream(conn, data, charset), getResponseCharset(conn.getContentType(), charset));
         } finally {
-            conn.disconnect();
+            if (conn instanceof HttpURLConnection) {
+                ((HttpURLConnection)conn).disconnect();
+            }
         }
     }
 
@@ -277,15 +282,16 @@ public class WebUtils {
      * @return 响应输入流
      * @throws IOException 异常
      */
-    private  static InputStream getConnectionInputStream(HttpURLConnection conn, String content, Charset charset) throws IOException {
-        if (content != null && content.length() > 0) {
-            if (TextUtils.isEmpty(conn.getRequestMethod())) {
-                conn.setRequestMethod(METHOD_POST);
+    private  static InputStream getConnectionInputStream(URLConnection conn, byte[] content, Charset charset) throws IOException {
+        boolean isHttpConnected = conn instanceof HttpURLConnection;
+        if (content != null && content.length > 0) {
+            if (isHttpConnected && TextUtils.isEmpty(((HttpURLConnection)conn).getRequestMethod())) {
+                ((HttpURLConnection)conn).setRequestMethod(METHOD_POST);
             }
             OutputStream out = null;
             try {
                 out = conn.getOutputStream();
-                out.write(content.getBytes(charset != null ? charset : DEFAULT_CHARSET));
+                out.write(content);
             } finally {
                 try {
                     if (out != null) {
@@ -296,24 +302,25 @@ public class WebUtils {
                 }
             }
         } else {
-            if (TextUtils.isEmpty(conn.getRequestMethod())) {
-                conn.setRequestMethod(METHOD_GET);
+            if (isHttpConnected && TextUtils.isEmpty(((HttpURLConnection)conn).getRequestMethod())) {
+                ((HttpURLConnection)conn).setRequestMethod(METHOD_GET);
             }
         }
-        if (conn.getResponseCode() < 400) {
+        if (!isHttpConnected || ((HttpURLConnection)conn).getResponseCode() < 400) {
             // 正常返回数据
             return convertInputStream(conn.getInputStream(), conn.getContentEncoding());
         } else {
             // 异常返回数据
-            InputStream input = convertInputStream(conn.getErrorStream(), conn.getContentEncoding());
+            InputStream input = convertInputStream(((HttpURLConnection)conn).getErrorStream(), conn.getContentEncoding());
             String msg = readAsString(input, getResponseCharset(conn.getContentType(), charset));
             if (TextUtils.isEmpty(msg)) {
-                throw new IOException(conn.getResponseCode() + ":" + conn.getResponseMessage());
+                throw new IOException(((HttpURLConnection)conn).getResponseCode() + ":" + ((HttpURLConnection)conn).getResponseMessage());
             } else {
                 throw new IOException(msg);
             }
         }
     }
+
 
     private static InputStream convertInputStream(InputStream input, String contentEncoding) {
         try {
@@ -344,14 +351,17 @@ public class WebUtils {
      * @return 响应字节数组流
      * @throws IOException 异常
      */
-    public static ByteArrayOutputStream doRequestAsStream(HttpURLConnection conn, String content, Charset charset) throws IOException {
+    public static ByteArrayOutputStream doRequestAsStream(URLConnection conn, String content, Charset charset) throws IOException {
         if (conn == null) {
             throw new IOException("connection is null");
         }
+        byte[] data = content != null && content.length() > 0 ? content.getBytes(charset != null ? charset : DEFAULT_CHARSET) : ArrayConstants.EMPTY_BYTE_ARRAY;
         try {
-            return readAsOutputStream(getConnectionInputStream(conn, content, charset));
+            return readAsOutputStream(getConnectionInputStream(conn, data, charset));
         } finally {
-            conn.disconnect();
+            if (conn instanceof HttpURLConnection) {
+                ((HttpURLConnection)conn).disconnect();
+            }
         }
     }
     /**
@@ -361,7 +371,7 @@ public class WebUtils {
      * @return 响应字节数组流
      * @throws IOException 异常
      */
-    public static ByteArrayOutputStream doRequestAsStream(HttpURLConnection conn, String content) throws IOException {
+    public static ByteArrayOutputStream doRequestAsStream(URLConnection conn, String content) throws IOException {
         return doRequestAsStream(conn, content, null);
     }
     /**
@@ -371,7 +381,7 @@ public class WebUtils {
      * @return 响应字符串
      * @throws IOException 异常
      */
-    public static String doRequest(HttpURLConnection conn, String content) throws IOException {
+    public static String doRequest(URLConnection conn, String content) throws IOException {
         return doRequest(conn, content, null);
     }
 
@@ -427,7 +437,7 @@ public class WebUtils {
             charset = DEFAULT_CHARSET;
         }
         String boundary = System.currentTimeMillis() + ""; // 随机分隔线
-        HttpURLConnection conn = null;
+        URLConnection conn = null;
         OutputStream out = null;
         try {
             String cType = "multipart/form-data;boundary=" + boundary + ";charset=" + charset;
@@ -456,8 +466,8 @@ public class WebUtils {
             return readAsString(getConnectionInputStream(conn, null, charset), getResponseCharset(conn.getContentType(), charset));
         } finally {
             closeQuietly(out);
-            if (conn != null) {
-                conn.disconnect();
+            if (conn instanceof HttpURLConnection) {
+                ((HttpURLConnection)conn).disconnect();
             }
         }
     }
@@ -537,7 +547,7 @@ public class WebUtils {
      * 执行HTTP GET请求。
      *
      * @param url 请求地址
-     * @param params 请求参数
+     * @param queryString 请求参数
      * @param charset 字符集，如UTF-8, GBK, GB2312
      * @param connectTimeout 连接超时时间
      * @param readTimeout 读取超时时间
@@ -545,7 +555,7 @@ public class WebUtils {
      * @return 响应字符串
      * @throws IOException 异常
      */
-    public static String doGet(String url, String params, Charset charset, int connectTimeout, int readTimeout, Map<String, ?> headerMap) throws IOException {
+    public static String doGet(String url, String queryString, Charset charset, int connectTimeout, int readTimeout, Map<String, ?> headerMap) throws IOException {
         if (charset == null) {
             charset = DEFAULT_CHARSET;
         }
@@ -553,19 +563,19 @@ public class WebUtils {
         if (headerMap == null) {
             contentType = "application/x-www-form-urlencoded;charset=" + charset;
         }
-        return doRequest(getConnection(buildGetUrl(url, params), METHOD_GET, contentType, connectTimeout, readTimeout, headerMap), null, charset);
+        return doRequest(getConnection(buildGetUrl(url, queryString), METHOD_GET, contentType, connectTimeout, readTimeout, headerMap), null, charset);
     }
 
     /**
      * 执行HTTP GET请求。
      *
      * @param url 请求地址
-     * @param params 请求参数
+     * @param queryString 请求参数
      * @return 响应字符串
      * @throws IOException 异常
      */
-    public static String doGet(String url, String params) throws IOException {
-        return doGet(url, params, null);
+    public static String doGet(String url, String queryString) throws IOException {
+        return doGet(url, queryString, null);
     }
 
     /**
@@ -578,8 +588,8 @@ public class WebUtils {
      * @param headerMap 请求头
      * @return 返回连接
      */
-    public static HttpURLConnection getConnection(String url, String method, String contentType, int connectTimeout, int readTimeout, Map<String, ?> headerMap) throws IOException {
-        HttpURLConnection conn = null;
+    public static URLConnection getConnection(String url, String method, String contentType, int connectTimeout, int readTimeout, Map<String, ?> headerMap) throws IOException {
+        URLConnection conn = null;
         try {
             URL endPoint = new URL(url);
             if ("https".equals(endPoint.getProtocol())) {
@@ -588,10 +598,10 @@ public class WebUtils {
                 connHttps.setSSLSocketFactory(getInstance().socketFactory);
                 connHttps.setHostnameVerifier(getInstance().verifier);
             } else {
-                conn = (HttpURLConnection) endPoint.openConnection();
+                conn = endPoint.openConnection();
             }
-            if (method != null) {
-                conn.setRequestMethod(method);
+            if (method != null && conn instanceof HttpURLConnection) {
+                ((HttpURLConnection) conn).setRequestMethod(method);
             }
             conn.setDoInput(true);
             conn.setDoOutput(true);
@@ -613,7 +623,7 @@ public class WebUtils {
             }
         } catch (IOException e) {
             if (conn != null) {
-                conn.disconnect();
+                ((HttpURLConnection) conn).disconnect();
             }
             LOG.error("打开http连接时发生错误: {}", e.getMessage());
             throw e;
@@ -628,7 +638,7 @@ public class WebUtils {
      * @param contentType Content Type
      * @return 返回连接
      */
-    public static HttpURLConnection getConnection(String url, String method, String contentType) throws IOException {
+    public static URLConnection getConnection(String url, String method, String contentType) throws IOException {
         return getConnection(url, method, contentType, null);
     }
 
@@ -637,7 +647,7 @@ public class WebUtils {
      * @param url 请求url
      * @return 返回连接
      */
-    public static HttpURLConnection getConnection(String url) throws IOException {
+    public static URLConnection getConnection(String url) throws IOException {
         return getConnection(url, null, null, null);
     }
 
@@ -649,7 +659,7 @@ public class WebUtils {
      * @param headerMap 请求头
      * @return 返回连接
      */
-    public static HttpURLConnection getConnection(String url, String method, String contentType, Map<String, ?> headerMap) throws IOException {
+    public static URLConnection getConnection(String url, String method, String contentType, Map<String, ?> headerMap) throws IOException {
         return getConnection(url, method, contentType, CONNECT_TIMEOUT, READ_TIMEOUT, headerMap);
     }
 
