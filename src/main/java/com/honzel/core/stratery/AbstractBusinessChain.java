@@ -5,6 +5,7 @@ import com.honzel.core.util.bean.BeanHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aop.support.AopUtils;
+import org.springframework.core.GenericTypeResolver;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
@@ -12,6 +13,7 @@ import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 
 import static com.honzel.core.constant.NumberConstants.INTEGER_ONE;
@@ -66,7 +68,6 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 	}
 
 
-
 	/**
 	 * 初始化processors
 	 * @param processors 添加的处理器
@@ -74,6 +75,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 	protected final void addProcessors(Object... processors) {
 		addProcessors0(false, processors);
 	}
+
 	/**
 	 * 初始化掩码processors
 	 * @param processors 添加的处理器
@@ -185,8 +187,9 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 	}
 
 	public AbstractBusinessChain() {
-		paramClass = (Class<P>) BeanHelper.getGenericActualType(getClass(), 0);
-		resultClass = (Class<R>) BeanHelper.getGenericActualType(getClass(), 1);
+		Class<?>[] types = GenericTypeResolver.resolveTypeArguments(getClass(), AbstractBusinessChain.class);
+		paramClass = (Class<P>)(Objects.nonNull(types) && types.length > 0 ?  types[0] : Object.class);
+		resultClass = (Class<R>) (Objects.nonNull(types) && types.length > 1 ?  types[1] : Object.class);
 	}
 
 	/**
@@ -298,6 +301,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 		ChainMethodList main = lookupMain(chainType = convertToActualChainType(param, chainType));
 		return main.initProcessResult(lookupSecondaries(main, chainType));
 	}
+
 	/**
 	 * 按对应链类型获取初始化的结果对象
 	 * @param param 入参
@@ -372,6 +376,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 		}
 		return main;
 	}
+
 	/**
 	 * 查找副链方法
 	 *
@@ -414,6 +419,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 	protected int getDefaultChainType(P param) {
 		return CHAIN_TYPE_DEFAULT;
 	}
+
 	/**
 	 * 转换为实际使用的类型
 	 * @return 返回实际使用的业务链类型
@@ -423,6 +429,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 	protected int convertToActualChainType(P param, int chainType) {
 		return chainType;
 	}
+
 	/**
 	 * 执行前处理
      * @param param 入参
