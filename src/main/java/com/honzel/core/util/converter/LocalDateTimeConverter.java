@@ -155,7 +155,6 @@ public class LocalDateTimeConverter extends AbstractConverter {
 			if (dateType == null) {
 				if (matchNull)
 					break;
-				matchNull = false;
 			} else if (dateType.equals(type)) {
 				break;
 			} else {

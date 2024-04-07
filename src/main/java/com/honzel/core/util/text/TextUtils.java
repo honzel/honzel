@@ -13,6 +13,7 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.temporal.TemporalAccessor;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -123,11 +124,17 @@ public class TextUtils {
 	public static final int DATA_TYPE_TEXT = 4;
 
 
+	private static final Map<String, TextFormatType> DATA_TYPE_MAP = new ConcurrentHashMap<>();
+
 
 	private static TextUtils utils;
 
 
 	protected TextUtils() {
+	}
+
+	public static TextFormatType registerDataType(String tag, TextFormatType dataType) {
+		return DATA_TYPE_MAP.put(tag, dataType);
 	}
 
 	@PostConstruct

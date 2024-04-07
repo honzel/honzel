@@ -6,12 +6,14 @@ import com.honzel.core.util.converter.TypeConverter;
 import com.honzel.core.util.lambda.LambdaUtils;
 import com.honzel.core.util.text.TextUtils;
 import com.honzel.core.vo.Entry;
+import com.sun.beans.TypeResolver;
 
 import java.beans.PropertyDescriptor;
 import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiPredicate;
@@ -574,93 +576,4 @@ public class BeanHelper {
 		}
 		return names;
 	}
-	/**
-	 * 通过反射, 获得Class定义中声明的父类的泛型参数的类型. 如无法找到, 返回Object.class.
-	 *
-	 * 如public UserDao extends HibernateDao<User,Long>
-	 *
-	 * @param clazz clazz The class to introspect
-	 * @param index the Index of the generic declaration,start from 0.
-	 * @return the index generic declaration, or Object.class if cannot be determined
-	 */
-	public static Class getGenericActualType(final Class clazz, final int index) {
-		Type genType = clazz.getGenericSuperclass();
-		if (!(genType instanceof ParameterizedType)) {
-			return Object.class;
-		}
-		Type[] params = ((ParameterizedType) genType).getActualTypeArguments();
-		if (index >= params.length || index < 0) {
-			return Object.class;
-		}
-		Type type = params[index];
-		if (type instanceof Class) {
-			return (Class) type;
-		}
-		if (type instanceof ParameterizedType) {
-			type = ((ParameterizedType) type).getRawType();
-			return type instanceof Class ? (Class) type : Object.class;
-		}
-		return Object.class;
-	}
-
-//	public static Class<?>[] getGenericActualTypes(Class<?> impClass, final Class<?> rootClass) {
-//		Object[] types;
-//		if (!rootClass.isAssignableFrom(impClass) || (types = rootClass.getTypeParameters()).length == 0) {
-//			return ArrayConstants.EMPTY_CLASS_ARRAY;
-//		}
-//		//
-//		List<Type> superTypes;
-//		if (rootClass.equals(impClass.getSuperclass())) {
-//			//
-//			Type type = impClass.getGenericSuperclass();
-//			if (type instanceof Class) {
-//				superTypes = Collections.emptyList();
-//			} else {
-//				superTypes = Collections.singletonList(type);
-//			}
-//		} else {
-//			superTypes = new ArrayList<>();
-//			while (impClass != null && !impClass.equals(rootClass) && !Object.class.equals(impClass)) {
-//				Class superClass;
-//				Type type;
-//				if ((superClass = impClass.getSuperclass()) != null && rootClass.isAssignableFrom(superClass)) {
-//					if ((type = impClass.getGenericSuperclass()) instanceof Class) {
-//						superTypes.clear();
-//					} else {
-//						superTypes.add(type);
-//					}
-//				} else {
-//					Class<?>[] interfaces;
-//					superClass = null;
-//					if (rootClass.isInterface() && ArrayConstants.isNotEmpty(interfaces = impClass.getInterfaces())) {
-//						for (int i = 0; i < interfaces.length; i++) {
-//							if (rootClass.isAssignableFrom(superClass = interfaces[i])) {
-//								if ((type = impClass.getGenericInterfaces()[i]) instanceof Class) {
-//									superTypes.clear();
-//								} else {
-//									superTypes.add(type);
-//								}
-//								break;
-//							}
-//						}
-//					}
-//				}
-//				impClass = superClass;
-//			}
-//		}
-//		if (impClass != null && !superTypes.isEmpty()) {
-//			boolean first = true;
-//			for (int i = superTypes.size() - 1; i >= 0; i--) {
-//				Type superType = superTypes.get(i);
-//				if (superType instanceof ParameterizedType) {
-//
-//					Type[] actualTypes = ((ParameterizedType) superType).getActualTypeArguments();
-//
-//				} else {
-//
-//				}
-//			}
-//		}
-//		return classArray;
-//	}
 }

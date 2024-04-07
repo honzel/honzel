@@ -521,7 +521,7 @@ public class SimplePropertyUtilsBean {
 			return true;
 		} catch (Exception e) {
 			error(e, "Fail to set the property '" + descriptor.getName() + "' for the bean of the type '"
-					+ bean.getClass().getName() + "', reason: " + e.toString());
+					+ bean.getClass().getName() + "', reason: " + e.getMessage());
 		}
 		return false;
 	}
@@ -530,7 +530,7 @@ public class SimplePropertyUtilsBean {
 			return descriptor.getReadMethod().invoke(bean, ArrayConstants.EMPTY_OBJECT_ARRAY);
 		} catch (Exception e) {
 			error(e, "Fail to get the property '" + descriptor.getName() + "' for the bean of the type '"
-					+ bean.getClass().getName() + "', reason: " + e.toString());
+					+ bean.getClass().getName() + "', reason: " + e.getMessage());
 		}
 		return null;
 	}
@@ -592,4 +592,6 @@ public class SimplePropertyUtilsBean {
 		}
 		return result;
 	}
+
+
 }
