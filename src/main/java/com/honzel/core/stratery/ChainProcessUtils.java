@@ -6,10 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cglib.proxy.Enhancer;
 import org.springframework.cglib.proxy.MethodInterceptor;
-import org.springframework.core.annotation.AliasFor;
-import org.springframework.core.annotation.AnnotatedElementUtils;
-import org.springframework.core.annotation.AnnotationAttributes;
-import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.core.annotation.*;
 
 import java.lang.annotation.Annotation;
 import java.lang.ref.SoftReference;
@@ -27,7 +24,7 @@ import static com.honzel.core.stratery.ChainConstants.*;
  * @author honzel
  * date 2021/1/22
  */
-@SuppressWarnings({"unused", "unchecked", "UnusedReturnValue", "WeakerAccess"})
+@SuppressWarnings({"unused", "unchecked", "UnusedReturnValue", "WeakerAccess", "rawtypes"})
 public class ChainProcessUtils {
 
     private static final Logger log = LoggerFactory.getLogger(ChainProcessUtils.class);
@@ -182,7 +179,8 @@ public class ChainProcessUtils {
                 }
                 Class<? extends Annotation> nestAnnotationType = annotation.annotationType();
                 // 判断是否属于@BusinessProcessor注解
-                if (BusinessProcessor.class.equals(nestAnnotationType) || AnnotationUtils.isAnnotationMetaPresent(nestAnnotationType, BusinessProcessor.class)) {
+                if (BusinessProcessor.class.equals(nestAnnotationType)
+                        || MergedAnnotations.from(nestAnnotationType, MergedAnnotations.SearchStrategy.INHERITED_ANNOTATIONS, RepeatableContainers.none()).isPresent(BusinessProcessor.class)) {
                     (annotationList == null ? (annotationList = new ArrayList<>(declaredAnnotations.length)) : annotationList).add(annotation);
                 }
             }
@@ -287,7 +285,7 @@ public class ChainProcessUtils {
                     }
                 }
             } else {
-                attributes.forEach(annotationAttributes::put);
+                annotationAttributes.putAll(attributes);
             }
         }
     }
@@ -374,7 +372,7 @@ public class ChainProcessUtils {
                 }
             }
         }
-        if (!firstFound || superFound) {
+        if (cls != null && (!firstFound || superFound)) {
             for (Class<?> face : cls.getInterfaces()) {
                 addAnnotationMethods(annotatedMethods, face, foundTypes, false);
             }
