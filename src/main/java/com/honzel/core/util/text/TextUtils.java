@@ -1,10 +1,13 @@
 package com.honzel.core.util.text;
 
+import com.honzel.core.constant.ArrayConstants;
 import com.honzel.core.util.bean.BeanHelper;
 import com.honzel.core.util.resolver.Resolver;
 import com.honzel.core.util.resolver.ResolverUtils;
 import com.honzel.core.util.time.LocalDateTimeUtils;
 import com.honzel.core.util.web.WebUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import java.lang.reflect.Array;
@@ -47,11 +50,11 @@ import java.util.stream.Stream;
  *        alternateFormat,alternateSimplifiedFormat 方法: ')]=;', 如AAA$(bbb[ccc\)XXX]), 第一个')'需要转义
  *    </li>
  *  </ul>
- *  二. 数据格式的文本标识(dataType:json,xml,url,txt): json-Json值;xml-XML标签内容或属性内容;url-url参数;txt-普通文本
+ *  二. 数据格式的文本标识(textFormatType:json,xml,url,txt): json-Json值;xml-XML标签内容或属性内容;url-url参数;txt-普通文本
  *  <ul>格式化时某些字符作为开头字符的意义:
  *    <li>
- *        dataType+';'放占位符最前面: 如AAABBB${json;ccc[XXX]},
- *        表示ccc占位符按json转码再输出; 如果dataType为空当成普通文本输出;
+ *        textFormatType+';'放占位符最前面: 如AAABBB${json;ccc[XXX]},
+ *        表示ccc占位符按json转码再输出; 如果textFormatType为空当成普通文本输出;
  *        如果占位符没有该标识时使用默认数据格式进行转码,如${ccc}的ccc使用参数传入的默认数据格式
  *    </li>
  *    <li>
@@ -60,7 +63,7 @@ import java.util.stream.Stream;
  *        *代表其他值原值输出, 不加*的话其他值都输出空值, 按占位符数据格式进行转码
  *    </li>
  *    <li>
- *        '#'+dataType+';'放在紧接占位符变量后面的[]中最前面: 如AAABBB${ccc[#json;1=FFF;2-GGG]},
+ *        '#'+textFormatType+';'放在紧接占位符变量后面的[]中最前面: 如AAABBB${ccc[#json;1=FFF;2-GGG]},
  *        表示FFF,GGG为内层子格式文本,匹配逻辑是当ccc=1时输出FFF,ccc=2时输出GGG, 因为没加*其他值都输出空值,
  *        其中FFF,GGG子格式文本使用json作为默认转码格式进行格式化后得到最后结果, 再按占位符数据格式进行转码
  *    </li>
@@ -86,8 +89,9 @@ import java.util.stream.Stream;
  * @author honzel
  * date 2021/2/27
  */
+@SuppressWarnings("unused")
 public class TextUtils {
-
+	protected static final Logger log = LoggerFactory.getLogger(TextUtils.class);
 	public static final String SEPARATOR = ",";
 	public static final String EMPTY = "";
 
@@ -124,7 +128,7 @@ public class TextUtils {
 	public static final int DATA_TYPE_TEXT = 4;
 
 
-	private static final Map<String, TextFormatType> DATA_TYPE_MAP = new ConcurrentHashMap<>();
+	private static final Map<String, TextFormatType> TEXT_FORMAT_TYPE_MAP = new ConcurrentHashMap<>();
 
 
 	private static TextUtils utils;
@@ -133,13 +137,21 @@ public class TextUtils {
 	protected TextUtils() {
 	}
 
-	public static TextFormatType registerDataType(String tag, TextFormatType dataType) {
-		return DATA_TYPE_MAP.put(tag, dataType);
+	public static TextFormatType registerFormatType(TextFormatType textFormatType) {
+		return TEXT_FORMAT_TYPE_MAP.put(textFormatType.getTag(), textFormatType);
+	}
+
+	public static TextFormatType getTextFormatType(String tag) {
+		return TEXT_FORMAT_TYPE_MAP.get(tag);
 	}
 
 	@PostConstruct
     protected void init() {
 		utils = this;
+		registerFormatType(FormatTypeEnum.SIMPLE);
+		registerFormatType(FormatTypeEnum.JSON);
+		registerFormatType(FormatTypeEnum.XML);
+		registerFormatType(FormatTypeEnum.URL_ENCODING);
 	}
 
 	private static TextUtils getInstance() {
@@ -149,29 +161,17 @@ public class TextUtils {
 		return utils;
 	}
 
-	public static int getDataType(String content) {
-		if (isEmpty(content)) {
-			return DATA_TYPE_TEXT;
+	public static TextFormatType getDataType(String content) {
+		if (isNotEmpty(content)) {
+			for (TextFormatType value : TEXT_FORMAT_TYPE_MAP.values()) {
+				if (value.preliminaryMatch(content)) {
+					return value;
+				}
+			}
 		}
-		return getInstance().getDefaultDataType(content);
+		return FormatTypeEnum.SIMPLE;
 	}
 
-	protected int getDefaultDataType(String content) {
-		content = content.trim();
-		if (content.startsWith(BRACE_START) && content.endsWith(BRACE_END)) {
-			return DATA_TYPE_JSON;
-		}
-		if (content.startsWith(BRACKET_START) && content.endsWith(BRACKET_END)) {
-			return DATA_TYPE_JSON;
-		}
-		if (content.startsWith("<") && content.endsWith(">")) {
-			return DATA_TYPE_XML;
-		}
-		if (content.startsWith("http")) {
-			return DATA_TYPE_QUERY_STRING;
-		}
-		return DATA_TYPE_TEXT;
-	}
 
 	/**
 	 * 获取格式中的参数占位符map, 使用${xxx}作为第一层占位符
@@ -193,6 +193,7 @@ public class TextUtils {
 	public static Map<String, Object> parseParamMap(String pattern, Object params) {
 		return parseParamMap0(new HashMap<>(), false, pattern, params, false);
 	}
+
 	/**
 	 * 获取格式中的参数占位符map, 使用$(xxx)作为第一层占位符
 	 * @param result 结果
@@ -203,6 +204,7 @@ public class TextUtils {
 	public static Map<String, Object> parseAlternateParamMap(Map<String, Object> result, String pattern, Object params) {
 		return parseParamMap0(result, true, pattern, params, false);
 	}
+
 	/**
 	 * 获取格式中的参数占位符map, 使用$(xxx)作为第一层占位符
 	 * @param pattern 格式模板
@@ -224,6 +226,7 @@ public class TextUtils {
 	public static Map<String, Object> parseSimplifiedParamMap(Map<String, Object> result, String pattern, Object params) {
 		return parseParamMap0(result, false, pattern, params, true);
 	}
+
 	/**
 	 * 获取格式中的参数占位符map, 使用{xxx}作为第一层占位符
 	 * @param pattern 格式模板
@@ -292,7 +295,18 @@ public class TextUtils {
 				resolver.resetToCurrent(simplified ? 0 : 1).useTokens(BRACKET_START);
 				if (resolver.hasNext(BRACKET_START + SEMICOLON)) {
 					if (resolver.endsInTokens(SEMICOLON)) {
+						if (Objects.isNull(parseDataType(resolver))) {
+							resolver.reset(resolver.getStart());
+						}
 						resolver.hasNext();
+					} else if (!resolver.isInTokens() && !resolver.isEmpty() && resolver.endsInTokens(BRACKET_START) && Objects.nonNull(parseDataType(resolver))) {
+						int start = resolver.getStart();
+						if (resolver.hasNext(SEMICOLON) && resolver.endsInTokens(SEMICOLON) && resolver.startsWith(BRACKET_END, -1)) {
+							// 有参数
+							resolver.hasNext();
+						} else {
+							resolver.reset(start).hasNext();
+						}
 					}
 					if (!resolver.isInTokens() && resolver.isEmpty() && !resolver.isLast()) {
 						// 忽略空串解析下一部分
@@ -321,9 +335,9 @@ public class TextUtils {
 					resolver.hasNext();
 				}
 				// 起始位置
-				if (resolver.isInTokens() && resolver.getInput().charAt(resolver.getStart()) == EXPR_FLAG) {
-					// 表达式
-					int outerTerminal = resolver.getTerminal();
+				// 表达式
+				int outerTerminal = resolver.getTerminal();
+				while (resolver.isInTokens() && resolver.getInput().charAt(resolver.getStart()) == EXPR_FLAG) {
 					resolver.resetToCurrent(1).useTokens(EQUAL + SEMICOLON);
 					// 获取映射值
 					boolean first = true;
@@ -339,7 +353,7 @@ public class TextUtils {
 							parseParamMap0(result, !alternateHolderEnabled, resolver.next(), params, simplified);
 						}
 					}
-					resolver.useTerminal(outerTerminal);
+					resolver.useTerminal(outerTerminal).useTokens(BRACKET_START).hasNext();
 				}
 				// 该段解析结束，准备解析后一段的内容
 				resolver.resetToBeyond(1).useTypes(HOLDER_FLAG_TYPE);
@@ -347,16 +361,17 @@ public class TextUtils {
 		}
 		return result;
 	}
+
 	/**
 	 * 格式化字符串文本, 使用${xxx}作为第一层占位符
-	 * @param dataType 数据类型
+	 * @param textFormatType 数据类型
 	 * @param pattern 待格式化内容
 	 * @param configParams 配置
 	 * @param params 参数
 	 * @return 返回格式化后内容
 	 */
-	public static String format(int dataType, String pattern, Object configParams, Object params) {
-		return format0(false, dataType, pattern, configParams, params, null, false);
+	public static String format(TextFormatType textFormatType, String pattern, Object configParams, Object params) {
+		return format0(false, textFormatType, pattern, configParams, params, null, false);
 	}
 
 	/**
@@ -368,15 +383,16 @@ public class TextUtils {
 	public static String format(String pattern, Object param) {
 		return format0(false, getDataType(pattern), pattern, null, param, null, false);
 	}
+
 	/**
 	 * 格式化字符串文本, 使用${xxx}作为第一层占位符
-	 * @param dataType 数据类型
+	 * @param textFormatType 数据类型
 	 * @param pattern 待格式化内容
 	 * @param param 参数
 	 * @return 返回格式化后内容
 	 */
-	public static String format(int dataType, String pattern, Object param) {
-		return format0(false, dataType, pattern, null, param, null, false);
+	public static String format(TextFormatType textFormatType, String pattern, Object param) {
+		return format0(false, textFormatType, pattern, null, param, null, false);
 	}
 
 	/**
@@ -391,14 +407,14 @@ public class TextUtils {
 
 	/**
 	 * 格式化字符串文本, 使用{xxx}作为第一层占位符
-	 * @param dataType 数据类型
+	 * @param textFormatType 数据类型
 	 * @param pattern 待格式化内容
 	 * @param configParams 配置
 	 * @param params 参数
 	 * @return 返回格式化后内容
 	 */
-	public static String simplifiedFormat(int dataType, String pattern, Object configParams, Object params) {
-		return format0(false, dataType, pattern, configParams, params, null, true);
+	public static String simplifiedFormat(TextFormatType textFormatType, String pattern, Object configParams, Object params) {
+		return format0(false, textFormatType, pattern, configParams, params, null, true);
 	}
 
 	/**
@@ -410,15 +426,16 @@ public class TextUtils {
 	public static String simplifiedFormat(String pattern, Object param) {
 		return format0(false, getDataType(pattern), pattern, null, param, null, true);
 	}
+
 	/**
 	 * 格式化字符串文本, 使用{xxx}作为第一层占位符
-	 * @param dataType 数据类型
+	 * @param textFormatType 数据类型
 	 * @param pattern 待格式化内容
 	 * @param param 参数
 	 * @return 返回格式化后内容
 	 */
-	public static String simplifiedFormat(int dataType, String pattern, Object param) {
-		return format0(false, dataType, pattern, null, param, null, true);
+	public static String simplifiedFormat(TextFormatType textFormatType, String pattern, Object param) {
+		return format0(false, textFormatType, pattern, null, param, null, true);
 	}
 
 	/**
@@ -433,14 +450,14 @@ public class TextUtils {
 
 	/**
 	 * 格式化字符串文本, 使用(xxx)作为第一层占位符
-	 * @param dataType 数据类型
+	 * @param textFormatType 数据类型
 	 * @param pattern 待格式化内容
 	 * @param configParams 配置
 	 * @param params 参数
 	 * @return 返回格式化后内容
 	 */
-	public static String alternateSimplifiedFormat(int dataType, String pattern, Object configParams, Object params) {
-		return format0(true, dataType, pattern, configParams, params, null, true);
+	public static String alternateSimplifiedFormat(TextFormatType textFormatType, String pattern, Object configParams, Object params) {
+		return format0(true, textFormatType, pattern, configParams, params, null, true);
 	}
 
 	/**
@@ -452,15 +469,16 @@ public class TextUtils {
 	public static String alternateSimplifiedFormat(String pattern, Object param) {
 		return format0(true, getDataType(pattern), pattern, null, param, null, true);
 	}
+
 	/**
 	 * 格式化字符串文本, 使用(xxx)作为第一层占位符
-	 * @param dataType 数据类型
+	 * @param textFormatType 数据类型
 	 * @param pattern 待格式化内容
 	 * @param param 参数
 	 * @return 返回格式化后内容
 	 */
-	public static String alternateSimplifiedFormat(int dataType, String pattern, Object param) {
-		return format0(true, dataType, pattern, null, param, null, true);
+	public static String alternateSimplifiedFormat(TextFormatType textFormatType, String pattern, Object param) {
+		return format0(true, textFormatType, pattern, null, param, null, true);
 	}
 
 	/**
@@ -472,27 +490,30 @@ public class TextUtils {
 	public static String alternateSimplifiedFormat(String pattern, Object... params) {
 		return format0(true, getDataType(pattern), pattern, null, params, null, true);
 	}
+
 	/**
 	 * 格式化字符串文本, 使用$(xxx)作为第一层占位符
-	 * @param dataType 数据类型
+	 * @param textFormatType 数据类型
 	 * @param pattern 待格式化内容
 	 * @param configParams 配置
 	 * @param params 参数
 	 * @return 返回格式化后内容
 	 */
-	public static String alternateFormat(int dataType, String pattern, Object configParams, Object params) {
-		return format0(true, dataType, pattern, configParams, params, null, false);
+	public static String alternateFormat(TextFormatType textFormatType, String pattern, Object configParams, Object params) {
+		return format0(true, textFormatType, pattern, configParams, params, null, false);
 	}
+
 	/**
 	 * 格式化字符串文本, 使用$(xxx)作为第一层占位符
-	 * @param dataType 数据类型
+	 * @param textFormatType 数据类型
 	 * @param pattern 待格式化内容
 	 * @param params 参数
 	 * @return 返回格式化后内容
 	 */
-	public static String alternateFormat(int dataType, String pattern, Object params) {
-		return format0(true, dataType, pattern, null, params, null, false);
+	public static String alternateFormat(TextFormatType textFormatType, String pattern, Object params) {
+		return format0(true, textFormatType, pattern, null, params, null, false);
 	}
+
 	/**
 	 * 格式化字符串文本, 使用$(xxx)作为第一层占位符
 	 * @param pattern 待格式化内容
@@ -502,6 +523,7 @@ public class TextUtils {
 	public static String alternateFormat(String pattern, Object param) {
 		return format0(true, getDataType(pattern), pattern, null, param, null, false);
 	}
+
 	/**
 	 * 格式化字符串文本, 使用$(xxx)作为第一层占位符
 	 * @param pattern 待格式化内容
@@ -511,10 +533,11 @@ public class TextUtils {
 	public static String alternateFormat(String pattern, Object... params) {
 		return format0(true, getDataType(pattern), pattern, null, params, null, false);
 	}
+
 	/**
 	 * 格式化字符串文本
 	 * @param alternateHolderEnabled 是否使用备选占位符(即第一层占位符是否使用'()'代替'{}')
-	 * @param dataType 数据类型
+	 * @param textFormatType 数据类型
 	 * @param pattern 待格式化内容
 	 * @param configParams 配置
 	 * @param params 参数
@@ -522,7 +545,7 @@ public class TextUtils {
 	 * @param simplified  是否简化占位符（即占位符不带$)
 	 * @return 返回格式化后内容
 	 */
-	private static String format0(boolean alternateHolderEnabled, int dataType, String pattern, Object configParams, Object params, Object thisValue, boolean simplified) {
+	private static String format0(boolean alternateHolderEnabled, TextFormatType textFormatType, String pattern, Object configParams, Object params, Object thisValue, boolean simplified) {
 		if (isNormalText(pattern, alternateHolderEnabled, simplified)) {
 			// 普通文本
 			return pattern;
@@ -543,7 +566,7 @@ public class TextUtils {
 				// 判断是否为${xxx}格式的占位符
 				if (simplified || pattern.charAt(resolver.getStart()) == holder) {
 					// ${xxx}格式的占位符内容时解析并附加参数值
-					offset = appendValue(content, resolver, dataType, thisValue, configParams, params, offset, alternateHolderEnabled, simplified);
+					offset = appendValue(content, resolver, textFormatType, thisValue, configParams, params, offset, alternateHolderEnabled, simplified);
 				} else {
 					// 添加$符号
 					content.append(HOLDER_FLAG);
@@ -599,12 +622,11 @@ public class TextUtils {
 	}
 
 
-
 	/**
 	 * 解析参数内容
 	 * @param content 内容
 	 * @param resolver 解析器
-	 * @param dataType 数据类型
+	 * @param textFormatType 数据类型
 	 * @param thisValue 当前值环境
 	 * @param configParams 配置参数
 	 * @param params 普通参数
@@ -613,20 +635,40 @@ public class TextUtils {
 	 * @param simplified 简化占位符
 	 * @return 返回下一个参数的偏移量
 	 */
-	private static int appendValue(StringBuilder content, Resolver resolver, int dataType, Object thisValue, Object configParams, Object params, int offset, boolean alternateHolderEnabled, boolean simplified) {
+	private static int appendValue(StringBuilder content, Resolver resolver, TextFormatType textFormatType, Object thisValue, Object configParams, Object params, int offset, boolean alternateHolderEnabled, boolean simplified) {
 		// 解析当前小段内容
 		// 初始位置
 		int originPosition = content.length();
 		resolver.resetToCurrent(simplified ? 0 : 1).useTokens(BRACKET_START);
+		String[] parameters = ArrayConstants.EMPTY_STRING_ARRAY;
 		if (resolver.hasNext(BRACKET_START + SEMICOLON)) {
 			if (resolver.endsInTokens(SEMICOLON)) {
-				int localDataType = parseDataType(resolver);
-				if (localDataType != DATA_TYPE_NONE || resolver.isEmpty()) {
-					dataType = localDataType;
+				TextFormatType localDataType = parseDataType(resolver);
+				if (Objects.nonNull(localDataType)) {
+					textFormatType = localDataType;
 				} else {
 					resolver.reset(resolver.getStart());
 				}
 				resolver.hasNext();
+			} else if (!resolver.isInTokens() && !resolver.isEmpty() && resolver.endsInTokens(BRACKET_START)) {
+				TextFormatType localDataType = parseDataType(resolver);
+				if (Objects.nonNull(localDataType)) {
+					int start = resolver.getStart();
+					if (resolver.hasNext(SEMICOLON) && resolver.endsInTokens(SEMICOLON) && resolver.startsWith(BRACKET_END, -1)) {
+						// 有参数
+						String str = resolver.next(1, -1).trim();
+						if (isNotEmpty(str)) {
+							parameters = str.split(SEPARATOR);
+							for (int i = 0; i < parameters.length; i++) {
+								parameters[i] = parameters[i].trim();
+							}
+						}
+						textFormatType = localDataType;
+					} else {
+						resolver.reset(start);
+					}
+					resolver.hasNext();
+				}
 			}
 			if (!resolver.isInTokens() && resolver.isEmpty() && !resolver.isLast()) {
 				// 忽略空串解析下一部分
@@ -677,7 +719,7 @@ public class TextUtils {
 				Object itemValue = formatValue(resolver, iterator.next(), configParams, params, alternateHolderEnabled, simplified);
 				hasNext = iterator.hasNext();
 				// 附加值
-				originPosition = appendFormatValue(content, resolver, dataType, itemValue, appendForEmpty, originPosition, !hasNext).length();
+				originPosition = appendFormatValue(content, resolver, textFormatType, parameters, itemValue, appendForEmpty, originPosition, !hasNext).length();
 				if (hasNext) {
 					if (!prefix.isEmpty()) {
 						// 添加前缀
@@ -701,7 +743,7 @@ public class TextUtils {
 				// 是否有新一个
 				boolean hasNext = (i + 1 != len);
 				// 附加值
-				originPosition = appendFormatValue(content, resolver, dataType, itemValue, appendForEmpty, originPosition, !hasNext).length();
+				originPosition = appendFormatValue(content, resolver, textFormatType, parameters, itemValue, appendForEmpty, originPosition, !hasNext).length();
 				if (hasNext) {
 					if (!prefix.isEmpty()) {
 						// 添加前缀
@@ -718,23 +760,26 @@ public class TextUtils {
 			// 先格式化
 			value = formatValue(resolver, value, configParams, params, alternateHolderEnabled, simplified);
 			// 没有解析到内容时
-			appendFormatValue(content, resolver, dataType, value, appendForEmpty, originPosition, true);
+			appendFormatValue(content, resolver, textFormatType, parameters, value, appendForEmpty, originPosition, true);
 		}
 		// 该段解析结束，准备解析后一段的内容
 		resolver.resetToBeyond(1).useTypes(HOLDER_FLAG_TYPE);
 		return offset;
 	}
 
-	private static StringBuilder appendFormatValue(StringBuilder content, Resolver resolver, int dataType, Object value, boolean appendForEmpty, int originPosition, boolean isLastValue) {
+	private static StringBuilder appendFormatValue(StringBuilder content, Resolver resolver, TextFormatType textFormatType, String[] parameters, Object value, boolean appendForEmpty, int originPosition, boolean isLastValue) {
 		// 格式化值
-		String stringValue = toString(value);
+		String stringValue = textFormatType.formatValue(value, parameters);
 		// 判断是否去掉前缀
-		if (appendForEmpty != isEmpty(stringValue)) {
+		boolean emptyValue = isEmpty(stringValue);
+		if (appendForEmpty != emptyValue) {
 			// 如果不匹配，则去掉前缀
 			content.setLength(originPosition);
 		}
-		//添加参数值
-		appendDataTypeValue(content, stringValue, dataType);
+		if (!emptyValue) {
+			//添加参数值
+			textFormatType.appendValue(content, stringValue);
+		}
 		String format = (String) resolver.getInput();
 		// 是否分隔符
 		boolean nonSeparator = true;
@@ -754,12 +799,12 @@ public class TextUtils {
 			}
 			if (format.charAt(start) ==  FOR_EMPTY_FLAG) {
 				// 如果为null时才附加，则值为null时进行附加
-				if (isEmpty(stringValue)) {
+				if (emptyValue) {
 					resolver.appendTo(content, offset + 1);
 				}
 			} else {
 				// 如果为非null时才附加，则值为非null时进行附加
-				if (!isEmpty(stringValue)) {
+				if (!emptyValue) {
 					resolver.appendTo(content, offset);
 				}
 			}
@@ -818,17 +863,18 @@ public class TextUtils {
         //
         String stringValue = null;
         boolean first = true;
-        int dataType = DATA_TYPE_NONE;
+        TextFormatType textFormatType = null;
         while (resolver.hasNext()) {
             if (first) {
 				if (resolver.endsInTokens(SEMICOLON)) {
-					dataType = parseDataType(resolver);
-					if (dataType != DATA_TYPE_NONE || resolver.isEmpty()) {
-						if (resolver.hasNext() && dataType == DATA_TYPE_NONE && resolver.isLast()) {
-							if (isEmpty(value) || (stringValue = getInstance().simpleValueFormat(value, resolver.next())) != null) {
-								// 基本类型或日期格式转化
-								return stringValue != null ? stringValue : value;
-							}
+					//
+					textFormatType = parseDataType(resolver);
+					//
+					if (Objects.nonNull(textFormatType) && resolver.hasNext() && isEmpty(textFormatType.getTag()) && resolver.isLast()) {
+						// 基础类型格式
+						if (isEmpty(value) || !resolver.isEmpty() && (stringValue = textFormatType.formatValue(value, resolver.next())) != null) {
+							// 基本类型或日期格式转化
+							return stringValue != null ? stringValue : value;
 						}
 					}
 				}
@@ -838,26 +884,28 @@ public class TextUtils {
 						stringValue = "null";
 					}
 				}
-            	first = false;
+				first = false;
             }
 			int start = resolver.getStart();
 			int end = resolver.getEnd();
             if (resolver.isLast() || resolver.nextEquals(stringValue) || end == start + 1 && resolver.getInput().charAt(start) == '*') {
                 if (!resolver.isLast()) {
-                	if (!resolver.endsInTokens(EQUAL)) {
+					if (!resolver.endsInTokens(EQUAL)) {
 						// 返回原值
 						return value;
 					}
 					resolver.hasNext(SEMICOLON);
                 } else {
-                	if (end == start + 1 && resolver.getInput().charAt(start) == '*') {
-                		// 只有一个星号时
-                		return value;
+					if (end == start + 1 && resolver.getInput().charAt(start) == '*') {
+						// 只有一个星号时
+						return value;
 					}
 				}
                 String pattern = resolver.next();
-                int useDataType = dataType != DATA_TYPE_NONE ? dataType : getDataType(pattern);
-                stringValue = format0(!alternateHolderEnabled, useDataType, pattern, configParams, params, value, simplified);
+				if (Objects.isNull(textFormatType)) {
+					textFormatType = getDataType(pattern);
+				}
+                stringValue = format0(!alternateHolderEnabled, textFormatType, pattern, configParams, params, value, simplified);
                 // 映射值
                 return "null".equals(stringValue) ? null : stringValue;
             }
@@ -868,25 +916,8 @@ public class TextUtils {
         return null;
     }
 
-	private static int parseDataType(Resolver resolver) {
-		if (resolver.containsEscape() || resolver.isEmpty()) {
-			return DATA_TYPE_NONE;
-		}
-		if (resolver.nextEquals("json")) {
-			return DATA_TYPE_JSON;
-		} else if (resolver.nextEquals("xml")) {
-			return DATA_TYPE_XML;
-		} else if (resolver.nextEquals("txt")) {
-			return DATA_TYPE_TEXT;
-		} else if (resolver.nextEquals("url")) {
-			return DATA_TYPE_QUERY_STRING;
-		} else {
-			return getInstance().getExtraDataType(resolver.next());
-		}
-	}
-
-	protected int getExtraDataType(String dataTypeName) {
-		return DATA_TYPE_NONE;
+	private static TextFormatType parseDataType(Resolver resolver) {
+		return getTextFormatType(resolver.next(false));
 	}
 
 
@@ -970,11 +1001,11 @@ public class TextUtils {
 		return params;
 	}
 
-	private static void appendDataTypeValue(StringBuilder message, String value, int dataType) {
+	private static void appendDataTypeValue(StringBuilder message, String value, int textFormatType) {
 		if (isEmpty(value)) {
 			return;
 		}
-		switch (dataType) {
+		switch (textFormatType) {
 			case DATA_TYPE_JSON:
 				appendJsonValue(message, value);
 				break;
@@ -989,12 +1020,12 @@ public class TextUtils {
 				message.append(value);
 				break;
 			default:
-				message.append(getInstance().getExtraDataTypeValue(value, dataType));
+				message.append(getInstance().getExtraDataTypeValue(value, textFormatType));
 				break;
 		}
 	}
 
-	protected String getExtraDataTypeValue(String value, int dataType) {
+	protected String getExtraDataTypeValue(String value, int textFormatType) {
 		return value;
 	}
 
@@ -1159,7 +1190,6 @@ public class TextUtils {
 	}
 
 
-
 	/**
 	 * 移除值列表中对应的第一个值, 如果不存在, 则不变
 	 * @param valueList 字符串值集合(用项分隔符隔开各值)
@@ -1182,6 +1212,7 @@ public class TextUtils {
 		}
 		return valueList;
 	}
+
 	/**
 	 * 移除值列表中对应位置的值, 如果不存在, 则不变
 	 * @param valueList 字符串值集合(用项分隔符隔开各值)
@@ -1243,6 +1274,7 @@ public class TextUtils {
 			return prefix;
 		}
 	}
+
 	/**
 	 * 移除值列表中对应位置的值, 如果不存在, 则不变
 	 * @param valueList 字符串值集合(用项分隔符隔开各值)
@@ -1439,7 +1471,6 @@ public class TextUtils {
 	public static String retainAll(String firstList, String secondList) {
 		return retainAll(firstList, secondList, SEPARATOR);
 	}
-
 
 
 	/**
@@ -1700,7 +1731,7 @@ public class TextUtils {
 			return EMPTY;
 		}
 		StringBuilder result = new StringBuilder();
-        for (int i = 0, len = values.length; i < len; i++) {
+        for (int i = 0, len = values.length; i < len; ++i) {
             Object value = values[i];
             if (value != null) {
                 result.append(getInstance().objectToString(value));
@@ -1724,6 +1755,7 @@ public class TextUtils {
 	public static<T> String toString(T... values) {
 		return toString(values, SEPARATOR);
 	}
+
 	/**
 	 * 转化成字符串, null为转化为空串
 	 * @param value 值

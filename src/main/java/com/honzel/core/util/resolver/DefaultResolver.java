@@ -195,7 +195,7 @@ public class DefaultResolver implements Resolver {
 				} else if (input.charAt(endIndex - 1) == escape) {
 					count ++;
 				}
-				if (count % 2 == 1)
+				if ((count & 1) != 0)
 					endIndex ++;
 			}
 		}

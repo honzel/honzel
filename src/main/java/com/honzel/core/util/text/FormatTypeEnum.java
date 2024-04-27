@@ -3,6 +3,8 @@ package com.honzel.core.util.text;
 import com.honzel.core.constant.NumberConstants;
 import com.honzel.core.util.time.LocalDateTimeUtils;
 import com.honzel.core.util.web.WebUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -13,52 +15,63 @@ import java.util.Objects;
 
 import static com.honzel.core.util.text.TextUtils.*;
 
+
 /**
- *
+ * 文本格式化类型
+ * @author luhz
+ * date 2024/4/27
  */
 public enum FormatTypeEnum implements TextFormatType {
+
+    /**
+     * 默认格式化类型
+     */
     SIMPLE(TextUtils.EMPTY) {
-        public boolean preliminaryMatch(String content) {
-            return isEmpty(content);
+        public boolean preliminaryMatch(String format) {
+            return isEmpty(format);
         }
 
-        public String formatValue(Object value, String[] parameters) {
+        public String formatValue(Object value, String... parameters) {
             if (isNotEmpty(value) && Objects.nonNull(parameters) && parameters.length > 0 && isNotEmpty(parameters[0])) {
                 String pattern = parameters[0];
-                if (value instanceof TemporalAccessor) {
-                    return LocalDateTimeUtils.format((TemporalAccessor) value, pattern);
-                } else if (value instanceof Number) {
-                    return new DecimalFormat(pattern).format(value);
-                } else if (value instanceof Date) {
-                    return new SimpleDateFormat(pattern).format((Date) value);
-                } else if (value instanceof Calendar) {
-                    return new SimpleDateFormat(pattern).format(((Calendar) value).getTime());
-                } else {
-                    // 不支持格式化
-                    return null;
+                try {
+                    if (value instanceof TemporalAccessor) {
+                        return LocalDateTimeUtils.format((TemporalAccessor) value, pattern);
+                    } else if (value instanceof Number) {
+                        return new DecimalFormat(pattern).format(value);
+                    } else if (value instanceof Date) {
+                        return new SimpleDateFormat(pattern).format((Date) value);
+                    } else if (value instanceof Calendar) {
+                        return new SimpleDateFormat(pattern).format(((Calendar) value).getTime());
+                    } else {
+                        // 不支持格式化
+                        return null;
+                    }
+                } catch (Exception e) {
+                    log.error("数据格式化失败: {}", e.getMessage(), e);
+                    return EMPTY;
                 }
             }
             return TextUtils.toString(value);
         }
-        @Override
-        public void appendValue(StringBuilder formattedContent, String value) {
-            formattedContent.append(value);
-        }
     },
+    /**
+     * JSON格式化类型
+     */
     JSON("json") {
-        public boolean preliminaryMatch(String content) {
-            return content.startsWith(BRACE_START) && content.endsWith(BRACE_END) || content.startsWith(BRACKET_START) && content.endsWith(BRACKET_END);
+        public boolean preliminaryMatch(String format) {
+            return format.startsWith(BRACE_START) && format.endsWith(BRACE_END) || format.startsWith(BRACKET_START) && format.endsWith(BRACKET_END);
         }
         @Override
-        public void appendValue(StringBuilder formattedContent, String value) {
+        public void appendValue(StringBuilder formattedContent, String formattedValue) {
             int lastIndex = -1;
-            for (int i = 0, len = value.length(); i < len; i++) {
-                char ch = value.charAt(i);
+            for (int i = 0, len = formattedValue.length(); i < len; i++) {
+                char ch = formattedValue.charAt(i);
                 if (ch >= ' ' && ch != '\"' && ch != '\\') {
                     continue;
                 }
                 if (lastIndex + 1 < i) {
-                    formattedContent.append(value, lastIndex + 1, i);
+                    formattedContent.append(formattedValue, lastIndex + 1, i);
                 }
                 lastIndex = i;
                 switch(ch) {
@@ -94,20 +107,23 @@ public enum FormatTypeEnum implements TextFormatType {
                 }
             }
             if (lastIndex >= 0) {
-                formattedContent.append(value, lastIndex + 1, value.length());
+                formattedContent.append(formattedValue, lastIndex + 1, formattedValue.length());
             } else {
-                formattedContent.append(value);
+                formattedContent.append(formattedValue);
             }
         }
     },
+    /**
+     * XML格式化类型
+     */
     XML("xml") {
-        public boolean preliminaryMatch(String content) {
-            return content.startsWith("<") && content.endsWith(">");
+        public boolean preliminaryMatch(String format) {
+            return format.startsWith("<") && format.endsWith(">");
         }
         @Override
-        public void appendValue(StringBuilder formattedContent, String value) {
-            for (int i = 0, len = value.length(); i < len; i++) {
-                char ch = value.charAt(i);
+        public void appendValue(StringBuilder formattedContent, String formattedValue) {
+            for (int i = 0, len = formattedValue.length(); i < len; i++) {
+                char ch = formattedValue.charAt(i);
                 switch (ch) {
                     case '&': formattedContent.append("&amp;");
                         break;
@@ -126,17 +142,42 @@ public enum FormatTypeEnum implements TextFormatType {
             }
         }
     },
+    /**
+     * URL编码格式化类型
+     */
     URL_ENCODING("url") {
-        public boolean preliminaryMatch(String content) {
-            return content.lastIndexOf("://", NumberConstants.INTEGER_TEN) > NumberConstants.INTEGER_ZERO;
+        public boolean preliminaryMatch(String format) {
+            return format.lastIndexOf("://", NumberConstants.INTEGER_TEN) > NumberConstants.INTEGER_ZERO;
         }
         @Override
-        public void appendValue(StringBuilder formattedContent, String value) {
-            formattedContent.append(WebUtils.encode(value));
+        public void appendValue(StringBuilder formattedContent, String formattedValue) {
+            formattedContent.append(WebUtils.encode(formattedValue));
+        }
+    },
+    /**
+     * 子字符串格式化类型
+     */
+    SUB_STR("substr") {
+        public String formatValue(Object value, String... parameters) {
+            String stringValue = TextUtils.toString(value);
+            if (isNotEmpty(stringValue) && Objects.nonNull(parameters) && parameters.length > 0) {
+                // 获取偏移量
+                int offset = EMPTY.equals(parameters[0]) ? NumberConstants.INTEGER_ZERO : Integer.parseInt(parameters[0]);
+                // 计算结束位置
+                int end = parameters.length > 1 && !EMPTY.equals(parameters[1]) ? offset + Integer.parseInt(parameters[1]) : stringValue.length();
+                // 校正偏移量
+                offset = offset < NumberConstants.INTEGER_ZERO ? Math.max(stringValue.length() + offset, NumberConstants.INTEGER_ZERO) : Math.min(offset, stringValue.length());
+                // 校正结束位置
+                end = end < NumberConstants.INTEGER_ZERO ? Math.max(stringValue.length() + end, NumberConstants.INTEGER_ZERO) : Math.min(end, stringValue.length());
+                // 返回子字符串
+                return offset == end ? EMPTY : offset < end ? stringValue.substring(offset, end) : stringValue.substring(end, offset);
+            }
+            return stringValue;
         }
     },
     ;
 
+    private static final Logger log = LoggerFactory.getLogger(FormatTypeEnum.class);
     private final String tag;
 
      FormatTypeEnum(String tag) {
