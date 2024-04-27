@@ -128,30 +128,32 @@ public class TextUtils {
 	public static final int DATA_TYPE_TEXT = 4;
 
 
-	private static final Map<String, TextFormatType> TEXT_FORMAT_TYPE_MAP = new ConcurrentHashMap<>();
+	private static final Map<String, TextFormatType> FORMAT_TYPE_MAP = new ConcurrentHashMap<>();
 
 
 	private static TextUtils utils;
 
+	static {
+		registerFormatType(FormatTypeEnum.SIMPLE);
+		registerFormatType(FormatTypeEnum.JSON);
+		registerFormatType(FormatTypeEnum.XML);
+		registerFormatType(FormatTypeEnum.URL_ENCODING);
+	}
 
 	protected TextUtils() {
 	}
 
 	public static TextFormatType registerFormatType(TextFormatType textFormatType) {
-		return TEXT_FORMAT_TYPE_MAP.put(textFormatType.getTag(), textFormatType);
+		return FORMAT_TYPE_MAP.put(textFormatType.getTag(), textFormatType);
 	}
 
-	public static TextFormatType getTextFormatType(String tag) {
-		return TEXT_FORMAT_TYPE_MAP.get(tag);
+	public static TextFormatType getFormatType(String tag) {
+		return FORMAT_TYPE_MAP.get(tag);
 	}
 
 	@PostConstruct
     protected void init() {
 		utils = this;
-		registerFormatType(FormatTypeEnum.SIMPLE);
-		registerFormatType(FormatTypeEnum.JSON);
-		registerFormatType(FormatTypeEnum.XML);
-		registerFormatType(FormatTypeEnum.URL_ENCODING);
 	}
 
 	private static TextUtils getInstance() {
@@ -161,9 +163,11 @@ public class TextUtils {
 		return utils;
 	}
 
+
+
 	public static TextFormatType getDataType(String content) {
 		if (isNotEmpty(content)) {
-			for (TextFormatType value : TEXT_FORMAT_TYPE_MAP.values()) {
+			for (TextFormatType value : FORMAT_TYPE_MAP.values()) {
 				if (value.preliminaryMatch(content)) {
 					return value;
 				}
@@ -295,13 +299,10 @@ public class TextUtils {
 				resolver.resetToCurrent(simplified ? 0 : 1).useTokens(BRACKET_START);
 				if (resolver.hasNext(BRACKET_START + SEMICOLON)) {
 					if (resolver.endsInTokens(SEMICOLON)) {
-						if (Objects.isNull(parseDataType(resolver))) {
-							resolver.reset(resolver.getStart());
-						}
 						resolver.hasNext();
-					} else if (!resolver.isInTokens() && !resolver.isEmpty() && resolver.endsInTokens(BRACKET_START) && Objects.nonNull(parseDataType(resolver))) {
+					} else if (!resolver.isInTokens() && !resolver.isEmpty() && resolver.endsInTokens(BRACKET_START)) {
 						int start = resolver.getStart();
-						if (resolver.hasNext(SEMICOLON) && resolver.endsInTokens(SEMICOLON) && resolver.startsWith(BRACKET_END, -1)) {
+						if (resolver.hasNext(SEMICOLON) && resolver.endsInTokens(SEMICOLON) && endsWithNotEscapeBracketEnd(resolver)) {
 							// 有参数
 							resolver.hasNext();
 						} else {
@@ -641,20 +642,22 @@ public class TextUtils {
 		int originPosition = content.length();
 		resolver.resetToCurrent(simplified ? 0 : 1).useTokens(BRACKET_START);
 		String[] parameters = ArrayConstants.EMPTY_STRING_ARRAY;
+		// 输入数据
+		String format = (String) resolver.getInput();
 		if (resolver.hasNext(BRACKET_START + SEMICOLON)) {
 			if (resolver.endsInTokens(SEMICOLON)) {
-				TextFormatType localDataType = parseDataType(resolver);
+				TextFormatType localDataType = getFormatType(resolver.next(false));
 				if (Objects.nonNull(localDataType)) {
 					textFormatType = localDataType;
-				} else {
-					resolver.reset(resolver.getStart());
 				}
 				resolver.hasNext();
 			} else if (!resolver.isInTokens() && !resolver.isEmpty() && resolver.endsInTokens(BRACKET_START)) {
-				TextFormatType localDataType = parseDataType(resolver);
-				if (Objects.nonNull(localDataType)) {
-					int start = resolver.getStart();
-					if (resolver.hasNext(SEMICOLON) && resolver.endsInTokens(SEMICOLON) && resolver.startsWith(BRACKET_END, -1)) {
+				int start = resolver.getStart();
+				int end = resolver.getEnd();
+				if (resolver.hasNext(SEMICOLON) && resolver.endsInTokens(SEMICOLON) && endsWithNotEscapeBracketEnd(resolver)) {
+					// 获取格式化类型
+					TextFormatType localDataType = getFormatType(format.substring(start, end));
+					if (Objects.nonNull(localDataType)) {
 						// 有参数
 						String str = resolver.next(1, -1).trim();
 						if (isNotEmpty(str)) {
@@ -664,11 +667,11 @@ public class TextUtils {
 							}
 						}
 						textFormatType = localDataType;
-					} else {
-						resolver.reset(start);
 					}
-					resolver.hasNext();
+				} else {
+					resolver.reset(start);
 				}
+				resolver.hasNext();
 			}
 			if (!resolver.isInTokens() && resolver.isEmpty() && !resolver.isLast()) {
 				// 忽略空串解析下一部分
@@ -677,8 +680,6 @@ public class TextUtils {
 		}
 		// 是否值为null进行附加内容
 		boolean appendForEmpty = false;
-		// 输入数据
-		String format = (String) resolver.getInput();
 		//判断是否前置常量串
 		int start = resolver.getStart();
 		if (resolver.isInTokens() && format.charAt(start) != EXPR_FLAG && format.charAt(start) != JOIN_FLAG) {
@@ -765,6 +766,28 @@ public class TextUtils {
 		// 该段解析结束，准备解析后一段的内容
 		resolver.resetToBeyond(1).useTypes(HOLDER_FLAG_TYPE);
 		return offset;
+	}
+
+	private static boolean endsWithNotEscapeBracketEnd(Resolver resolver) {
+		int end = resolver.getEnd() - BRACKET_END.length();
+		String input = (String) resolver.getInput();
+		boolean notEscaped = input.startsWith(BRACKET_END, end);
+		if (notEscaped && resolver.containsEscape()) {
+			// 如果有转义符，则判断是否被转义
+			for (int i = end - 1, start = resolver.getStart(); i >= start && input.charAt(i) == '\\'; i--) {
+				notEscaped = !notEscaped;
+			}
+		}
+		return notEscaped;
+	}
+
+
+	private static boolean matchHeaderFlag(String format, int start) {
+		return start >= 0 && start < format.length() && (
+				format.charAt(start) == EXPR_FLAG
+			||  format.charAt(start) == FOR_EMPTY_FLAG
+			||  format.charAt(start) == JOIN_FLAG
+			);
 	}
 
 	private static StringBuilder appendFormatValue(StringBuilder content, Resolver resolver, TextFormatType textFormatType, String[] parameters, Object value, boolean appendForEmpty, int originPosition, boolean isLastValue) {
@@ -868,7 +891,7 @@ public class TextUtils {
             if (first) {
 				if (resolver.endsInTokens(SEMICOLON)) {
 					//
-					textFormatType = parseDataType(resolver);
+					textFormatType = getFormatType(resolver.next(false));
 					//
 					if (Objects.nonNull(textFormatType) && resolver.hasNext() && isEmpty(textFormatType.getTag()) && resolver.isLast()) {
 						// 基础类型格式
@@ -915,11 +938,6 @@ public class TextUtils {
         }
         return null;
     }
-
-	private static TextFormatType parseDataType(Resolver resolver) {
-		return getTextFormatType(resolver.next(false));
-	}
-
 
 	/**
 	 * 值格式转化, 值类型为不支持格式化时，需要返回null
