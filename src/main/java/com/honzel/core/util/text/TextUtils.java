@@ -1,21 +1,13 @@
 package com.honzel.core.util.text;
 
 import com.honzel.core.constant.ArrayConstants;
-import com.honzel.core.constant.NumberConstants;
 import com.honzel.core.util.bean.BeanHelper;
 import com.honzel.core.util.resolver.Resolver;
 import com.honzel.core.util.resolver.ResolverUtils;
-import com.honzel.core.util.time.LocalDateTimeUtils;
-import com.honzel.core.util.web.WebUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
-import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
-import java.time.temporal.TemporalAccessor;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -90,9 +82,8 @@ import java.util.stream.Stream;
  * @author honzel
  * date 2021/2/27
  */
-@SuppressWarnings("unused")
+//@SuppressWarnings("unused")
 public class TextUtils {
-	protected static final Logger log = LoggerFactory.getLogger(TextUtils.class);
 	public static final String SEPARATOR = ",";
 	public static final String EMPTY = "";
 
@@ -118,16 +109,6 @@ public class TextUtils {
 
 	private static final int HOLDER_FLAG_TYPE = 1;
 
-	public static final int DATA_TYPE_NONE = 0;
-
-	public static final int DATA_TYPE_JSON = 1;
-
-	public static final int DATA_TYPE_QUERY_STRING = 2;
-
-	public static final int DATA_TYPE_XML = 3;
-
-	public static final int DATA_TYPE_TEXT = 4;
-
 
 	private static final Map<String, TextFormatType> FORMAT_TYPE_MAP = new ConcurrentHashMap<>();
 
@@ -139,6 +120,7 @@ public class TextUtils {
 		registerFormatType(FormatTypeEnum.JSON);
 		registerFormatType(FormatTypeEnum.XML);
 		registerFormatType(FormatTypeEnum.URL_ENCODING);
+		registerFormatType(FormatTypeEnum.SUB_STR);
 	}
 
 	protected TextUtils() {
@@ -301,15 +283,6 @@ public class TextUtils {
 				if (resolver.hasNext(BRACKET_START + SEMICOLON)) {
 					if (resolver.endsInTokens(SEMICOLON)) {
 						resolver.hasNext();
-					} else if (!resolver.isInTokens() && !resolver.isEmpty() && resolver.endsInTokens(BRACKET_START)) {
-						int start = resolver.getStart();
-						int nextStart;
-						if (resolver.hasNext() && (nextStart = lookupAfterFormatParametersIndex(resolver)) >= 0) {
-							// 有参数
-							resolver.reset(nextStart).hasNext();
-						} else {
-							resolver.reset(start).hasNext();
-						}
 					}
 					if (!resolver.isInTokens() && resolver.isEmpty() && !resolver.isLast()) {
 						// 忽略空串解析下一部分
@@ -611,15 +584,15 @@ public class TextUtils {
 	private static Resolver createResolver(boolean alternateHolderEnabled, boolean simplified) {
 		if (alternateHolderEnabled) {
 			if (simplified) {
-				return ResolverUtils.createResolver(PARENTHESES_START + BRACKET_START + EQUAL + SEMICOLON, PARENTHESES_END + BRACKET_END, true);
+				return ResolverUtils.createResolver(PARENTHESES_START + BRACE_START + BRACKET_START + EQUAL + SEMICOLON, PARENTHESES_END + BRACE_END + BRACKET_END, true);
 			} else {
-				return ResolverUtils.createResolver(HOLDER_FLAG + BRACKET_START + EQUAL + SEMICOLON, PARENTHESES_END + BRACKET_END, true);
+				return ResolverUtils.createResolver(HOLDER_FLAG + BRACE_START + BRACKET_START + EQUAL + SEMICOLON, PARENTHESES_END + BRACE_END + BRACKET_END, true);
 			}
 		} else {
 			if (simplified) {
-				return ResolverUtils.createResolver(BRACE_START + BRACKET_START + EQUAL + SEMICOLON, BRACE_END + BRACKET_END, true);
+				return ResolverUtils.createResolver(BRACE_START + PARENTHESES_START + BRACKET_START + EQUAL + SEMICOLON, BRACE_END + PARENTHESES_END + BRACKET_END, true);
 			} else {
-				return ResolverUtils.createResolver(HOLDER_FLAG + BRACKET_START + EQUAL + SEMICOLON, BRACE_END + BRACKET_END, true);
+				return ResolverUtils.createResolver(HOLDER_FLAG + PARENTHESES_START + BRACKET_START + EQUAL + SEMICOLON, BRACE_END + PARENTHESES_END + BRACKET_END, true);
 			}
 		}
 	}
@@ -643,39 +616,27 @@ public class TextUtils {
 		// 初始位置
 		int originPosition = content.length();
 		resolver.resetToCurrent(simplified ? 0 : 1).useTokens(BRACKET_START);
-		String[] parameters = ArrayConstants.EMPTY_STRING_ARRAY;
+		// 格式化参数
+		String[] parameters = null;
+		// 参数标记
+		String pFlag = alternateHolderEnabled ? BRACE_START : PARENTHESES_START;
 		// 输入数据
 		String format = (String) resolver.getInput();
 		if (resolver.hasNext(BRACKET_START + SEMICOLON)) {
 			if (resolver.endsInTokens(SEMICOLON)) {
-				TextFormatType localDataType = getFormatType(resolver.next(false));
+				// 带格式化类型
+				int terminal = resolver.getTerminal();
+				resolver.resetToCurrent().hasNext(pFlag);
+				// 获取标签
+				TextFormatType localDataType = getFormatType(resolver.isInTokens() ? EMPTY : resolver.next(false));
 				if (Objects.nonNull(localDataType)) {
+					// 有格式化类型
 					textFormatType = localDataType;
+					// 格式化参数
+					parameters = parseParameters(resolver, pFlag);
 				}
-				resolver.hasNext();
-			} else if (!resolver.isInTokens() && !resolver.isEmpty() && resolver.endsInTokens(BRACKET_START)) {
-				int start = resolver.getStart();
-				int end = resolver.getEnd();
-				int nextStart;
-				if (resolver.hasNext() && (nextStart = lookupAfterFormatParametersIndex(resolver)) >= 0) {
-					// 获取格式化类型
-					TextFormatType localDataType = getFormatType(format.substring(start, end));
-					if (Objects.nonNull(localDataType)) {
-						// 有参数
-						String str = resolver.next();
-						if (isNotEmpty(str)) {
-							parameters = str.split(SEPARATOR);
-							for (int i = 0; i < parameters.length; i++) {
-								parameters[i] = parameters[i].trim();
-							}
-						}
-						textFormatType = localDataType;
-					}
-					resolver.reset(nextStart);
-				} else {
-					resolver.reset(start);
-				}
-				resolver.hasNext();
+				// 解析下一部分
+				resolver.resetToBeyond(1).useTerminal(terminal).hasNext();
 			}
 			if (!resolver.isInTokens() && resolver.isEmpty() && !resolver.isLast()) {
 				// 忽略空串解析下一部分
@@ -772,51 +733,11 @@ public class TextUtils {
 		return offset;
 	}
 
-	/**
-	 * 查找格式化参数后的起始位置
-	 * @param resolver 文本解析器
-	 * @return 格式化参数后的起始位置
-	 */
-	private static int lookupAfterFormatParametersIndex(Resolver resolver) {
-		if (!resolver.isInTokens()) {
-			return -1;
-		}
-		String format = (String) resolver.getInput();
-		char flag = format.charAt(resolver.getStart());
-		if (flag == EXPR_FLAG || flag == JOIN_FLAG || flag == FOR_EMPTY_FLAG) {
-			// 特殊标记
-			return -1;
-		}
-		int nextStart = resolver.getEnd() + 1;
-		if (format.startsWith(SEMICOLON, nextStart ++)) {
-			return nextStart;
-		}
-		// 去空格后再匹配
-		for (int end = resolver.getTerminal(); nextStart < end; nextStart ++) {
-			char ch = format.charAt(nextStart);
-			if (ch > ' ') {
-				if (SEMICOLON.charAt(0) == ch) {
-					return ++nextStart;
-				} else {
-					return -1;
-				}
-			}
-		}
-		return -1;
-	}
 
-
-	private static boolean matchHeaderFlag(String format, int start) {
-		return start >= 0 && start < format.length() && (
-				format.charAt(start) == EXPR_FLAG
-			||  format.charAt(start) == FOR_EMPTY_FLAG
-			||  format.charAt(start) == JOIN_FLAG
-			);
-	}
 
 	private static StringBuilder appendFormatValue(StringBuilder content, Resolver resolver, TextFormatType textFormatType, String[] parameters, Object value, boolean appendForEmpty, int originPosition, boolean isLastValue) {
 		// 格式化值
-		String stringValue = textFormatType.formatValue(value, parameters);
+		String stringValue = textFormatType.formatValue(value, Objects.nonNull(parameters) ? parameters : ArrayConstants.EMPTY_STRING_ARRAY);
 		// 判断是否去掉前缀
 		boolean emptyValue = isEmpty(stringValue);
 		if (appendForEmpty != emptyValue) {
@@ -910,19 +831,38 @@ public class TextUtils {
         //
         String stringValue = null;
         boolean first = true;
+		// 格式化类型
         TextFormatType textFormatType = null;
+		// 格式化参数
+		String[] parameters = null;
+		// 参数标记
+		String pFlag = alternateHolderEnabled ? BRACE_START : PARENTHESES_START;
         while (resolver.hasNext()) {
             if (first) {
 				if (resolver.endsInTokens(SEMICOLON)) {
-					//
-					textFormatType = getFormatType(resolver.next(false));
-					//
-					if (Objects.nonNull(textFormatType) && resolver.hasNext() && isEmpty(textFormatType.getTag()) && resolver.isLast()) {
-						// 基础类型格式
-						if (isEmpty(value) || !resolver.isEmpty() && (stringValue = textFormatType.formatValue(value, resolver.next())) != null) {
-							// 基本类型或日期格式转化
-							return stringValue != null ? stringValue : value;
+					// 带格式化类型
+					int terminal = resolver.getTerminal();
+					resolver.resetToCurrent().hasNext(pFlag);
+					// 获取标签
+					TextFormatType localDataType = getFormatType(resolver.isInTokens() ? EMPTY : resolver.next(false));
+					if (Objects.nonNull(localDataType)) {
+						// 格式化参数
+						parameters = parseParameters(resolver, pFlag);
+						// 有格式化类型
+						textFormatType = localDataType;
+						// 解析下一部分
+						resolver.resetToBeyond(1).useTerminal(terminal);
+						//
+						if (resolver.hasNext() && EMPTY.equals(textFormatType.getTag()) && resolver.isLast()) {
+							// 基础类型格式
+							if (isEmpty(value) || !resolver.isEmpty() && (stringValue = textFormatType.formatValue(value, resolver.next())) != null) {
+								// 基本类型或日期格式转化
+								return stringValue != null ? stringValue : value;
+							}
 						}
+					} else {
+						// 解析下一部分
+						resolver.resetToBeyond(1).useTerminal(terminal).hasNext();
 					}
 				}
 				if (!resolver.isLast()) {
@@ -949,10 +889,22 @@ public class TextUtils {
 					}
 				}
                 String pattern = resolver.next();
-				if (Objects.isNull(textFormatType)) {
-					textFormatType = getDataType(pattern);
+				// 默认类型
+				TextFormatType defaultFormatType = Objects.isNull(parameters) && Objects.nonNull(textFormatType) ? textFormatType : getDataType(pattern);
+				// 格式化
+                stringValue = format0(!alternateHolderEnabled, defaultFormatType, pattern, configParams, params, value, simplified);
+				//
+				if (Objects.nonNull(parameters)) {
+					// 如果有带参数, 作为结果值的截取
+					stringValue = textFormatType.formatValue(stringValue, parameters);
+					//
+					if (isNotEmpty(stringValue) && parameters.length == 0) {
+						// 非空并且没有参数时，转化结果
+						StringBuilder textBuilder = new StringBuilder(stringValue.length());
+						textFormatType.appendValue(textBuilder, stringValue);
+						stringValue = textBuilder.toString();
+					}
 				}
-                stringValue = format0(!alternateHolderEnabled, textFormatType, pattern, configParams, params, value, simplified);
                 // 映射值
                 return "null".equals(stringValue) ? null : stringValue;
             }
@@ -963,28 +915,25 @@ public class TextUtils {
         return null;
     }
 
-	/**
-	 * 值格式转化, 值类型为不支持格式化时，需要返回null
-	 * @param value 数据值
-	 * @param pattern 格式化模板
-	 * @return 返回格式结果
-	 */
-	protected String simpleValueFormat(Object value, String pattern) {
-		try {
-			if (!isEmpty(pattern)) {
-				if (value instanceof TemporalAccessor) {
-					return LocalDateTimeUtils.format((TemporalAccessor) value, pattern);
-				} else if (value instanceof Date) {
-					return new SimpleDateFormat(pattern).format((Date) value);
-				} else if (value instanceof Calendar) {
-					return new SimpleDateFormat(pattern).format(((Calendar) value).getTime());
-				} else if (value instanceof Number) {
-					return new DecimalFormat(pattern).format(value);
-				}
+	private static String[] parseParameters(Resolver resolver, String pFlag) {
+		if (!resolver.isInTokens() && resolver.endsInTokens(pFlag)) {
+			// 获取参数
+			resolver.hasNext(pFlag);
+		}
+		// 参数
+		if (resolver.isInTokens()) {
+			String str;
+			if (isEmpty(str = resolver.next())) {
+				// 无参数
+				return ArrayConstants.EMPTY_STRING_ARRAY;
 			}
-		} catch (Exception e) {
-			System.err.println("数据格式化失败: " + e.getMessage());
-			return EMPTY;
+			// 有参数
+			String[] parameters = str.split(SEPARATOR);
+			for (int i = 0; i < parameters.length; i++) {
+				// 去除空白
+				parameters[i] = parameters[i].trim();
+			}
+			return parameters;
 		}
 		return null;
 	}
@@ -1041,95 +990,6 @@ public class TextUtils {
 			return index < ((List<?>) params).size() ? ((List<?>) params).get(index) : null;
 		}
 		return params;
-	}
-
-	private static void appendDataTypeValue(StringBuilder message, String value, int textFormatType) {
-		if (isEmpty(value)) {
-			return;
-		}
-		switch (textFormatType) {
-			case DATA_TYPE_JSON:
-				appendJsonValue(message, value);
-				break;
-			case DATA_TYPE_QUERY_STRING:
-				message.append(getInstance().encodeUrlValue(value)) ;
-				break;
-			case DATA_TYPE_XML:
-				message.append(getInstance().getXmlValue(value));
-				break;
-			case DATA_TYPE_NONE:
-			case DATA_TYPE_TEXT:
-				message.append(value);
-				break;
-			default:
-				message.append(getInstance().getExtraDataTypeValue(value, textFormatType));
-				break;
-		}
-	}
-
-	protected String getExtraDataTypeValue(String value, int textFormatType) {
-		return value;
-	}
-
-	protected String encodeUrlValue(String value) {
-		return WebUtils.encode(value);
-	}
-
-	protected String getXmlValue(String value) {
-		// &"<>'符号转义
-		return value.replace("&", "&amp;").replace("\"", "&quot;")
-				.replace("<", "&lt;").replace(">", "&gt;")
-				.replace("'", "&apos;");
-	}
-
-	private static void appendJsonValue(StringBuilder content, String value) {
-		int lastIndex = -1;
-		for (int i = 0, len = value.length(); i < len; i++) {
-			char ch = value.charAt(i);
-			if (ch >= ' ' && ch != '\"' && ch != '\\') {
-				continue;
-			}
-			if (lastIndex + 1 < i) {
-				content.append(value, lastIndex + 1, i);
-			}
-			lastIndex = i;
-			switch(ch) {
-				case '\\':
-					content.append("\\\\");
-					break;
-				case '\"':
-					content.append("\\\"");
-					break;
-				case '\b':
-					content.append("\\b");
-					break;
-				case '\t':
-					content.append("\\t");
-					break;
-				case '\n':
-					content.append("\\n");
-					break;
-				case '\r':
-					content.append("\\r");
-					break;
-				case '\f':
-					content.append("\\f");
-					break;
-				default:
-					String s = Integer.toHexString(ch);
-					content.append("\\u");
-					for (int offset = s.length(); offset < 4; ++offset) {
-						content.append('0');
-					}
-					content.append(s);
-					break;
-			}
-		}
-		if (lastIndex >= 0) {
-			content.append(value, lastIndex + 1, value.length());
-		} else {
-			content.append(value);
-		}
 	}
 
 
