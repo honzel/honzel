@@ -6,7 +6,8 @@ import java.util.Objects;
 /**
  * 键值对类型
  * @author honzel
- *
+ * @param <K> key类型
+ * @param <V> value类型
  */
 public class Entry<K, V> implements Map.Entry<K, V> {
 

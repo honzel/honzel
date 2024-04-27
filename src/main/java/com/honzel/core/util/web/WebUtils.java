@@ -7,7 +7,6 @@ import com.honzel.core.util.resolver.ResolverUtils;
 import com.honzel.core.util.text.TextUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.net.www.protocol.ftp.FtpURLConnection;
 
 import javax.annotation.PostConstruct;
 import javax.net.ssl.*;

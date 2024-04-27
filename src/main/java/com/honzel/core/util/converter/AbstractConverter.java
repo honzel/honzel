@@ -37,6 +37,10 @@ public abstract  class AbstractConverter implements Converter {
 		return defaultConverter;
 	}
 
+	/**
+	 * Construct an <code>Converter</code> with a default converter
+	 * For the type of registration and this converter is not responsible for conversion
+	 */
     protected AbstractConverter() {
 	}
     /**
@@ -112,7 +116,7 @@ public abstract  class AbstractConverter implements Converter {
     /**
      * Convert the input object  into an output object of the
      * specified type.
-     * <p>
+     * <br>
      *
      * @param value The input value to be converted.
      * @param toType Data type to which this value should be converted.
@@ -150,7 +154,7 @@ public abstract  class AbstractConverter implements Converter {
 	/**
 	 * Return default value of the specified type,
 	 * if this converter has a default converter, use the default converter first .
-	 * <p>
+	 * <br>
 	* @param value The specified value to be converted to the specified type.
 	 * @param toType Data type to which this value should be converted
 	 * @return the converted default value
@@ -172,10 +176,20 @@ public abstract  class AbstractConverter implements Converter {
 		return null;
 	}
 
+	/**
+	 * Return the name of the specified type.
+	 * @param type the specified type.
+	 * @return the name of the specified type.
+	 */
 	protected String getName(Class type) {
 		return type == null ? "null" : type.getName();
 	}
 
+	/**
+	 * Return the name of the specified type.
+	 * @param value the specified value.
+	 * @return the name of the specified type.
+	 */
 	protected String getTypeName(Object value) {
 		return value == null ? "null" : this.getName(value.getClass());
 	}

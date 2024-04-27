@@ -12,7 +12,7 @@ import java.util.function.*;
 /**
  * LambdaUtils
  * @author honzel
- * @date 2022/1/4
+ * date 2022/1/4
  */
 public class LambdaUtils {
 

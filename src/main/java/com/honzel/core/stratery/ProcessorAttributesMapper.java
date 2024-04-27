@@ -7,7 +7,8 @@ import java.util.Map;
 /**
  * 属性映射器
  * @author honzel
- * @date 2021/12/21
+ * @param <T> 注解参数类型
+ * date 2021/12/21
  */
 public interface ProcessorAttributesMapper<T extends Annotation> {
     /**

@@ -6,7 +6,7 @@ import java.util.Objects;
 /**
  * 对项值的封装
  * @author honzel
- *
+ * @param <T> item类型
  */
 public class Item<T> implements Serializable {
 	private static final long serialVersionUID = 7635117985620374898L;

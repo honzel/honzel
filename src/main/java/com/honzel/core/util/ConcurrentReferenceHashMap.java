@@ -484,7 +484,6 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V> implemen
          * @param task the update operation
          * @return the result of the operation
          */
-        
         public <T> T doTask(final int hash,  final Object key, final Task<T> task) {
             boolean resize = task.hasOption(TaskOption.RESIZE);
             if (task.hasOption(TaskOption.RESTRUCTURE_BEFORE)) {

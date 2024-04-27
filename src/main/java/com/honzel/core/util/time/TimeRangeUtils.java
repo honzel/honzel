@@ -14,9 +14,9 @@ import java.util.Collections;
 import java.util.List;
 
 /**
+ * 时间段值转换
  * @author honzel
- * @Description: 时间段值转换
- * @date 2021/1/4
+ * date 2021/1/4
  */
 
 @SuppressWarnings("unchecked")

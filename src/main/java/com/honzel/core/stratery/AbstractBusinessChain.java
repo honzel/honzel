@@ -33,6 +33,9 @@ import static com.honzel.core.stratery.ChainProcessUtils.getMaskLow;
 public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 
 
+	/**
+	 * 日志对象
+	 */
 	protected final Logger log = LoggerFactory.getLogger(getClass());
 
 	/**
@@ -98,6 +101,10 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 		this.specifiedChainMethodMap = chainMethodMap.isEmpty() ? Collections.emptyMap() : chainMethodMap;
 	}
 
+	/**
+	 * 是否需要时使用掩码, true-是;false-否
+	 * @return 返回是否需要时使用掩码, true-是;false-否
+	 */
 	protected final boolean isMaskIfNecessary() {
 		return maskIfNecessary;
 	}
@@ -185,6 +192,9 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 		return match;
 	}
 
+	/**
+	 * 默认构造函数
+	 */
 	public AbstractBusinessChain() {
 		Class<?>[] types = GenericTypeResolver.resolveTypeArguments(getClass(), AbstractBusinessChain.class);
 		paramClass = (Class<P>)(Objects.nonNull(types) && types.length > 0 ?  types[0] : Object.class);
@@ -208,6 +218,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
     /**
      * 执行业务处理
      * @param param 参数
+	 * @param processResult 处理上下文结果
      * @return 返回结果
      */
 	public R execute(P param, R processResult) {
@@ -217,6 +228,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
     /**
      * 执行业务处理
      * @param param 参数
+	 * @param chainType 链类型
      * @return 返回结果
      */
 	public R execute(P param, int chainType) {
@@ -230,6 +242,8 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
     /**
      * 执行业务处理
      * @param param 参数
+	 * @param processResult 处理上下文结果
+	 * @param chainType 链类型
      * @return 返回结果
      */
 	public R execute(P param, R processResult, int chainType) {
@@ -241,8 +255,11 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
     /**
      * 执行业务处理
      *
+	 * @param main 主处理方法
 	 * @param secondaries 次处理方法
 	 * @param param 参数
+	 * @param processResult 处理上下文结果
+	 * @param chainType 链类型
 	 * @return 返回结果
      */
 	private R execute0(ChainMethodList main, ChainMethodList[] secondaries, P param, R processResult, int chainType) {
@@ -271,6 +288,14 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 		throw e;
 	}
 
+	/**
+	 * 执行业务处理
+	 * @param param 参数
+	 * @param initData 初始化数据
+	 * @param initHandler 初始化处理器
+	 * @param <Q> 初始化数据类型
+	 * @return 返回结果
+	 */
 	public<Q> R execute(P param, Q initData, BiConsumer<R, Q> initHandler) {
 		// 执行结果
 		return execute(param, initData, initHandler, getDefaultChainType(param));

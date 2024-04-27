@@ -6,7 +6,9 @@ import java.util.Objects;
 /**
  * 分叉对象类型
  * @author honzel
- *
+ * @param <K> key类型
+ * @param <L> left类型
+ * @param <R> right类型
  */
 public class Branch<K, L, R> implements Serializable {
 	

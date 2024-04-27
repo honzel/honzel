@@ -51,7 +51,7 @@ import java.util.stream.Stream;
  *    </li>
  *  </ul>
  *  二. 数据格式的文本标识(textFormatType:json,xml,url,txt): json-Json值;xml-XML标签内容或属性内容;url-url参数;txt-普通文本
- *  <ul>格式化时某些字符作为开头字符的意义:
+ *  <br>格式化时某些字符作为开头字符的意义:<ul>
  *    <li>
  *        textFormatType+';'放占位符最前面: 如AAABBB${json;ccc[XXX]},
  *        表示ccc占位符按json转码再输出; 如果textFormatType为空当成普通文本输出;
@@ -73,7 +73,7 @@ import java.util.stream.Stream;
  *        其中XXX,YYY,ZZZ都为常量串,直接输出不会进行转码; 需要转码时请使用上两条规则处理
  *    </li>
  *  </ul>
- *  <ul>格式化文本与子格式化文本的占位符
+ *  <br>格式化文本与子格式化文本的占位符:<ul>
  *    <li>
  *        format(占位符:${})与alternateFormat(占位符:$())互为父子格式,
  *        当外层格式为format内层格式会使用alternateFormat,两者反过来也一样。

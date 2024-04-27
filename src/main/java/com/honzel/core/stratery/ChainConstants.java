@@ -3,7 +3,7 @@ package com.honzel.core.stratery;
 /**
  * 业务链常量
  * @author honzel
- * @date 2021/12/21
+ * date 2021/12/21
  */
 public interface ChainConstants {
 

@@ -5,7 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 
+ * 复合转换器
  * @author honzel
  *
  */

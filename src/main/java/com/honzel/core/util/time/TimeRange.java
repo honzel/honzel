@@ -4,9 +4,9 @@ import java.io.Serializable;
 import java.time.LocalTime;
 
 /**
+ * time range
  * @author honzel
- * @Description: time range
- * @date 2021/1/4
+ * date 2021/1/4
  */
 public class TimeRange implements Serializable {
 

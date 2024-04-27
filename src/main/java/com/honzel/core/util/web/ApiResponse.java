@@ -47,9 +47,10 @@ public interface ApiResponse<C, T, THIS extends ApiResponse<C, T, THIS>> extends
     T getData();
 
 
-
     /**
      * 处理错误结果
+     * @param consumer 消费者
+     * @return 本对象
      */
     default THIS handleError(Consumer<? super THIS> consumer) {
         THIS r = (THIS) this;
@@ -60,6 +61,8 @@ public interface ApiResponse<C, T, THIS extends ApiResponse<C, T, THIS>> extends
     }
     /**
      * 处理成功结果
+     * @param consumer 消费者
+     * @return 本对象
      */
     default THIS handleSuccess(Consumer<T> consumer) {
         if (isSuccess()) {
@@ -70,18 +73,24 @@ public interface ApiResponse<C, T, THIS extends ApiResponse<C, T, THIS>> extends
 
     /**
      * 处理错误
+     * @param errorHandler 错误处理函数
+     * @return 默认结果
      */
     default T getOrHandleError(Function<? super THIS, T> errorHandler) {
         return isSuccess() ? getData() : errorHandler.apply((THIS) this);
     }
     /**
      * 处理错误
+     * @param defaultValue 默认值
+     * @return 数据结果
      */
     default T getOrDefault(T defaultValue) {
         return isSuccess() ? getData() : defaultValue;
     }
     /**
      * 获取结果或处理空值
+     * @param emptyHandler 空值处理函数
+     * @return 数据结果
      */
     default T getOrHandleEmpty(Function<? super THIS, T> emptyHandler) {
        return getOrHandleEmpty(null, emptyHandler);
@@ -91,7 +100,7 @@ public interface ApiResponse<C, T, THIS extends ApiResponse<C, T, THIS>> extends
      * 映射非null结果
      * @param mapper 映射函数
      * @param <R> 返回结果
-     * @return
+     * @return 映射结果
      */
     default<R> R mapData(Function<T, R> mapper) {
         return mapData(mapper, null);
@@ -101,7 +110,7 @@ public interface ApiResponse<C, T, THIS extends ApiResponse<C, T, THIS>> extends
      * 映射非null结果
      * @param mapper 映射函数
      * @param <R> 返回结果
-     * @return
+     * @return 映射结果
      */
     default <R> R mapData(Function<T, R> mapper, R defaultValue) {
         T data = getData();
@@ -109,15 +118,19 @@ public interface ApiResponse<C, T, THIS extends ApiResponse<C, T, THIS>> extends
     }
     /**
      * 获取结果或处理空值
+     * @param getter 获取函数
+     * @param emptyHandler 空值处理函数
+     * @param <R>  映射结果类型
+     * @return 映射结果
      */
     default<R> R getOrHandleEmpty(Function<T, R> getter, Function<? super THIS, R> emptyHandler) {
         R data = getter != null ? mapData(getter) : (R) getData();
         boolean empty = TextUtils.isEmpty(data);
         if (!empty) {
             if (data instanceof Collection) {
-                empty = ((Collection) data).isEmpty();
+                empty = ((Collection<?>) data).isEmpty();
             } else if (data instanceof Map) {
-                empty = ((Map) data).isEmpty();
+                empty = ((Map<?,?>) data).isEmpty();
             }
         }
         return empty ? emptyHandler.apply((THIS) this) : data;
