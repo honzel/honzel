@@ -1,6 +1,7 @@
 package com.honzel.core.util.text;
 
 import com.honzel.core.constant.ArrayConstants;
+import com.honzel.core.constant.NumberConstants;
 import com.honzel.core.util.bean.BeanHelper;
 import com.honzel.core.util.resolver.Resolver;
 import com.honzel.core.util.resolver.ResolverUtils;
@@ -302,9 +303,10 @@ public class TextUtils {
 						resolver.hasNext();
 					} else if (!resolver.isInTokens() && !resolver.isEmpty() && resolver.endsInTokens(BRACKET_START)) {
 						int start = resolver.getStart();
-						if (resolver.hasNext(SEMICOLON) && resolver.endsInTokens(SEMICOLON) && endsWithNotEscapeBracketEnd(resolver)) {
+						int nextStart;
+						if (resolver.hasNext() && (nextStart = lookupAfterFormatParametersIndex(resolver)) >= 0) {
 							// 有参数
-							resolver.hasNext();
+							resolver.reset(nextStart).hasNext();
 						} else {
 							resolver.reset(start).hasNext();
 						}
@@ -654,12 +656,13 @@ public class TextUtils {
 			} else if (!resolver.isInTokens() && !resolver.isEmpty() && resolver.endsInTokens(BRACKET_START)) {
 				int start = resolver.getStart();
 				int end = resolver.getEnd();
-				if (resolver.hasNext(SEMICOLON) && resolver.endsInTokens(SEMICOLON) && endsWithNotEscapeBracketEnd(resolver)) {
+				int nextStart;
+				if (resolver.hasNext() && (nextStart = lookupAfterFormatParametersIndex(resolver)) >= 0) {
 					// 获取格式化类型
 					TextFormatType localDataType = getFormatType(format.substring(start, end));
 					if (Objects.nonNull(localDataType)) {
 						// 有参数
-						String str = resolver.next(1, -1).trim();
+						String str = resolver.next();
 						if (isNotEmpty(str)) {
 							parameters = str.split(SEPARATOR);
 							for (int i = 0; i < parameters.length; i++) {
@@ -668,6 +671,7 @@ public class TextUtils {
 						}
 						textFormatType = localDataType;
 					}
+					resolver.reset(nextStart);
 				} else {
 					resolver.reset(start);
 				}
@@ -768,17 +772,37 @@ public class TextUtils {
 		return offset;
 	}
 
-	private static boolean endsWithNotEscapeBracketEnd(Resolver resolver) {
-		int end = resolver.getEnd() - BRACKET_END.length();
-		String input = (String) resolver.getInput();
-		boolean notEscaped = input.startsWith(BRACKET_END, end);
-		if (notEscaped && resolver.containsEscape()) {
-			// 如果有转义符，则判断是否被转义
-			for (int i = end - 1, start = resolver.getStart(); i >= start && input.charAt(i) == '\\'; i--) {
-				notEscaped = !notEscaped;
+	/**
+	 * 查找格式化参数后的起始位置
+	 * @param resolver 文本解析器
+	 * @return 格式化参数后的起始位置
+	 */
+	private static int lookupAfterFormatParametersIndex(Resolver resolver) {
+		if (!resolver.isInTokens()) {
+			return -1;
+		}
+		String format = (String) resolver.getInput();
+		char flag = format.charAt(resolver.getStart());
+		if (flag == EXPR_FLAG || flag == JOIN_FLAG || flag == FOR_EMPTY_FLAG) {
+			// 特殊标记
+			return -1;
+		}
+		int nextStart = resolver.getEnd() + 1;
+		if (format.startsWith(SEMICOLON, nextStart ++)) {
+			return nextStart;
+		}
+		// 去空格后再匹配
+		for (int end = resolver.getTerminal(); nextStart < end; nextStart ++) {
+			char ch = format.charAt(nextStart);
+			if (ch > ' ') {
+				if (SEMICOLON.charAt(0) == ch) {
+					return ++nextStart;
+				} else {
+					return -1;
+				}
 			}
 		}
-		return notEscaped;
+		return -1;
 	}
 
 
