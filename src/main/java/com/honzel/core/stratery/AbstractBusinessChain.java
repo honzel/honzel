@@ -128,7 +128,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 			for (Method method : ChainProcessUtils.getProcessMethodList(processorClass)) {
 				// 获取该方法的BusinessProcessor
 				BusinessProcessor annotation;
-				if ((annotation = ChainProcessUtils.getProcessorAnnonation(method, targetChain)) != null) {
+				if ((annotation = ChainProcessUtils.getProcessorAnnotation(method, targetChain)) != null) {
 					// 按业务链类型解析
 					if (addChainMethod(i, method, annotation, allArgumentTypes, processors, chainMethodMap, false) && nonMatch) {
 						nonMatch = false;
@@ -139,7 +139,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 				Class<?> currentType = targetChain;
 				while ((currentType = currentType.getSuperclass()) != null && !currentType.equals(Object.class)) {
 					// 获取默认链类型
-					if ((annotation = ChainProcessUtils.getProcessorAnnonation(method, currentType)) != null) {
+					if ((annotation = ChainProcessUtils.getProcessorAnnotation(method, currentType)) != null) {
 						// 按默认链类型解析
 						if (addChainMethod(i, method, annotation, allArgumentTypes, processors, chainMethodMap, true) && nonMatch) {
 							nonMatch = false;
@@ -198,7 +198,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 	public AbstractBusinessChain() {
 		Class<?>[] types = GenericTypeResolver.resolveTypeArguments(getClass(), AbstractBusinessChain.class);
 		paramClass = (Class<P>)(Objects.nonNull(types) && types.length > 0 ?  types[0] : Object.class);
-		resultClass = (Class<R>) (Objects.nonNull(types) && types.length > 1 ?  types[1] : Object.class);
+		resultClass = (Class<R>) (Objects.nonNull(types) && types.length > 1 ?  types[1] : ProcessResult.class);
 	}
 
 	/**

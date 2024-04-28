@@ -137,7 +137,7 @@ public class ChainProcessUtils {
         return methods;
     }
 
-    static synchronized BusinessProcessor getProcessorAnnonation(Method sourceMethod, Class<?> chainCls) {
+    static synchronized BusinessProcessor getProcessorAnnotation(Method sourceMethod, Class<?> chainCls) {
         // 获取声明处理器Annotation
         BusinessProcessor annotation = sourceMethod.getDeclaredAnnotation(BusinessProcessor.class);
         if (annotation != null && ArrayUtils.contains(annotation.processFor(), chainCls)) {
