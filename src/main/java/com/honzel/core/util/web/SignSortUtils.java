@@ -24,16 +24,16 @@ public class SignSortUtils {
 	 * @param ignoreKeys 忽略的key
 	 * @return 返回组装的签名内容
 	 */
-	public static String getSortedKeyContent(Map<String, Object> params, String separatorAfterKey, String separatorAfterValue, Function<Object, String> valueMapping, String... ignoreKeys) {
+	public static String getSortedKeyContent(Map<String, ?> params, String separatorAfterKey, String separatorAfterValue, Function<Object, String> valueMapping, String... ignoreKeys) {
 		if (params == null || params.isEmpty()) {
 			return TextUtils.EMPTY;
 		}
 		// 自然排序
-		Map<String, Object> sortedMap = params instanceof SortedMap  ? params : new TreeMap<>(params);
+		Map<String, ?> sortedMap = params instanceof SortedMap  ? params : new TreeMap<>(params);
 
 		StringBuilder sb = new StringBuilder();
 		// 排除sign和空值参数
-		for (Map.Entry<String, Object> entry : sortedMap.entrySet()) {
+		for (Map.Entry<String, ?> entry : sortedMap.entrySet()) {
 			// 获取值
 			if (entry.getKey() == null || entry.getValue() == null || matchKey(ignoreKeys, entry.getKey(), false)) {
 				continue;
@@ -66,7 +66,7 @@ public class SignSortUtils {
 	 * @param ignoreKeys 忽略的key
 	 * @return 返回组装的签名内容
 	 */
-	public static String getSortedKeyContent(Map<String, Object> params, String separatorAfterKey, String separatorAfterValue,  String... ignoreKeys) {
+	public static String getSortedKeyContent(Map<String, ?> params, String separatorAfterKey, String separatorAfterValue,  String... ignoreKeys) {
 		return getSortedKeyContent(params, separatorAfterKey, separatorAfterValue, null, ignoreKeys);
 	}
 	/**
@@ -76,7 +76,7 @@ public class SignSortUtils {
 	 * @param separatorAfterValue value后的分隔符
 	 * @return 返回组装的签名内容
 	 */
-	public static String getSortedKeyContent(Map<String, Object> params, String separatorAfterKey, String separatorAfterValue) {
+	public static String getSortedKeyContent(Map<String, ?> params, String separatorAfterKey, String separatorAfterValue) {
 		return getSortedKeyContent(params, separatorAfterKey, separatorAfterValue, null, ArrayConstants.EMPTY_STRING_ARRAY);
 	}
 	/**
@@ -87,13 +87,13 @@ public class SignSortUtils {
 	 * @param keys 拼接value值的key, 如果为null或空数组时不限制
 	 * @return 返回组装的签名内容
 	 */
-	public static String getSortedValueContent(Map<String, Object> params, String separator, String secret, Function<Object, String> valueMapping, String... keys) {
+	public static String getSortedValueContent(Map<String, ?> params, String separator, String secret, Function<Object, String> valueMapping, String... keys) {
 		if (params == null || params.isEmpty()) {
 			return TextUtils.EMPTY;
 		}
 		// 自然排序
 		List<String> valueList = new ArrayList<>();
-		for (Map.Entry<String, Object> entry : params.entrySet()) {
+		for (Map.Entry<String, ?> entry : params.entrySet()) {
 			if (entry.getKey() == null || entry.getValue() == null) {
 				continue;
 			}
@@ -108,7 +108,7 @@ public class SignSortUtils {
 			valueList.add(secret);
 		}
 		Comparator<? super String> comparator;
-		if (!(params instanceof SortedMap) || (comparator = ((SortedMap<String, Object>) params).comparator()) == null) {
+		if (!(params instanceof SortedMap) || (comparator = ((SortedMap<String, ?>) params).comparator()) == null) {
 			comparator = Comparator.naturalOrder();
 		}
 		valueList.sort(comparator);
@@ -135,7 +135,7 @@ public class SignSortUtils {
 	 * @param keys 拼接value值的key, 如果为null或空数组时不限制
 	 * @return 返回组装的签名内容
 	 */
-	public static String getSortedValueContent(Map<String, Object> params, String separator, String secret, String... keys) {
+	public static String getSortedValueContent(Map<String, ?> params, String separator, String secret, String... keys) {
 		return getSortedValueContent(params, separator, secret, null, keys);
 	}
 	/**
@@ -145,7 +145,7 @@ public class SignSortUtils {
 	 * @param secret 密钥
 	 * @return 返回组装的签名内容
 	 */
-	public static String getSortedValueContent(Map<String, Object> params, String separator, String secret) {
+	public static String getSortedValueContent(Map<String, ?> params, String separator, String secret) {
 		return getSortedValueContent(params, separator, secret, ArrayConstants.EMPTY_STRING_ARRAY);
 	}
 
