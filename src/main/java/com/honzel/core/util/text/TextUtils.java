@@ -113,7 +113,7 @@ public class TextUtils {
 	private static final Map<String, TextFormatType> FORMAT_TYPE_MAP = new ConcurrentHashMap<>();
 
 
-	private static TextUtils utils;
+	private static volatile TextUtils utils;
 
 	static {
 		registerFormatType(FormatTypeEnum.SIMPLE);
@@ -141,7 +141,11 @@ public class TextUtils {
 
 	private static TextUtils getInstance() {
 		if (utils == null) {
-			new  TextUtils().init();
+			synchronized (TextUtils.class) {
+				if (utils == null) {
+					new  TextUtils().init();
+				}
+			}
 		}
 		return utils;
 	}

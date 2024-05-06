@@ -59,19 +59,23 @@ public class WebUtils {
         }
     }
 
-    private static WebUtils utils;
+    private static volatile WebUtils utils;
     protected WebUtils() {}
 
     @PostConstruct
     protected void init() {
-        utils = this;
         initSSLContext();
+        utils = this;
     }
 
 
     private static WebUtils getInstance() {
         if (utils == null) {
-            new  WebUtils().init();
+            synchronized (WebUtils.class) {
+                if (utils == null) {
+                    new  WebUtils().init();
+                }
+            }
         }
         return utils;
     }

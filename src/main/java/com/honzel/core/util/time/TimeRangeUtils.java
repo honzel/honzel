@@ -79,7 +79,7 @@ public class TimeRangeUtils {
     }
 
 
-    private static TimeRangeUtils utils;
+    private static volatile TimeRangeUtils utils;
 
     protected TimeRangeUtils() {}
 
@@ -90,7 +90,11 @@ public class TimeRangeUtils {
 
     private static TimeRangeUtils getInstance() {
         if (utils == null) {
-            new TimeRangeUtils().init();
+            synchronized (TimeRangeUtils.class) {
+                if (utils == null) {
+                    new TimeRangeUtils().init();
+                }
+            }
         }
         return utils;
     }
