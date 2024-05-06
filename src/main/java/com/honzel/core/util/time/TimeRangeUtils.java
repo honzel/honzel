@@ -85,7 +85,9 @@ public class TimeRangeUtils {
 
     @PostConstruct
     protected void init() {
-        utils = this;
+        synchronized (TimeRangeUtils.class) {
+            utils = this;
+        }
     }
 
     private static TimeRangeUtils getInstance() {

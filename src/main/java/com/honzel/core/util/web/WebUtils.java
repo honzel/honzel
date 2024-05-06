@@ -65,7 +65,9 @@ public class WebUtils {
     @PostConstruct
     protected void init() {
         initSSLContext();
-        utils = this;
+        synchronized (WebUtils.class) {
+            utils = this;
+        }
     }
 
 

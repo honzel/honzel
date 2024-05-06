@@ -136,7 +136,9 @@ public class TextUtils {
 
 	@PostConstruct
     protected void init() {
-		utils = this;
+		synchronized (TextUtils.class) {
+			utils = this;
+		}
 	}
 
 	private static TextUtils getInstance() {
