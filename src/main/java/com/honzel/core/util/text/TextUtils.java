@@ -1053,21 +1053,67 @@ public class TextUtils {
 	 * @return int
 	 */
 	public static int indexOfValue(String valueList, Object value, boolean valueIndexOfList, String separator) {
+		return indexOf(valueList, value, valueIndexOfList, false, separator);
+	}
+	/**
+	 * 查询指定值在对应列表的位置， 第一个值的位置为0，第二个值为1...
+	 *
+	 * @param valueList        字符串值集合(用项分隔符隔开各值)
+	 * @param value            搜索的字符串值
+	 * @param valueIndexOfList true-返回值在列表中的值索引，false-返回值在列表中的字符索引
+	 * @param startsLike true-只匹配前缀，false-精确匹配
+	 * @param separator        项分隔符
+	 * @return int
+	 */
+	public static int indexOf(String valueList, Object value, boolean valueIndexOfList, boolean startsLike, String separator) {
 		String item = toString(value);
 		if (item != null) {
-			return indexOfValue(valueList, item, 0, item.length(), valueIndexOfList, separator);
+			return indexOf(valueList, item, 0, item.length(), valueIndexOfList, startsLike, separator);
 		}
 		return -1;
 	}
+	/**
+	 * 查询指定值在对应列表的位置， 第一个值的位置为0，第二个值为1...
+	 *
+	 * @param valueList        字符串值集合(用项分隔符隔开各值)
+	 * @param prefix            搜索的前缀字符串
+	 * @param valueIndexOfList true-返回值在列表中的值索引，false-返回值在列表中的字符索引
+	 * @param separator        项分隔符
+	 * @return int
+	 */
+	public static int indexOfPrefix(String valueList, Object prefix, boolean valueIndexOfList, String separator) {
+		return indexOf(valueList, prefix, valueIndexOfList, true, separator);
+	}
+	/**
+	 * 查询指定值在对应列表的位置， 第一个值的位置为0，第二个值为1...
+	 *
+	 * @param valueList        字符串值集合(用项分隔符隔开各值)
+	 * @param prefix            搜索的前缀字符串
+	 * @param separator        项分隔符
+	 * @return int
+	 */
+	public static int indexOfPrefix(String valueList, Object prefix, String separator) {
+		return indexOf(valueList, prefix, true, true, separator);
+	}
+	/**
+	 * 查询指定值在对应列表的位置， 第一个值的位置为0，第二个值为1...
+	 *
+	 * @param valueList        字符串值集合(用项分隔符隔开各值)
+	 * @param prefix            搜索的前缀字符串
+	 * @return int
+	 */
+	public static int indexOfPrefix(String valueList, Object prefix) {
+		return indexOf(valueList, prefix, true, true, SEPARATOR);
+	}
 
-	private static int indexOfValue(String valueList, String value, int offset, int len, boolean valueIndexOfList, String separator) {
+	private static int indexOf(String valueList, String value, int offset, int len, boolean valueIndexOfList, boolean startsLike, String separator) {
 		if (valueList == null || len < 0 || valueList.length() < len) {
 			return -1;
 		}
 		if (isEmpty(separator)) {
 			return valueList.indexOf(value.substring(offset, offset + len));
 		}
-		if (valueList.regionMatches(0, value, offset, len) && (valueList.length() == len || valueList.startsWith(separator, len))) {
+		if (valueList.regionMatches(0, value, offset, len) && (startsLike || valueList.length() == len || valueList.startsWith(separator, len))) {
 			return 0;
 		}
 		int count = 1;
@@ -1076,7 +1122,7 @@ public class TextUtils {
 			start += separator.length();
 			if (valueList.regionMatches(start, value, offset, len)) {
 				int end = start + len;
-				if (valueList.length() == end || valueList.startsWith(separator, end)) {
+				if (startsLike || valueList.length() == end || valueList.startsWith(separator, end)) {
 					return valueIndexOfList ? count : start;
 				}
 			}
@@ -1110,7 +1156,7 @@ public class TextUtils {
 		if (item == null) {
 			return valueList;
 		}
-		int start = indexOfValue(valueList, item, 0, item.length(), false, separator);
+		int start = indexOf(valueList, item, 0, item.length(), false, false, separator);
 		if (start > 0) {
 			//
 			return valueList.substring(0, start - separator.length()) + valueList.substring(start + item.length());
@@ -1212,7 +1258,7 @@ public class TextUtils {
 	 */
 	public static String addValue(String valueList, Object value, String separator) {
 		String item = toString(value);
-		if (isEmpty(item) || indexOfValue(valueList, item, 0, item.length(), false, separator) >= 0) {
+		if (isEmpty(item) || indexOf(valueList, item, 0, item.length(), false, false, separator) != -1) {
 			return valueList;
 		}
 		if (isEmpty(valueList)) {
@@ -1222,7 +1268,7 @@ public class TextUtils {
 			return valueList + item;
 		}
 		if (item.contains(separator)) {
-			int start = indexOfValue(item, valueList, 0, valueList.length(), false, separator);
+			int start = indexOf(item, valueList, 0, valueList.length(), false, false, separator);
 			if (start == 0) {
 				return item;
 			}
@@ -1258,7 +1304,7 @@ public class TextUtils {
 		if (valueList == null || values == null) {
 			return false;
 		}
-		if (indexOfValue(valueList, values, 0, values.length(), false, separator) >= 0) {
+		if (indexOf(valueList, values, 0, values.length(), false, false, separator) != -1) {
 			return true;
 		}
 		if (isEmpty(separator)) {
@@ -1271,9 +1317,9 @@ public class TextUtils {
 		while (start < values.length()) {
 			int end = values.indexOf(separator, start);
 			if (end < 0) {
-				return indexOfValue(valueList, values, start, values.length() - start, false, separator) >= 0;
+				return indexOf(valueList, values, start, values.length() - start, false, false, separator) != -1;
 			}
-			if (indexOfValue(valueList, values, start, end - start, false, separator) < 0) {
+			if (indexOf(valueList, values, start, end - start, false, false, separator) == -1) {
 				return false;
 			}
 			start = end + separator.length();
@@ -1313,7 +1359,7 @@ public class TextUtils {
 			}
 			int len = end - start;
 			if (len >= 0) {
-				int index = indexOfValue(valueList, values, start, len, false, separator);
+				int index = indexOf(valueList, values, start, len, false, false, separator);
 				if (index > 0) {
 					valueList =  valueList.substring(0, index - separator.length()) + valueList.substring(index + len);
 				} else if (index == 0) {
@@ -1343,7 +1389,7 @@ public class TextUtils {
 	 * @return 返回添加后的值列表, 如果不变, 则返回原列表串对象
 	 */
 	public static String addAll(String valueList, String values, String separator) {
-		if (isEmpty(values) || indexOfValue(valueList, values, 0, values.length(), false, separator) >= 0) {
+		if (isEmpty(values) || indexOf(valueList, values, 0, values.length(), false, false, separator) != -1) {
 			return valueList != null ? valueList : values;
 		}
 		if (isEmpty(valueList)) {
@@ -1362,7 +1408,7 @@ public class TextUtils {
 			if (end < 0) {
 				end = values.length();
 			}
-			if (start < end && indexOfValue(valueList, values, start, end - start, false, separator) < 0) {
+			if (start < end && indexOf(valueList, values, start, end - start, false, false, separator) == -1) {
 				result.append(separator).append(values, start, end);
 			}
 			start = end + separator.length();
@@ -1397,10 +1443,10 @@ public class TextUtils {
 		}
 
 		if (Objects.equals(firstList, secondList)
-				|| (secondList.length() > firstList.length() && indexOfValue(secondList, firstList, 0, firstList.length(), false, separator) >= 0)) {
+				|| (secondList.length() > firstList.length() && indexOf(secondList, firstList, 0, firstList.length(), false, false, separator) != -1)) {
 			return firstList;
 		}
-		if (firstList.length() > secondList.length() && indexOfValue(firstList, secondList, 0, secondList.length(), false, separator) >= 0) {
+		if (firstList.length() > secondList.length() && indexOf(firstList, secondList, 0, secondList.length(), false, false, separator) != -1) {
 			return secondList;
 		}
 		if (isEmpty(separator) || !firstList.contains(separator) || !secondList.contains(separator)) {
@@ -1413,7 +1459,7 @@ public class TextUtils {
 			if (end < 0) {
 				end = firstList.length();
 			}
-			if (start <= end && indexOfValue(secondList, firstList, start, end - start, false, separator) >= 0) {
+			if (start <= end && indexOf(secondList, firstList, start, end - start, false, false, separator) != -1) {
 				if (result.length() > 0) {
 					result.append(separator);
 				}
@@ -1568,29 +1614,7 @@ public class TextUtils {
 	 * @return 是否匹配
 	 */
 	public static boolean anyStartsWith(String valueList, String prefix, String separator) {
-		if (valueList == null || prefix == null) {
-			return false;
-		}
-		int start = valueList.indexOf(separator);
-		if (start < 0 || isEmpty(separator)) {
-			return valueList.startsWith(prefix);
-		}
-		if (valueList.startsWith(prefix) && prefix.length() <= start) {
-			return true;
-		}
-		while (start >= 0) {
-			start += separator.length();
-			if (valueList.startsWith(prefix, start)) {
-				int end = valueList.indexOf(separator, start);
-				if (end < 0 || start + prefix.length() <= end) {
-					return true;
-				}
-				start = end;
-			} else {
-				start = valueList.indexOf(separator, start);
-			}
-		}
-		return false;
+		return prefix != null && indexOf(valueList, prefix, 0, prefix.length(), false, true, separator) != -1;
 	}
 
 	/**

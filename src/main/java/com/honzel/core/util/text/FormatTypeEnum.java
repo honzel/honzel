@@ -67,13 +67,12 @@ public enum FormatTypeEnum implements TextFormatType {
             int lastIndex = -1;
             for (int i = 0, len = formattedValue.length(); i < len; i++) {
                 char ch = formattedValue.charAt(i);
-                if (ch >= ' ' && ch != '\"' && ch != '\\') {
+                if (ch >= ' ' && ch != '\"' && ch != '\\' && !Character.isHighSurrogate(ch)) {
                     continue;
                 }
                 if (lastIndex + 1 < i) {
                     formattedContent.append(formattedValue, lastIndex + 1, i);
                 }
-                lastIndex = i;
                 switch(ch) {
                     case '\\':
                         formattedContent.append("\\\\");
@@ -97,14 +96,25 @@ public enum FormatTypeEnum implements TextFormatType {
                         formattedContent.append("\\f");
                         break;
                     default:
-                        String s = Integer.toHexString(ch);
-                        formattedContent.append("\\u");
-                        for (int offset = s.length(); offset < 4; ++offset) {
-                            formattedContent.append('0');
+                        if (Character.isHighSurrogate(ch) && i < len - 1) {
+                            char c2 = formattedValue.charAt(++i);
+                            if (Character.isLowSurrogate(c2)) {
+                                int codePoint = Character.toCodePoint(ch, c2);
+                                if (Character.isSupplementaryCodePoint(codePoint)) {
+                                    formattedContent.append("\\u").append(Integer.toHexString(codePoint));
+                                } else {
+                                    formattedContent.append("\\u00").append(Integer.toHexString(codePoint));
+                                }
+                            } else {
+                                formattedContent.append("\\u").append(Integer.toHexString(ch));
+                                formattedContent.append("\\u").append(Integer.toHexString(c2));
+                            }
+                        } else {
+                            formattedContent.append("\\u").append(Integer.toHexString(ch));
                         }
-                        formattedContent.append(s);
                         break;
                 }
+                lastIndex = i;
             }
             if (lastIndex >= 0) {
                 formattedContent.append(formattedValue, lastIndex + 1, formattedValue.length());
