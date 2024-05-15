@@ -60,7 +60,7 @@ public enum FormatTypeEnum implements TextFormatType {
      */
     JSON("json") {
         public boolean preliminaryMatch(String format) {
-            return isNotEmpty(format) && (format.startsWith(BRACE_START) && format.endsWith(BRACE_END) || format.startsWith(BRACKET_START) && format.endsWith(BRACKET_END));
+            return Objects.nonNull(format) && !EMPTY.equals(format = format.trim()) && (format.startsWith(BRACE_START) && format.endsWith(BRACE_END) || format.startsWith(BRACKET_START) && format.endsWith(BRACKET_END));
         }
         @Override
         public void appendValue(StringBuilder formattedContent, String formattedValue) {
@@ -128,7 +128,7 @@ public enum FormatTypeEnum implements TextFormatType {
      */
     XML("xml") {
         public boolean preliminaryMatch(String format) {
-            return isNotEmpty(format) && format.startsWith("<") && format.endsWith(">");
+            return Objects.nonNull(format) && !EMPTY.equals(format = format.trim()) && format.startsWith("<") && format.endsWith(">");
         }
         @Override
         public void appendValue(StringBuilder formattedContent, String formattedValue) {
@@ -157,7 +157,7 @@ public enum FormatTypeEnum implements TextFormatType {
      */
     URL_ENCODING("url") {
         public boolean preliminaryMatch(String format) {
-            return isNotEmpty(format) && format.lastIndexOf("://", NumberConstants.INTEGER_TEN) > NumberConstants.INTEGER_ZERO;
+            return Objects.nonNull(format) && !EMPTY.equals(format = format.trim()) && format.lastIndexOf("://", NumberConstants.INTEGER_TEN) > NumberConstants.INTEGER_ZERO;
         }
         @Override
         public void appendValue(StringBuilder formattedContent, String formattedValue) {
