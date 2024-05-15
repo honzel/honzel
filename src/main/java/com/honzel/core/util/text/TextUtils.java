@@ -155,7 +155,7 @@ public class TextUtils {
 
 
 	public static TextFormatType getDataType(String content) {
-		if (isNotEmpty(content)) {
+		if (Objects.nonNull(content) && !EMPTY.equals(content = content.trim())) {
 			for (TextFormatType value : FORMAT_TYPE_MAP.values()) {
 				if (value.preliminaryMatch(content)) {
 					return value;
