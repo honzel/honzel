@@ -679,57 +679,59 @@ public class TextUtils {
 			offset ++;
 		}
 		boolean parsed = false;
-		int startLen = content.length();
-		if (value instanceof Iterable) {
-			// 获取解析开始位置
-			int resolverStart = resolver.isInTokens() ? resolver.getStart(false) - 1 : resolver.getStart();
-			// 前缀
-			String prefix = startLen == originPosition ? EMPTY : content.substring(originPosition);
-			// 循环处理项
-			Iterator<?> iterator = ((Iterable<?>) value).iterator();
-			boolean hasNext = (parsed = iterator.hasNext());
-			int index = 0;
-			while (hasNext) {
-				// 先格式化
-				Object itemValue = formatValue(resolver, iterator.next(), index++, configParams, params, alternateHolderEnabled, simplified);
-				hasNext = iterator.hasNext();
-				// 附加值
-				originPosition = appendFormatValue(content, resolver, textFormatType, parameters, itemValue, appendForEmpty, originPosition, !hasNext).length();
-				if (hasNext) {
-					if (!prefix.isEmpty()) {
-						// 添加前缀
-						content.append(prefix);
+		if (parameters == null) {
+			int startLen = content.length();
+			if (value instanceof Iterable) {
+				// 获取解析开始位置
+				int resolverStart = resolver.isInTokens() ? resolver.getStart(false) - 1 : resolver.getStart();
+				// 前缀
+				String prefix = startLen == originPosition ? EMPTY : content.substring(originPosition);
+				// 循环处理项
+				Iterator<?> iterator = ((Iterable<?>) value).iterator();
+				boolean hasNext = (parsed = iterator.hasNext());
+				int index = 0;
+				while (hasNext) {
+					// 先格式化
+					Object itemValue = formatValue(resolver, iterator.next(), index++, configParams, params, alternateHolderEnabled, simplified);
+					hasNext = iterator.hasNext();
+					// 附加值
+					originPosition = appendFormatValue(content, resolver, textFormatType, parameters, itemValue, appendForEmpty, originPosition, !hasNext).length();
+					if (hasNext) {
+						if (!prefix.isEmpty()) {
+							// 添加前缀
+							content.append(prefix);
+						}
+						// 重置开始解析
+						resolver.reset(resolverStart).hasNext();
 					}
-					// 重置开始解析
-					resolver.reset(resolverStart).hasNext();
 				}
-			}
-			value = EMPTY;
-		} else if (value instanceof Object[]) {
-			// 获取解析开始位置
-			int resolverStart = resolver.isInTokens() ? resolver.getStart(false) - 1 : resolver.getStart();
-			// 前缀
-			String prefix = startLen == originPosition ? EMPTY : content.substring(originPosition);
-			// 循环处理项
-			Object[] array = (Object[]) value;
-			for (int i = 0, len = array.length; i < len; ++i) {
-				// 先格式化
-				Object itemValue = formatValue(resolver, array[i], i, configParams, params, alternateHolderEnabled, simplified);
-				// 是否有新一个
-				boolean hasNext = (i + 1 != len);
-				// 附加值
-				originPosition = appendFormatValue(content, resolver, textFormatType, parameters, itemValue, appendForEmpty, originPosition, !hasNext).length();
-				if (hasNext) {
-					if (!prefix.isEmpty()) {
-						// 添加前缀
-						content.append(prefix);
+				value = EMPTY;
+			} else if (value instanceof Object[]) {
+				// 获取解析开始位置
+				int resolverStart = resolver.isInTokens() ? resolver.getStart(false) - 1 : resolver.getStart();
+				// 前缀
+				String prefix = startLen == originPosition ? EMPTY : content.substring(originPosition);
+				// 循环处理项
+				Object[] array = (Object[]) value;
+				for (int i = 0, len = array.length; i < len; ++i) {
+					// 先格式化
+					Object itemValue = formatValue(resolver, array[i], i, configParams, params, alternateHolderEnabled, simplified);
+					// 是否有新一个
+					boolean hasNext = (i + 1 != len);
+					// 附加值
+					originPosition = appendFormatValue(content, resolver, textFormatType, parameters, itemValue, appendForEmpty, originPosition, !hasNext).length();
+					if (hasNext) {
+						if (!prefix.isEmpty()) {
+							// 添加前缀
+							content.append(prefix);
+						}
+						// 重置开始解析
+						resolver.reset(resolverStart).hasNext();
 					}
-					// 重置开始解析
-					resolver.reset(resolverStart).hasNext();
 				}
+				parsed = array.length > 0;
+				value = EMPTY;
 			}
-			parsed = array.length > 0;
-			value = EMPTY;
 		}
 		if (!parsed) {
 			// 先格式化
