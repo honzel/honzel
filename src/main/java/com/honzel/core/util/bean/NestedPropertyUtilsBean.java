@@ -468,6 +468,9 @@ public class NestedPropertyUtilsBean {
      * @return Returns the value of the specified property of the specified bean
      */
 	public  Object getProperty(Object bean , String name) {
+		if (bean == null) {
+			return null;
+		}
 		if(name != null) {
 			name = name.trim();
 		}

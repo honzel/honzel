@@ -353,7 +353,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String format(TextFormatType textFormatType, String pattern, Object configParams, Object params) {
-		return format0(false, textFormatType, pattern, configParams, params, null, false);
+		return format0(false, textFormatType, pattern, configParams, params, null, null, false);
 	}
 
 	/**
@@ -363,7 +363,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String format(String pattern, Object param) {
-		return format0(false, getDataType(pattern), pattern, null, param, null, false);
+		return format0(false, getDataType(pattern), pattern, null, param, null, null, false);
 	}
 
 	/**
@@ -374,7 +374,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String format(TextFormatType textFormatType, String pattern, Object param) {
-		return format0(false, textFormatType, pattern, null, param, null, false);
+		return format0(false, textFormatType, pattern, null, param, null, null, false);
 	}
 
 	/**
@@ -384,7 +384,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String format(String pattern, Object... params) {
-		return format0(false, getDataType(pattern), pattern, null, params, null, false);
+		return format0(false, getDataType(pattern), pattern, null, params, null, null, false);
 	}
 
 	/**
@@ -396,7 +396,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String simplifiedFormat(TextFormatType textFormatType, String pattern, Object configParams, Object params) {
-		return format0(false, textFormatType, pattern, configParams, params, null, true);
+		return format0(false, textFormatType, pattern, configParams, params, null, null, true);
 	}
 
 	/**
@@ -406,7 +406,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String simplifiedFormat(String pattern, Object param) {
-		return format0(false, getDataType(pattern), pattern, null, param, null, true);
+		return format0(false, getDataType(pattern), pattern, null, param, null, null, true);
 	}
 
 	/**
@@ -417,7 +417,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String simplifiedFormat(TextFormatType textFormatType, String pattern, Object param) {
-		return format0(false, textFormatType, pattern, null, param, null, true);
+		return format0(false, textFormatType, pattern, null, param, null, null, true);
 	}
 
 	/**
@@ -427,7 +427,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String simplifiedFormat(String pattern, Object... params) {
-		return format0(false, getDataType(pattern), pattern, null, params, null, true);
+		return format0(false, getDataType(pattern), pattern, null, params, null, null, true);
 	}
 
 	/**
@@ -439,7 +439,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String alternateSimplifiedFormat(TextFormatType textFormatType, String pattern, Object configParams, Object params) {
-		return format0(true, textFormatType, pattern, configParams, params, null, true);
+		return format0(true, textFormatType, pattern, configParams, params, null, null, true);
 	}
 
 	/**
@@ -449,7 +449,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String alternateSimplifiedFormat(String pattern, Object param) {
-		return format0(true, getDataType(pattern), pattern, null, param, null, true);
+		return format0(true, getDataType(pattern), pattern, null, param, null, null, true);
 	}
 
 	/**
@@ -460,7 +460,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String alternateSimplifiedFormat(TextFormatType textFormatType, String pattern, Object param) {
-		return format0(true, textFormatType, pattern, null, param, null, true);
+		return format0(true, textFormatType, pattern, null, param, null, null, true);
 	}
 
 	/**
@@ -470,7 +470,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String alternateSimplifiedFormat(String pattern, Object... params) {
-		return format0(true, getDataType(pattern), pattern, null, params, null, true);
+		return format0(true, getDataType(pattern), pattern, null, params, null, null, true);
 	}
 
 	/**
@@ -482,7 +482,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String alternateFormat(TextFormatType textFormatType, String pattern, Object configParams, Object params) {
-		return format0(true, textFormatType, pattern, configParams, params, null, false);
+		return format0(true, textFormatType, pattern, configParams, params, null, null, false);
 	}
 
 	/**
@@ -493,7 +493,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String alternateFormat(TextFormatType textFormatType, String pattern, Object params) {
-		return format0(true, textFormatType, pattern, null, params, null, false);
+		return format0(true, textFormatType, pattern, null, params, null, null, false);
 	}
 
 	/**
@@ -503,7 +503,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String alternateFormat(String pattern, Object param) {
-		return format0(true, getDataType(pattern), pattern, null, param, null, false);
+		return format0(true, getDataType(pattern), pattern, null, param, null, null, false);
 	}
 
 	/**
@@ -513,21 +513,23 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String alternateFormat(String pattern, Object... params) {
-		return format0(true, getDataType(pattern), pattern, null, params, null, false);
+		return format0(true, getDataType(pattern), pattern, null, params, null, null, false);
 	}
 
 	/**
 	 * 格式化字符串文本
+	 *
 	 * @param alternateHolderEnabled 是否使用备选占位符(即第一层占位符是否使用'()'代替'{}')
-	 * @param textFormatType 数据类型
-	 * @param pattern 待格式化内容
-	 * @param configParams 配置
-	 * @param params 参数
-	 * @param thisValue 当前值
-	 * @param simplified  是否简化占位符（即占位符不带$)
+	 * @param textFormatType         数据类型
+	 * @param pattern                待格式化内容
+	 * @param configParams           配置
+	 * @param params                 参数
+	 * @param thisValue              当前值
+	 * @param thisIndex              当前值索引
+	 * @param simplified             是否简化占位符（即占位符不带$)
 	 * @return 返回格式化后内容
 	 */
-	private static String format0(boolean alternateHolderEnabled, TextFormatType textFormatType, String pattern, Object configParams, Object params, Object thisValue, boolean simplified) {
+	private static String format0(boolean alternateHolderEnabled, TextFormatType textFormatType, String pattern, Object configParams, Object params, Object thisValue, Integer thisIndex, boolean simplified) {
 		if (isNormalText(pattern, alternateHolderEnabled, simplified)) {
 			// 普通文本
 			return pattern;
@@ -548,7 +550,7 @@ public class TextUtils {
 				// 判断是否为${xxx}格式的占位符
 				if (simplified || pattern.charAt(resolver.getStart()) == holder) {
 					// ${xxx}格式的占位符内容时解析并附加参数值
-					offset = appendValue(content, resolver, textFormatType, thisValue, configParams, params, offset, alternateHolderEnabled, simplified);
+					offset = appendValue(content, resolver, textFormatType, thisValue, thisIndex, configParams, params, offset, alternateHolderEnabled, simplified);
 				} else {
 					// 添加$符号
 					content.append(HOLDER_FLAG);
@@ -617,7 +619,7 @@ public class TextUtils {
 	 * @param simplified 简化占位符
 	 * @return 返回下一个参数的偏移量
 	 */
-	private static int appendValue(StringBuilder content, Resolver resolver, TextFormatType textFormatType, Object thisValue, Object configParams, Object params, int offset, boolean alternateHolderEnabled, boolean simplified) {
+	private static int appendValue(StringBuilder content, Resolver resolver, TextFormatType textFormatType, Object thisValue, Integer thisIndex, Object configParams, Object params, int offset, boolean alternateHolderEnabled, boolean simplified) {
 		// 解析当前小段内容
 		// 初始位置
 		int originPosition = content.length();
@@ -670,7 +672,7 @@ public class TextUtils {
 		//后置常量串
 		if (!resolver.isInTokens() && format.startsWith(HOLDER_FLAG, start)) {
 			//如果是配置属性
-			value = getConfigValue(resolver, thisValue, configParams);
+			value = getConfigValue(resolver, thisValue, thisIndex, configParams);
 		} else {
 			//如果是参数占位符
 			value = getParamValue(resolver, params, offset);
@@ -686,9 +688,10 @@ public class TextUtils {
 			// 循环处理项
 			Iterator<?> iterator = ((Iterable<?>) value).iterator();
 			boolean hasNext = (parsed = iterator.hasNext());
+			int index = 0;
 			while (hasNext) {
 				// 先格式化
-				Object itemValue = formatValue(resolver, iterator.next(), configParams, params, alternateHolderEnabled, simplified);
+				Object itemValue = formatValue(resolver, iterator.next(), index++, configParams, params, alternateHolderEnabled, simplified);
 				hasNext = iterator.hasNext();
 				// 附加值
 				originPosition = appendFormatValue(content, resolver, textFormatType, parameters, itemValue, appendForEmpty, originPosition, !hasNext).length();
@@ -711,7 +714,7 @@ public class TextUtils {
 			Object[] array = (Object[]) value;
 			for (int i = 0, len = array.length; i < len; ++i) {
 				// 先格式化
-				Object itemValue = formatValue(resolver, array[i], configParams, params, alternateHolderEnabled, simplified);
+				Object itemValue = formatValue(resolver, array[i], i, configParams, params, alternateHolderEnabled, simplified);
 				// 是否有新一个
 				boolean hasNext = (i + 1 != len);
 				// 附加值
@@ -730,7 +733,7 @@ public class TextUtils {
 		}
 		if (!parsed) {
 			// 先格式化
-			value = formatValue(resolver, value, configParams, params, alternateHolderEnabled, simplified);
+			value = formatValue(resolver, value, null, configParams, params, alternateHolderEnabled, simplified);
 			// 没有解析到内容时
 			appendFormatValue(content, resolver, textFormatType, parameters, value, appendForEmpty, originPosition, true);
 		}
@@ -799,7 +802,7 @@ public class TextUtils {
 	 * @param configParams 配置参数对象
 	 * @return 返回配置值
 	 */
-	private static Object getConfigValue(Resolver resolver, Object thisValue, Object configParams) {
+	private static Object getConfigValue(Resolver resolver, Object thisValue, Integer thisIndex, Object configParams) {
 		// 是否有格式指定
 		String format = (String) resolver.getInput();
 		int startIndex = resolver.getStart() + 1;
@@ -807,25 +810,34 @@ public class TextUtils {
 		// 获取下一步内容
 		resolver.hasNext();
 		// 获取当前值
-		if (thisValue != null && format.startsWith("this", startIndex)) {
+		if (format.startsWith("this", startIndex)) {
+			// $this.xxx
 			if (endIndex == startIndex + 4) {
 				return thisValue;
 			}
 			if (format.charAt(startIndex + 4) == '.') {
 				return BeanHelper.getProperty(thisValue, format.substring(startIndex + 5, endIndex));
 			}
+		} else if (format.startsWith("idx", startIndex)) {
+			//返回索引: $idx
+			if (endIndex == startIndex + 3) {
+				return thisIndex;
+			}
+			if (format.charAt(startIndex + 3) == '.') {
+				return BeanHelper.getProperty(thisIndex, format.substring(startIndex + 4, endIndex));
+			}
 		}
 		// 返回属性值
 		return BeanHelper.getProperty(configParams, format.substring(startIndex, endIndex));
 	}
 
-	private static Object formatValue(Resolver resolver, Object value, Object configParams, Object params, boolean alternateHolderEnabled, boolean simplified) {
+	private static Object formatValue(Resolver resolver, Object value, Integer valueIndex, Object configParams, Object params, boolean alternateHolderEnabled, boolean simplified) {
 		int outerTerminal = resolver.getTerminal();
 		while (resolver.isInTokens() && resolver.getInput().charAt(resolver.getStart()) == EXPR_FLAG) {
 			// 起始位置
 			resolver.resetToCurrent(1).useTokens(EQUAL + SEMICOLON);
 			// 获取映射值
-			value = getMappingValue(resolver, value, configParams, params, alternateHolderEnabled, simplified);
+			value = getMappingValue(resolver, value, valueIndex, configParams, params, alternateHolderEnabled, simplified);
 			// 获取下一个表达式
 			resolver.resetToBeyond(1).useTerminal(outerTerminal).useTokens(BRACKET_START).hasNext();
 		}
@@ -833,7 +845,7 @@ public class TextUtils {
 	}
 
 
-	private static Object getMappingValue(Resolver resolver, Object value, Object configParams, Object params, boolean alternateHolderEnabled, boolean simplified) {
+	private static Object getMappingValue(Resolver resolver, Object value, Integer valueIndex, Object configParams, Object params, boolean alternateHolderEnabled, boolean simplified) {
         //
         String stringValue = null;
         boolean first = true;
@@ -898,7 +910,7 @@ public class TextUtils {
 				// 默认类型
 				TextFormatType defaultFormatType = Objects.isNull(parameters) && Objects.nonNull(textFormatType) ? textFormatType : getDataType(pattern);
 				// 格式化
-                stringValue = format0(!alternateHolderEnabled, defaultFormatType, pattern, configParams, params, value, simplified);
+                stringValue = format0(!alternateHolderEnabled, defaultFormatType, pattern, configParams, params, value, valueIndex, simplified);
 				//
 				if (Objects.nonNull(parameters)) {
 					// 如果有带参数, 作为结果值的截取
