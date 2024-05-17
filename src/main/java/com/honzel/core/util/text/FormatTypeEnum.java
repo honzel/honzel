@@ -32,7 +32,7 @@ public enum FormatTypeEnum implements TextFormatType {
         }
 
         public String formatValue(Object value, String... parameters) {
-            if (isNotEmpty(value) && Objects.nonNull(parameters) && parameters.length > 0 && isNotEmpty(parameters[0])) {
+            if (isNotEmpty(value) && parameters.length > 0 && isNotEmpty(parameters[0])) {
                 String pattern = parameters[0];
                 try {
                     if (value instanceof TemporalAccessor) {
@@ -167,10 +167,10 @@ public enum FormatTypeEnum implements TextFormatType {
     /**
      * 子字符串格式化类型
      */
-    SUB_STR("substr") {
+    SUB_STR("str") {
         public String formatValue(Object value, String... parameters) {
             String stringValue = TextUtils.toString(value);
-            if (isNotEmpty(stringValue) && Objects.nonNull(parameters) && parameters.length > 0) {
+            if (isNotEmpty(stringValue) && parameters.length > 0) {
                 // 获取偏移量
                 int offset = EMPTY.equals(parameters[0]) ? NumberConstants.INTEGER_ZERO : Integer.parseInt(parameters[0]);
                 // 计算结束位置
