@@ -126,13 +126,7 @@ public class TextUtils {
 	protected TextUtils() {
 	}
 
-	public static TextFormatType registerFormatType(TextFormatType textFormatType) {
-		return FORMAT_TYPE_MAP.put(textFormatType.getTag(), textFormatType);
-	}
 
-	public static TextFormatType getFormatType(String tag) {
-		return FORMAT_TYPE_MAP.get(tag);
-	}
 
 	@PostConstruct
     protected void init() {
@@ -152,7 +146,18 @@ public class TextUtils {
 		return utils;
 	}
 
+	/**
+	 * 注册格式类型, 如果已经存在同名则返回false
+	 * @param textFormatType 格式类型
+	 * @return 返回是否注册成功
+	 */
+	public static boolean registerFormatType(TextFormatType textFormatType) {
+		return Objects.isNull(FORMAT_TYPE_MAP.putIfAbsent(textFormatType.getUniqueId(), textFormatType));
+	}
 
+	public static TextFormatType getFormatType(String tag) {
+		return FORMAT_TYPE_MAP.get(tag);
+	}
 
 	public static TextFormatType getDataType(String content) {
 		if (Objects.nonNull(content) && !EMPTY.equals(content = content.trim())) {
@@ -873,7 +878,7 @@ public class TextUtils {
 						// 解析下一部分
 						resolver.resetToBeyond(1).useTerminal(terminal);
 						//
-						if (resolver.hasNext() && EMPTY.equals(textFormatType.getTag()) && resolver.isLast()) {
+						if (resolver.hasNext() && EMPTY.equals(textFormatType.getUniqueId()) && resolver.isLast()) {
 							// 基础类型格式
 							if (isEmpty(value) || !resolver.isEmpty() && (stringValue = textFormatType.formatValue(value, resolver.next())) != null) {
 								// 基本类型或日期格式转化

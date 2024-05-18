@@ -1,6 +1,7 @@
 package com.honzel.core.util.time;
 
 import com.honzel.core.constant.NumberConstants;
+import com.honzel.core.util.ConcurrentReferenceHashMap;
 import com.honzel.core.util.text.TextUtils;
 
 import java.text.ParsePosition;
@@ -52,6 +53,9 @@ public class LocalDateTimeUtils {
      * 时分格式化
      */
     public static final DateTimeFormatter HOUR_MINUTE_FORMATTER = DateTimeFormatter.ofPattern(HOUR_MINUTE_FORMAT_PATTERN);
+
+
+    private static final Map<String, DateTimeFormatter> OTHER_FORMATTER_MAP = new ConcurrentReferenceHashMap<>();
     // 类型
     private static final Map<TemporalUnit, List<TemporalField>> BASE_UNIT_FIELD_LIST_MAP;
     // 解析标准单位
@@ -116,7 +120,7 @@ public class LocalDateTimeUtils {
             case HOUR_MINUTE_FORMAT_PATTERN:
                 return HOUR_MINUTE_FORMATTER;
             default:
-                return DateTimeFormatter.ofPattern(pattern);
+                return OTHER_FORMATTER_MAP.computeIfAbsent(pattern, DateTimeFormatter::ofPattern);
         }
     }
 

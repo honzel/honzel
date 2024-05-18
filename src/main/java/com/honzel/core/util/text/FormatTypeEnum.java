@@ -26,7 +26,7 @@ public enum FormatTypeEnum implements TextFormatType {
     /**
      * 默认格式化类型
      */
-    SIMPLE(TextUtils.EMPTY) {
+    SIMPLE(EMPTY) {
         public boolean preliminaryMatch(String format) {
             return isEmpty(format);
         }
@@ -157,7 +157,7 @@ public enum FormatTypeEnum implements TextFormatType {
      */
     URL_ENCODING("url") {
         public boolean preliminaryMatch(String format) {
-            return Objects.nonNull(format) && !EMPTY.equals(format = format.trim()) && format.lastIndexOf("://", NumberConstants.INTEGER_TEN) > NumberConstants.INTEGER_ZERO;
+            return Objects.nonNull(format) && !EMPTY.equals(format = format.trim()) && format.lastIndexOf("://", NumberConstants.INTEGER_TEN * NumberConstants.INTEGER_TWO) > NumberConstants.INTEGER_ZERO;
         }
         @Override
         public void appendValue(StringBuilder formattedContent, String formattedValue) {
@@ -188,15 +188,15 @@ public enum FormatTypeEnum implements TextFormatType {
     ;
 
     private static final Logger log = LoggerFactory.getLogger(FormatTypeEnum.class);
-    private final String tag;
+    private final String uniqueId;
 
-     FormatTypeEnum(String tag) {
-        this.tag = tag;
+     FormatTypeEnum(String uniqueId) {
+        this.uniqueId = uniqueId;
     }
 
     @Override
-    public String getTag() {
-        return tag;
+    public String getUniqueId() {
+        return uniqueId;
     }
 
 

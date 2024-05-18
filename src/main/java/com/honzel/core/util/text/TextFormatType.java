@@ -7,12 +7,16 @@ package com.honzel.core.util.text;
  */
 public interface TextFormatType {
 
-    String getTag();
+    /**
+     * 获取唯一标识
+     * @return 唯一标识
+     */
+    String getUniqueId();
 
     /**
-     * 预匹配
+     * 预匹配(简易匹配)
      * @param format 格式内容
-     * @return
+     * @return 是否匹配
      */
     default boolean preliminaryMatch(String format) {
         return false;
