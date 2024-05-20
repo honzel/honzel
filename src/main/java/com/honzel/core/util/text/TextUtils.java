@@ -597,15 +597,15 @@ public class TextUtils {
 	private static Resolver createResolver(boolean alternateHolderEnabled, boolean simplified) {
 		if (alternateHolderEnabled) {
 			if (simplified) {
-				return ResolverUtils.createResolver(PARENTHESES_START + BRACE_START + BRACKET_START + EQUAL + SEMICOLON, PARENTHESES_END + BRACE_END + BRACKET_END, true);
+				return ResolverUtils.createResolver(PARENTHESES_START + BRACE_START + BRACKET_START + EQUAL + SEMICOLON + SEPARATOR, PARENTHESES_END + BRACE_END + BRACKET_END, true);
 			} else {
-				return ResolverUtils.createResolver(HOLDER_FLAG + BRACE_START + BRACKET_START + EQUAL + SEMICOLON, PARENTHESES_END + BRACE_END + BRACKET_END, true);
+				return ResolverUtils.createResolver(HOLDER_FLAG + BRACE_START + BRACKET_START + EQUAL + SEMICOLON + SEPARATOR, PARENTHESES_END + BRACE_END + BRACKET_END, true);
 			}
 		} else {
 			if (simplified) {
-				return ResolverUtils.createResolver(BRACE_START + PARENTHESES_START + BRACKET_START + EQUAL + SEMICOLON, BRACE_END + PARENTHESES_END + BRACKET_END, true);
+				return ResolverUtils.createResolver(BRACE_START + PARENTHESES_START + BRACKET_START + EQUAL + SEMICOLON + SEPARATOR, BRACE_END + PARENTHESES_END + BRACKET_END, true);
 			} else {
-				return ResolverUtils.createResolver(HOLDER_FLAG + PARENTHESES_START + BRACKET_START + EQUAL + SEMICOLON, BRACE_END + PARENTHESES_END + BRACKET_END, true);
+				return ResolverUtils.createResolver(HOLDER_FLAG + PARENTHESES_START + BRACKET_START + EQUAL + SEMICOLON + SEPARATOR, BRACE_END + PARENTHESES_END + BRACKET_END, true);
 			}
 		}
 	}
@@ -947,18 +947,18 @@ public class TextUtils {
 		}
 		// 参数
 		if (resolver.isInTokens()) {
-			String str;
-			if (isEmpty(str = resolver.next())) {
+			int terminal = resolver.getTerminal();
+			if (resolver.resetToCurrent().useTokens(SEPARATOR).hasNext() && resolver.isEmpty() && resolver.isLast()) {
 				// 无参数
 				return ArrayConstants.EMPTY_STRING_ARRAY;
 			}
-			// 有参数
-			String[] parameters = str.split(SEPARATOR);
-			for (int i = 0; i < parameters.length; i++) {
-				// 去除空白
-				parameters[i] = parameters[i].trim();
-			}
-			return parameters;
+			List<String> parameters = new ArrayList<>();
+			do {
+				parameters.add(resolver.next(true, true));
+			} while (resolver.hasNext());
+			// 获取参数后还原上一次的状态
+			resolver.useTerminal(terminal).useTokens(BRACKET_START);
+			return parameters.toArray(ArrayConstants.EMPTY_STRING_ARRAY);
 		}
 		return null;
 	}
