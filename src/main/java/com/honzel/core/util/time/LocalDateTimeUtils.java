@@ -60,7 +60,7 @@ public class LocalDateTimeUtils {
     private static final Map<TemporalUnit, List<TemporalField>> BASE_UNIT_FIELD_LIST_MAP;
     // 解析标准单位
     private static final TemporalUnit[] UNITS = Arrays.copyOf(ChronoUnit.values(), ChronoUnit.FOREVER.ordinal());
-    public static final LocalDate EPOCH_DATE = LocalDate.of(1970, 1, 1);
+    public static final LocalDate EPOCH_DATE = LocalDate.ofEpochDay(0L);
 
     public static final LocalTime MAX_SECOND_TIME = LocalTime.of(23, 59, 59);
 
@@ -107,6 +107,15 @@ public class LocalDateTimeUtils {
      * @return 格式化对象
      */
     public static DateTimeFormatter getFormatter(String pattern) {
+        return getFormatter(pattern, true);
+    }
+    /**
+     * 获取模板对应格式化器
+     * @param pattern 模板内容
+     * @param cacheable 是否缓存新模板
+     * @return 格式化对象
+     */
+    public static DateTimeFormatter getFormatter(String pattern, boolean cacheable) {
         if (TextUtils.isEmpty(pattern)) {
             return null;
         }
@@ -120,7 +129,12 @@ public class LocalDateTimeUtils {
             case HOUR_MINUTE_FORMAT_PATTERN:
                 return HOUR_MINUTE_FORMATTER;
             default:
-                return OTHER_FORMATTER_MAP.computeIfAbsent(pattern, DateTimeFormatter::ofPattern);
+                if (cacheable) {
+                    // 如果可缓存时
+                    return OTHER_FORMATTER_MAP.computeIfAbsent(pattern, DateTimeFormatter::ofPattern);
+                }
+                DateTimeFormatter formatter = OTHER_FORMATTER_MAP.get(pattern);
+                return formatter != null ? formatter : DateTimeFormatter.ofPattern(pattern);
         }
     }
 
