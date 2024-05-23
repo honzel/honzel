@@ -178,9 +178,9 @@ public enum FormatTypeEnum implements TextFormatType {
                 // 校正偏移量
                 offset = offset < NumberConstants.INTEGER_ZERO ? Math.max(stringValue.length() + offset, NumberConstants.INTEGER_ZERO) : Math.min(offset, stringValue.length());
                 // 校正结束位置
-                end = end < NumberConstants.INTEGER_ZERO ? Math.max(stringValue.length() + end, NumberConstants.INTEGER_ZERO) : Math.min(end, stringValue.length());
+                end = end < NumberConstants.INTEGER_ZERO ? Math.max(stringValue.length() + end, NumberConstants.INTEGER_MINUS_ONE) : Math.min(end, stringValue.length());
                 // 返回子字符串
-                return offset == end ? EMPTY : offset < end ? stringValue.substring(offset, end) : stringValue.substring(end, offset);
+                return offset == end ? EMPTY : offset < end ? stringValue.substring(offset, end) : stringValue.substring(end + 1, offset + 1);
             }
             return stringValue;
         }
