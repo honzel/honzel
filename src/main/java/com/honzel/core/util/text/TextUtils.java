@@ -890,29 +890,37 @@ public class TextUtils {
 						resolver.resetToBeyond(1).useTerminal(terminal).hasNext();
 					}
 				}
-				if (!resolver.isLast()) {
-					stringValue = toString(value);
-					if (stringValue == null) {
-						stringValue = "null";
-					}
-				}
 				first = false;
             }
 			int start = resolver.getStart();
 			int end = resolver.getEnd();
-            if (resolver.isLast() || resolver.nextEquals(stringValue) || end == start + 1 && resolver.getInput().charAt(start) == '*') {
-                if (!resolver.isLast()) {
+			boolean match;
+			if (resolver.isLast()) {
+				if (end == start + 1 && resolver.getInput().charAt(start) == '*') {
+					// 只有一个星号时
+					return value;
+				}
+				match = true;
+			} else {
+				if (end == start + 1 && resolver.getInput().charAt(start) == '*') {
+					match = true;
+				} else if (value == null) {
+					match = !resolver.containsEscape() && resolver.nextEquals("null");
+				} else {
+					if (stringValue == null && (stringValue = toString(value)) == null) {
+						stringValue = "null";
+					}
+					match = resolver.nextEquals(stringValue);
+				}
+				if (match) {
 					if (!resolver.endsInTokens(EQUAL)) {
 						// 返回原值
 						return value;
 					}
 					resolver.hasNext(SEMICOLON);
-                } else {
-					if (end == start + 1 && resolver.getInput().charAt(start) == '*') {
-						// 只有一个星号时
-						return value;
-					}
 				}
+			}
+			if (match) {
                 String pattern = resolver.next();
 				// 默认类型
 				TextFormatType defaultFormatType = Objects.isNull(parameters) && Objects.nonNull(textFormatType) ? textFormatType : getFormatType(EMPTY);
