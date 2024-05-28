@@ -97,6 +97,9 @@ public class LocalDateTimeUtils {
      * @return 返回格式化后结果
      */
     public static String format(TemporalAccessor temporal, String pattern) {
+        if (temporal == null) {
+            return null;
+        }
         DateTimeFormatter formatter;
         return (formatter = getFormatter(pattern)) != null ? formatter.format(temporal) : pattern;
     }
