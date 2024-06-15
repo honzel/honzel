@@ -160,14 +160,20 @@ public class TextUtils {
 	}
 
 	public static TextFormatType getDataType(String content) {
-		if (Objects.nonNull(content) && !EMPTY.equals(content = content.trim())) {
-			for (TextFormatType value : FORMAT_TYPE_MAP.values()) {
+		return getDataType(content, FORMAT_TYPE_MAP.values(), FormatTypeEnum.SIMPLE);
+	}
+	public static TextFormatType getDataType(String content, Collection<TextFormatType> inDataTypes) {
+		return getDataType(content, inDataTypes, FormatTypeEnum.SIMPLE);
+	}
+	public static TextFormatType getDataType(String content, Collection<TextFormatType> inDataTypes, TextFormatType defaultDataType) {
+		if (Objects.nonNull(content) && !EMPTY.equals(content = content.trim()) && Objects.nonNull(inDataTypes)) {
+			for (TextFormatType value : inDataTypes) {
 				if (value.preliminaryMatch(content)) {
 					return value;
 				}
 			}
 		}
-		return FormatTypeEnum.SIMPLE;
+		return defaultDataType;
 	}
 
 
