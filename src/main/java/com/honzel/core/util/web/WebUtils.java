@@ -18,6 +18,7 @@ import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.zip.GZIPInputStream;
 
 /**
@@ -329,7 +330,7 @@ public class WebUtils {
 
     private static InputStream convertInputStream(InputStream input, String contentEncoding) {
         try {
-            if (contentEncoding != null && contentEncoding.toLowerCase().contains("gzip")) {
+            if (input != null && contentEncoding != null && contentEncoding.toLowerCase().contains("gzip")) {
                 input = new GZIPInputStream(input);
             }
         } catch (Throwable t) {
@@ -744,10 +745,13 @@ public class WebUtils {
     /**
      * 读取成流
      * @param input 输入流，读取后会关闭流
-     * @return
-     * @throws IOException
+     * @return 字节数组流
+     * @throws IOException 异常
      */
     public static ByteArrayOutputStream readAsOutputStream(InputStream input) throws IOException {
+        if (input == null) {
+            return null;
+        }
         try {
             int available = input.available();
             //
@@ -765,10 +769,13 @@ public class WebUtils {
     /**
      * 读取成流
      * @param input 输入流，读取后会关闭流
-     * @return
-     * @throws IOException
+     * @return 字符串内容
+     * @throws IOException 异常
      */
     public static String readAsString(InputStream input, Charset charset) throws IOException {
+        if (input == null) {
+            return null;
+        }
         try {
             BufferedReader reader = new BufferedReader(new InputStreamReader(input, charset));
             StringWriter writer = new StringWriter();
@@ -802,7 +809,7 @@ public class WebUtils {
                 try {
                     charset = Charset.forName(charsetName);
                 } catch (Exception e) {
-                    LOG.error("编码" + charsetName + "不支持");
+                    LOG.warn("编码" + charsetName + "不支持");
                 }
                 break;
             }
