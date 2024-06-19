@@ -229,14 +229,14 @@ public enum FormatTypeEnum implements TextFormatType {
                 int padEnd = Math.min(end, INTEGER_ZERO);
                 int i;
                 if (backward && (i = (padEnd - offset) % padLen) != INTEGER_ZERO) {
-                    buf.append(pad, padLen - i, i);
+                    buf.append(pad, padLen - i, padLen);
                     offset += i;
                 }
                 for (i = offset; i < padEnd; i += padLen) {
                     buf.append(pad);
                 }
                 if (!backward && i > padEnd) {
-                    buf.append(pad, INTEGER_ZERO, i - padEnd);
+                    buf.append(pad, INTEGER_ZERO, padEnd + padLen - i);
                 }
                 offset = INTEGER_ZERO;
             }
@@ -254,14 +254,14 @@ public enum FormatTypeEnum implements TextFormatType {
                 // 右侧填充
                 int i;
                 if (backward && (i = (end - offset) % padLen) != INTEGER_ZERO) {
-                    buf.append(pad, padLen - i, i);
+                    buf.append(pad, padLen - i, padLen);
                     end -= i;
                 }
                 for (i = offset; i < end; i += padLen) {
                     buf.append(pad);
                 }
                 if (!backward && i > end) {
-                    buf.append(pad, INTEGER_ZERO, i - end);
+                    buf.append(pad, INTEGER_ZERO, end + padLen - i);
                 }
             }
             return buf.toString();
