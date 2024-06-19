@@ -32,6 +32,12 @@ public enum FormatTypeEnum implements TextFormatType {
             return isEmpty(format);
         }
 
+        /**
+         * 格式化值
+         * @param value 值
+         * @param parameters 参数
+         * @return 格式化后的值
+         */
         public String formatValue(Object value, String... parameters) {
             if (isNotEmpty(value) && parameters.length > 0 && isNotEmpty(parameters[0])) {
                 String pattern = parameters[0];
@@ -169,6 +175,12 @@ public enum FormatTypeEnum implements TextFormatType {
      * 子字符串格式化类型
      */
     SUB_STR("str") {
+        /**
+         * 格式化值
+         * @param value 值
+         * @param parameters 参数 (参数1：起始位置，参数2：长度，参数3：填充字符串)
+         * @return 格式化后的值
+         */
         public String formatValue(Object value, String... parameters) {
             String stringValue = TextUtils.toString(value);
             if (stringValue == null || parameters.length == 0) {
