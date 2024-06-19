@@ -13,6 +13,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Objects;
 
+import static com.honzel.core.constant.NumberConstants.*;
 import static com.honzel.core.util.text.TextUtils.*;
 
 
@@ -157,7 +158,7 @@ public enum FormatTypeEnum implements TextFormatType {
      */
     URL_ENCODING("url") {
         public boolean preliminaryMatch(String format) {
-            return Objects.nonNull(format) && !EMPTY.equals(format = format.trim()) && format.lastIndexOf("://", NumberConstants.INTEGER_TEN * NumberConstants.INTEGER_TWO) > NumberConstants.INTEGER_ZERO;
+            return Objects.nonNull(format) && !EMPTY.equals(format = format.trim()) && format.lastIndexOf("://", NumberConstants.INTEGER_TEN * NumberConstants.INTEGER_TWO) > INTEGER_ZERO;
         }
         @Override
         public void appendValue(StringBuilder formattedContent, String formattedValue) {
@@ -170,19 +171,100 @@ public enum FormatTypeEnum implements TextFormatType {
     SUB_STR("str") {
         public String formatValue(Object value, String... parameters) {
             String stringValue = TextUtils.toString(value);
-            if (isNotEmpty(stringValue) && parameters.length > 0) {
-                // 获取偏移量
-                int offset = EMPTY.equals(parameters[0]) ? NumberConstants.INTEGER_ZERO : Integer.parseInt(parameters[0]);
-                // 计算结束位置
-                int end = parameters.length > 1 && !EMPTY.equals(parameters[1]) ? offset + Integer.parseInt(parameters[1]) : stringValue.length();
-                // 校正偏移量
-                offset = offset < NumberConstants.INTEGER_ZERO ? Math.max(stringValue.length() + offset, NumberConstants.INTEGER_ZERO) : Math.min(offset, stringValue.length());
-                // 校正结束位置
-                end = end < NumberConstants.INTEGER_ZERO ? Math.max(stringValue.length() + end, NumberConstants.INTEGER_MINUS_ONE) : Math.min(end, stringValue.length());
-                // 返回子字符串
-                return offset == end ? EMPTY : offset < end ? stringValue.substring(offset, end) : stringValue.substring(end + 1, offset + 1);
+            if (stringValue == null || parameters.length == 0) {
+                return stringValue;
             }
-            return stringValue;
+            int valueLen = stringValue.length();
+            //
+            String pad = parameters.length > INTEGER_TWO ? parameters[INTEGER_TWO] : EMPTY;
+            int padLen = pad.length();
+            // 获取偏移量
+            boolean noneOffset = EMPTY.equals(parameters[INTEGER_ZERO]);
+            boolean existsLength = parameters.length > INTEGER_ONE && !EMPTY.equals(parameters[INTEGER_ONE]);
+            // 计算结束位置
+            int end = existsLength ? Integer.parseInt(parameters[INTEGER_ONE]) : valueLen;
+            boolean backward = end < INTEGER_ZERO;
+            int offset;
+            if (noneOffset) {
+                // 获取偏移量
+                offset = backward && valueLen > INTEGER_ZERO ?  valueLen - INTEGER_ONE : INTEGER_ZERO;
+            } else {
+                // 获取偏移量
+                if ((offset = Integer.parseInt(parameters[INTEGER_ZERO])) < INTEGER_ZERO) {
+                    // 校正结束位置
+                    offset = valueLen + offset;
+                }
+            }
+            // 计算结束位置
+            if (existsLength) {
+                end += offset;
+            }
+            if (backward) {
+                // wrap value
+                int t = end; end = offset + INTEGER_ONE; offset = t + INTEGER_ONE;
+            }
+            if (padLen == INTEGER_ZERO) {
+                // 没有填充字符串
+                if (end >= INTEGER_ZERO && offset <= valueLen) {
+                    // 返回子字符串
+                    return offset == end ? EMPTY : stringValue.substring(Math.max(offset, INTEGER_ZERO), Math.min(end, valueLen));
+                }
+                // 超出字符串范围
+                return null;
+            }
+            if (offset >= INTEGER_ZERO && end <= valueLen) {
+                // 返回子字符串
+                return noneOffset ? stringValue : stringValue.substring(offset, end);
+            }
+            if (offset == end)  {
+                return EMPTY;
+            }
+            return padString(stringValue, valueLen, pad, padLen, offset, end, noneOffset, backward);
+        }
+
+        private String padString(String value, int valueLen, String pad, int padLen, int offset, int end, boolean noneOffset, boolean backward) {
+            StringBuilder buf = new StringBuilder();
+            if (offset < INTEGER_ZERO) {
+                // 左侧填充
+                int padEnd = Math.min(end, INTEGER_ZERO);
+                int i;
+                if (backward && (i = (padEnd - offset) % padLen) != INTEGER_ZERO) {
+                    buf.append(pad, padLen - i, i);
+                    offset += i;
+                }
+                for (i = offset; i < padEnd; i += padLen) {
+                    buf.append(pad);
+                }
+                if (!backward && i > padEnd) {
+                    buf.append(pad, INTEGER_ZERO, i - padEnd);
+                }
+                offset = INTEGER_ZERO;
+            }
+            if (valueLen > INTEGER_ZERO) {
+                if (noneOffset) {
+                    buf.append(value);
+                    offset = valueLen;
+                } else if (offset < valueLen && end > offset) {
+                    // 追加子字符串
+                    buf.append(value, offset, Math.min(end, valueLen));
+                    offset = valueLen;
+                }
+            }
+            if (end > offset) {
+                // 右侧填充
+                int i;
+                if (backward && (i = (end - offset) % padLen) != INTEGER_ZERO) {
+                    buf.append(pad, padLen - i, i);
+                    end -= i;
+                }
+                for (i = offset; i < end; i += padLen) {
+                    buf.append(pad);
+                }
+                if (!backward && i > end) {
+                    buf.append(pad, INTEGER_ZERO, i - end);
+                }
+            }
+            return buf.toString();
         }
     },
     ;
