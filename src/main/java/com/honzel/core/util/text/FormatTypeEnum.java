@@ -232,10 +232,10 @@ public enum FormatTypeEnum implements TextFormatType {
                     buf.append(pad, padLen - i, padLen);
                     offset += i;
                 }
-                for (i = offset; i < padEnd; i += padLen) {
+                for (i = offset + padLen; i <= padEnd; i += padLen) {
                     buf.append(pad);
                 }
-                if (!backward && i > padEnd) {
+                if (!backward && i < padEnd + padLen) {
                     buf.append(pad, INTEGER_ZERO, padEnd + padLen - i);
                 }
                 offset = INTEGER_ZERO;
@@ -257,10 +257,10 @@ public enum FormatTypeEnum implements TextFormatType {
                     buf.append(pad, padLen - i, padLen);
                     end -= i;
                 }
-                for (i = offset; i < end; i += padLen) {
+                for (i = offset + padLen; i <= end; i += padLen) {
                     buf.append(pad);
                 }
-                if (!backward && i > end) {
+                if (!backward && i < end + padLen) {
                     buf.append(pad, INTEGER_ZERO, end + padLen - i);
                 }
             }
