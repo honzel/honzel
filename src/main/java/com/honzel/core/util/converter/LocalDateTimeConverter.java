@@ -356,15 +356,12 @@ public class LocalDateTimeConverter extends AbstractConverter {
 		if (value instanceof TemporalAccessor) {
 			TemporalAccessor temporal = (TemporalAccessor) value;
 			long seconds;
-			boolean supported;
-			if (supported = temporal.isSupported(ChronoField.INSTANT_SECONDS)) {
+			boolean supported = temporal.isSupported(ChronoField.INSTANT_SECONDS);
+			if (supported) {
 				seconds = temporal.getLong(ChronoField.INSTANT_SECONDS);
 			} else {
-				if (supported = temporal.isSupported(ChronoField.EPOCH_DAY)) {
-					seconds = TimeUnit.DAYS.toSeconds(temporal.getLong(ChronoField.EPOCH_DAY));
-				} else {
-					seconds = 0L;
-				}
+				supported = temporal.isSupported(ChronoField.EPOCH_DAY);
+				seconds = supported ? temporal.getLong(ChronoField.EPOCH_DAY) : 0L;
 				if (temporal.isSupported(ChronoField.SECOND_OF_DAY)) {
 					seconds += temporal.getLong(ChronoField.SECOND_OF_DAY);
 					supported = true;
