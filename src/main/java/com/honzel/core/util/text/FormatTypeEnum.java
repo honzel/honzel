@@ -211,9 +211,12 @@ public enum FormatTypeEnum implements TextFormatType {
                 return stringValue;
             }
             int valueLen = stringValue.length();
-            boolean backward = len < 0;
-            if (backward) {
+            boolean backward;
+            if (len < 0) {
                 len = -len;
+                backward = false;
+            } else {
+                backward = true;
             }
             int pads = len - valueLen;
             if (pads <= 0) {
@@ -227,7 +230,7 @@ public enum FormatTypeEnum implements TextFormatType {
             int padLen = padChar.length();
             if (pads <= padLen) {
                 //  不超过填充字符长度
-                return backward ? padChar.substring(padLen - pads, padLen).concat(stringValue) : stringValue.concat(padChar.substring(0, pads));
+                return backward ? padChar.substring(0, pads).concat(stringValue) : stringValue.concat(padChar.substring(0, pads));
             }
             char[] padding = new char[pads];
             if (padLen == 1) {
@@ -237,19 +240,12 @@ public enum FormatTypeEnum implements TextFormatType {
                 // 多字符填充
                 char[] padChars = padChar.toCharArray();
                 int i = 0;
-                if (backward && (i = pads % padLen) != 0) {
-                    // 左填充优先尾部
-                    System.arraycopy(padChars, padLen - i, padding, 0, i);
-                    pads -= i;
-                }
                 while (pads > padLen) {
                     System.arraycopy(padChars, 0, padding, i, padLen);
                     pads -= padLen;
                     i += padLen;
                 }
-                if (pads > 0) {
-                    System.arraycopy(padChars, 0, padding, i, pads);
-                }
+                System.arraycopy(padChars, 0, padding, i, pads);
             }
             return backward ? new String(padding).concat(stringValue) : stringValue.concat(new String(padding));
         }
