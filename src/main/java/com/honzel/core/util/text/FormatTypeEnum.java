@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.temporal.TemporalAccessor;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Objects;
@@ -163,7 +164,7 @@ public enum FormatTypeEnum implements TextFormatType {
         /**
          * 格式化值
          * @param value 值
-         * @param parameters 参数 (参数1：起始位置，参数2：长度，参数3：填充字符串)
+         * @param parameters 参数 (参数1:偏移量 参数2:长度 参数3:分隔符)
          * @return 格式化后的值
          */
         public String formatValue(Object value, String... parameters) {
@@ -173,88 +174,84 @@ public enum FormatTypeEnum implements TextFormatType {
             }
             int valueLen = stringValue.length();
             // 获取偏移量
-            boolean noneOffset = EMPTY.equals(parameters[0]);
             boolean existsLength = parameters.length > 1 && !EMPTY.equals(parameters[1]);
             // 计算结束位置
-            int end = existsLength ? Integer.parseInt(parameters[1]) : valueLen;
-            boolean backward = end < 0;
+            int len = existsLength ? Integer.parseInt(parameters[1]) : valueLen;
             int offset;
-            if (noneOffset) {
+            if (EMPTY.equals(parameters[0])) {
                 // 获取偏移量
-                offset = backward && valueLen > 0 ?  valueLen - 1 : 0;
+                offset = len < 0 && valueLen > 0 ?  -1 : 0;
             } else {
                 // 获取偏移量
-                if ((offset = Integer.parseInt(parameters[0])) < 0) {
-                    // 校正结束位置
-                    offset = valueLen + offset;
+                if ((offset = Integer.parseInt(parameters[0])) < 0 && !existsLength) {
+                    len -= offset;
                 }
+            }
+            return getValues(stringValue, offset, len, parameters.length > 2 ? parameters[2] : null);
+        }
+    },
+    /**
+     * 字符填充
+     */
+    PAD("pad") {
+        /**
+         * 格式化值
+         * @param value 值
+         * @param parameters 参数 (参数1：长度，参数2：填充字符串)
+         * @return 格式化后的值
+         */
+        public String formatValue(Object value, String... parameters) {
+            String stringValue = TextUtils.toString(value);
+            if (stringValue == null || parameters.length == 0 || EMPTY.equals(parameters[0])) {
+                return stringValue;
             }
             // 计算结束位置
-            if (existsLength) {
-                end += offset;
+            int len = Integer.parseInt(parameters[0]);
+            if (len == 0) {
+                return stringValue;
             }
+            int valueLen = stringValue.length();
+            boolean backward = len < 0;
             if (backward) {
-                // wrap value
-                int t = end; end = offset + 1; offset = t + 1;
+                len = -len;
             }
-            //
-            String pad = parameters.length > 2 ? parameters[2] : EMPTY;
-            int padLen = pad.length();
-            if (padLen == 0) {
-                // 没有填充字符串
-                if (end >= 0 && offset <= valueLen) {
-                    // 返回子字符串
-                    return offset == end ? EMPTY : stringValue.substring(Math.max(offset, 0), Math.min(end, valueLen));
+            int pads = len - valueLen;
+            if (pads <= 0) {
+                return stringValue;
+            }
+            // 填充字符串
+            String padChar = parameters.length > 1 ? parameters[1] : EMPTY;
+            if (EMPTY.equals(padChar)) {
+                padChar = " ";
+            }
+            int padLen = padChar.length();
+            if (pads <= padLen) {
+                //  不超过填充字符长度
+                return backward ? padChar.substring(padLen - pads, padLen).concat(stringValue) : stringValue.concat(padChar.substring(0, pads));
+            }
+            char[] padding = new char[pads];
+            if (padLen == 1) {
+                // 单字符填充
+                Arrays.fill(padding, 0, pads, padChar.charAt(0));
+            } else {
+                // 多字符填充
+                char[] padChars = padChar.toCharArray();
+                int i = 0;
+                if (backward && (i = pads % padLen) != 0) {
+                    // 左填充优先尾部
+                    System.arraycopy(padChars, padLen - i, padding, 0, i);
+                    pads -= i;
                 }
-                // 超出字符串范围
-                return null;
-            }
-            return padString(stringValue, valueLen, pad, padLen, offset, end, noneOffset, backward);
-        }
-
-        private String padString(String value, int valueLen, String pad, int padLen, int offset, int end, boolean noneOffset, boolean backward) {
-            if (offset >= 0 && end <= valueLen) {
-                // 返回子字符串
-                return noneOffset ? value : value.substring(offset, end);
-            }
-            if (offset == end)  {
-                return EMPTY;
-            }
-            StringBuilder buf = new StringBuilder();
-            if (offset < 0) {
-                // 左侧填充
-                appendPad(buf, pad, padLen, Math.min(end, 0) - offset, backward);
-                offset = 0;
-            }
-            if (valueLen > 0) {
-                if (noneOffset) {
-                    buf.append(value);
-                    offset = valueLen;
-                } else if (offset < valueLen && end > offset) {
-                    // 追加子字符串
-                    buf.append(value, offset, Math.min(end, valueLen));
-                    offset = valueLen;
+                while (pads > padLen) {
+                    System.arraycopy(padChars, 0, padding, i, padLen);
+                    pads -= padLen;
+                    i += padLen;
+                }
+                if (pads > 0) {
+                    System.arraycopy(padChars, 0, padding, i, pads);
                 }
             }
-            if (end > offset) {
-                // 右侧填充
-                appendPad(buf, pad, padLen, end - offset, backward);
-            }
-            return buf.toString();
-        }
-
-        private void appendPad(StringBuilder buf, String pad, int padLen, int len, boolean backward) {
-            int i;
-            if (backward && padLen != 1 && (i = len % padLen) != 0) {
-                buf.append(pad, padLen - i, padLen);
-                len -= i;
-            }
-            for (i = padLen; i <= len; i += padLen) {
-                buf.append(pad);
-            }
-            if (!backward && padLen != 1 && i < len + padLen) {
-                buf.append(pad, 0, len + padLen - i);
-            }
+            return backward ? new String(padding).concat(stringValue) : stringValue.concat(new String(padding));
         }
     },
     ;
