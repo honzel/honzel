@@ -902,10 +902,14 @@ public class TextUtils {
 			int start = resolver.getStart();
 			int end = resolver.getEnd();
 			boolean match;
+			boolean onlyValue = false;
 			if (resolver.isLast()) {
 				if (end == start + 1 && resolver.getInput().charAt(start) == '*') {
 					// 只有一个星号时
-					return value;
+					if (Objects.isNull(parameters)) {
+						return value;
+					}
+					onlyValue = true;
 				}
 				match = true;
 			} else {
@@ -920,19 +924,33 @@ public class TextUtils {
 					match = resolver.nextEquals(stringValue);
 				}
 				if (match) {
-					if (!resolver.endsInTokens(EQUAL)) {
+					if (resolver.endsInTokens(EQUAL)) {
+						resolver.hasNext(SEMICOLON);
+					} else {
 						// 返回原值
-						return value;
+						if (Objects.isNull(parameters)) {
+							return value;
+						}
+						onlyValue = true;
 					}
-					resolver.hasNext(SEMICOLON);
 				}
 			}
 			if (match) {
-                String pattern = resolver.next();
-				// 默认类型
-				TextFormatType defaultFormatType = Objects.isNull(parameters) && Objects.nonNull(textFormatType) ? textFormatType : getFormatType(EMPTY);
-				// 格式化
-                stringValue = format0(!alternateHolderEnabled, defaultFormatType, pattern, configParams, params, value, valueIndex, simplified);
+				if (onlyValue) {
+					if (stringValue == null) {
+						stringValue = toString(value);
+					}
+				} else {
+					String pattern = resolver.next();
+					// 默认类型
+					TextFormatType defaultFormatType = Objects.isNull(parameters) && Objects.nonNull(textFormatType) ? textFormatType : getFormatType(EMPTY);
+					// 格式化
+					stringValue = format0(!alternateHolderEnabled, defaultFormatType, pattern, configParams, params, value, valueIndex, simplified);
+				}
+				if ("null".equals(stringValue)) {
+					// null 做为空值
+					stringValue = null;
+				}
 				//
 				if (Objects.nonNull(parameters)) {
 					// 如果有带参数, 作为结果值的截取
@@ -946,7 +964,7 @@ public class TextUtils {
 					}
 				}
                 // 映射值
-                return "null".equals(stringValue) ? null : stringValue;
+                return stringValue;
             }
 			if (resolver.endsInTokens(EQUAL)) {
 				resolver.hasNext(SEMICOLON);
