@@ -121,6 +121,7 @@ public class TextUtils {
 		registerFormatType(FormatTypeEnum.XML);
 		registerFormatType(FormatTypeEnum.URL_ENCODING);
 		registerFormatType(FormatTypeEnum.SUB_STR);
+		registerFormatType(FormatTypeEnum.PAD);
 	}
 
 	protected TextUtils() {
