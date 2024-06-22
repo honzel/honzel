@@ -10,9 +10,25 @@ public class TextTester {
 
 	public static void main(String[] args) {
 		TextTester tester = new TextTester();
-		tester.testFormat();
+		tester.testGetValue();
 	}
 
+	private void testGetValue() {
+		String valueList = "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z";
+		System.out.println(valueList);
+		System.out.println(TextUtils.getValues(valueList, 5, 2));
+		System.out.println(TextUtils.getValues(valueList, 5, -2));
+		System.out.println(TextUtils.getValues(valueList, 5, 28));
+		System.out.println(TextUtils.getValues(valueList, 5, -28));
+		System.out.println(TextUtils.getValues(valueList, -5, 2));
+		System.out.println(TextUtils.getValues(valueList, -5, -2));
+		System.out.println(TextUtils.getValues(valueList, -5, 28));
+		System.out.println(TextUtils.getValues(valueList, -5, -28));
+		System.out.println(TextUtils.getValues(valueList, -5, -1));
+		System.out.println(TextUtils.getValues(valueList, -5, 1));
+		System.out.println(TextUtils.getValues(valueList, 5, -1));
+		System.out.println(TextUtils.getValues(valueList, 5, 1));
+	}
 	private void testFormat() {
 		// {"a":"${Action}","b":"{Version}"}
 //		String format = "\\{\"a\":[\"${Format[+\",\"]}\"],\"b\":\"${Version}\",\"c\":\"${time[#;yyyy-MM-dd]}\"}";

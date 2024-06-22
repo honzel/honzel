@@ -1557,48 +1557,154 @@ public class TextUtils {
 	/**
 	 * 获取指定位置的值, 如果列表是null或值索引超出列表元素边界时返回null
 	 * @param valueList 字符串值集合(用项分隔符隔开各值)
-	 * @param valueIndex 值在列表中的值索引，负值代表从后面开始算
+	 * @param index 值在列表中的值索引，负值代表从后面开始算
 	 * @param separator 项分隔符
 	 * @return 返回对应索引的项字符串值
 	 */
-	public static String getValue(String valueList, int valueIndex, String separator) {
+	public static String getValue(String valueList, int index, String separator) {
+		return getValues(valueList, index, 1, separator);
+	}
+
+	/**
+	 * 获取指定位置的值, 如果列表是null或值索引超出列表元素边界时返回null
+	 * @param valueList 字符串值集合(用项分隔符隔开各值)
+	 * @param offset 值在列表中的值起始索引，负值代表从后面开始算
+	 * @param len 子列表长度, 负值代表向后算
+	 * @return 返回对应索引的项字符串值
+	 */
+	public static String getValues(String valueList, int offset, int len) {
+		return getValues(valueList, offset, len, SEPARATOR);
+	}
+
+	/**
+	 * 获取指定位置的值, 如果列表是null或值索引超出列表元素边界时返回null
+	 * @param valueList 字符串值集合(用项分隔符隔开各值)
+	 * @param offset 值在列表中的值起始索引，负值代表从后面开始算
+	 * @param len 子列表长度, 负值代表向后算
+	 * @param separator 项分隔符
+	 * @return 返回对应索引的项字符串值
+	 */
+	public static String getValues(String valueList, int offset, int len, String separator) {
+		if (isEmpty(separator)) {
+			return substr(valueList, offset, len);
+		}
 		if (valueList == null) {
 			return null;
 		}
-		if (isEmpty(separator)) {
-			return valueIndex < valueList.length() ? String.valueOf(valueList.charAt(valueIndex)) : null;
-		}
-		int startIndex;
-		int endIndex;
-		if (valueIndex >= 0) {
-			startIndex = 0;
-			while ((endIndex = valueList.indexOf(separator, startIndex)) >= 0) {
-				if (valueIndex == 0) {
-					break;
+		int end;
+		if (offset < 0) {
+			// 如果从后面位置开始算时，计算最后一个值的位置，并调整成向前获取
+			if (len > 1) {
+				if (offset + len >= 0) {
+					len = offset;
+					offset = -1;
+				} else {
+					offset += len - 1;
+					len = -len;
 				}
-				startIndex = endIndex + separator.length();
-				valueIndex --;
 			}
 		} else {
-			endIndex = valueList.length();
-			valueIndex ++;
-			while ((startIndex = valueList.lastIndexOf(separator, endIndex - 1)) >= 0) {
-				if (valueIndex == 0) {
-					break;
+			// 如果从前面位置开始算时，计算最前一个值的位置，并调整成向后获取
+			if (len < -1) {
+				if (offset + len < 0) {
+					len = offset + 1;
+					offset = 0;
+				} else {
+					offset += len + 1;
+					len = -len;
 				}
-				endIndex = startIndex;
-				valueIndex ++;
 			}
-			startIndex = startIndex < 0 ? 0 : startIndex + separator.length();
 		}
-		if (valueIndex != 0) {
+		int start;
+		int separatorLen = separator.length();
+		boolean first = true;
+		if (offset >= 0) {
+			start = 0;
+			end = 0;
+			while ((end = valueList.indexOf(separator, end)) >= 0) {
+				if (offset == 0) {
+					if (!first) {
+						break;
+					} else {
+						first = false;
+						if (len > 1) {
+							offset = len - 1;
+						} else {
+							break;
+						}
+					}
+				}
+				end += separatorLen;
+				if (first) {
+					start = end;
+				}
+				--offset;
+			}
+			if (first && offset == 0) {
+				first = false;
+			}
+		} else {
+			end = -1;
+			start = valueList.length();
+			++offset;
+			while ((start = valueList.lastIndexOf(separator, start - 1)) >= 0) {
+				if (offset == 0) {
+					if (!first) {
+						// 已获取过最后一个值
+						break;
+					} else {
+						first = false;
+						if (len < -1) {
+							offset = len + 1;
+						} else {
+							break;
+						}
+					}
+				}
+				if (first) {
+					// 记录最后一个值位置
+					end = start;
+				}
+				++offset;
+			}
+			if (first) {
+				if (offset == 0) {
+					first = false;
+					start = 0;
+				}
+			} else {
+				start = start < 0 ? 0 : start + separatorLen;
+			}
+		}
+		return first ? null : (len == 0 ? EMPTY : (end < 0 ? valueList.substring(start) : valueList.substring(start, end)));
+	}
+
+	/**
+	 * 获取子字符串
+	 * @param value 字符串值
+	 * @param offset 起始位置，负值代表从后面开始算
+	 * @param len 长度，负值代表向后算
+	 * @return 子字符串
+	 */
+	public static String substr(String value, int offset, int len) {
+		if (value == null) {
 			return null;
 		}
-		if (endIndex >= 0) {
-			return valueList.substring(startIndex, endIndex);
-		} else {
-			return valueList.substring(startIndex);
+		int end;
+		int valueLength = value.length();
+		if (offset < 0) {
+			offset += valueLength;
 		}
+		end = offset + len;
+		if (len < 0) {
+			int t = end; end = offset + 1; offset = t + 1;
+		}
+		if (end >= 0 && offset <= valueLength) {
+			// 返回子字符串
+			return offset == end ? EMPTY : value.substring(Math.max(offset, 0), Math.min(end, valueLength));
+		}
+		// 超出字符串范围
+		return null;
 	}
 
 	/**

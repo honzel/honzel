@@ -1,6 +1,5 @@
 package com.honzel.core.util.text;
 
-import com.honzel.core.constant.NumberConstants;
 import com.honzel.core.util.time.LocalDateTimeUtils;
 import com.honzel.core.util.web.WebUtils;
 import org.slf4j.Logger;
@@ -13,7 +12,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Objects;
 
-import static com.honzel.core.constant.NumberConstants.*;
 import static com.honzel.core.util.text.TextUtils.*;
 
 
@@ -71,14 +69,14 @@ public enum FormatTypeEnum implements TextFormatType {
         }
         @Override
         public void appendValue(StringBuilder formattedContent, String formattedValue) {
-            int lastIndex = -1;
+            int start = 0;
             for (int i = 0, len = formattedValue.length(); i < len; i++) {
                 char ch = formattedValue.charAt(i);
-                if (ch >= ' ' && ch != '\"' && ch != '\\' && !Character.isHighSurrogate(ch)) {
+                if (ch >= ' ' && ch != '\"' && ch != '\\') {
                     continue;
                 }
-                if (lastIndex + 1 < i) {
-                    formattedContent.append(formattedValue, lastIndex + 1, i);
+                if (start < i) {
+                    formattedContent.append(formattedValue, start, i);
                 }
                 switch(ch) {
                     case '\\':
@@ -103,28 +101,15 @@ public enum FormatTypeEnum implements TextFormatType {
                         formattedContent.append("\\f");
                         break;
                     default:
-                        if (Character.isHighSurrogate(ch) && i < len - 1) {
-                            char c2 = formattedValue.charAt(++i);
-                            if (Character.isLowSurrogate(c2)) {
-                                int codePoint = Character.toCodePoint(ch, c2);
-                                if (Character.isSupplementaryCodePoint(codePoint)) {
-                                    formattedContent.append("\\u").append(Integer.toHexString(codePoint));
-                                } else {
-                                    formattedContent.append("\\u00").append(Integer.toHexString(codePoint));
-                                }
-                            } else {
-                                formattedContent.append("\\u").append(Integer.toHexString(ch));
-                                formattedContent.append("\\u").append(Integer.toHexString(c2));
-                            }
-                        } else {
-                            formattedContent.append("\\u").append(Integer.toHexString(ch));
-                        }
+                        formattedContent.append("\\u").append(Integer.toHexString(ch));
                         break;
                 }
-                lastIndex = i;
+                start = i + 1;
             }
-            if (lastIndex >= 0) {
-                formattedContent.append(formattedValue, lastIndex + 1, formattedValue.length());
+            if (start > 0) {
+                if (start != formattedValue.length()) {
+                    formattedContent.append(formattedValue, start, formattedValue.length());
+                }
             } else {
                 formattedContent.append(formattedValue);
             }
@@ -164,7 +149,7 @@ public enum FormatTypeEnum implements TextFormatType {
      */
     URL_ENCODING("url") {
         public boolean preliminaryMatch(String format) {
-            return Objects.nonNull(format) && !EMPTY.equals(format = format.trim()) && format.lastIndexOf("://", NumberConstants.INTEGER_TEN * NumberConstants.INTEGER_TWO) > INTEGER_ZERO;
+            return Objects.nonNull(format) && !EMPTY.equals(format = format.trim()) && format.lastIndexOf("://", 20) > 0;
         }
         @Override
         public void appendValue(StringBuilder formattedContent, String formattedValue) {
@@ -188,21 +173,21 @@ public enum FormatTypeEnum implements TextFormatType {
             }
             int valueLen = stringValue.length();
             //
-            String pad = parameters.length > INTEGER_TWO ? parameters[INTEGER_TWO] : EMPTY;
+            String pad = parameters.length > 2 ? parameters[2] : EMPTY;
             int padLen = pad.length();
             // 获取偏移量
-            boolean noneOffset = EMPTY.equals(parameters[INTEGER_ZERO]);
-            boolean existsLength = parameters.length > INTEGER_ONE && !EMPTY.equals(parameters[INTEGER_ONE]);
+            boolean noneOffset = EMPTY.equals(parameters[0]);
+            boolean existsLength = parameters.length > 1 && !EMPTY.equals(parameters[1]);
             // 计算结束位置
-            int end = existsLength ? Integer.parseInt(parameters[INTEGER_ONE]) : valueLen;
-            boolean backward = end < INTEGER_ZERO;
+            int end = existsLength ? Integer.parseInt(parameters[1]) : valueLen;
+            boolean backward = end < 0;
             int offset;
             if (noneOffset) {
                 // 获取偏移量
-                offset = backward && valueLen > INTEGER_ZERO ?  valueLen - INTEGER_ONE : INTEGER_ZERO;
+                offset = backward && valueLen > 0 ?  valueLen - 1 : 0;
             } else {
                 // 获取偏移量
-                if ((offset = Integer.parseInt(parameters[INTEGER_ZERO])) < INTEGER_ZERO) {
+                if ((offset = Integer.parseInt(parameters[0])) < 0) {
                     // 校正结束位置
                     offset = valueLen + offset;
                 }
@@ -213,18 +198,18 @@ public enum FormatTypeEnum implements TextFormatType {
             }
             if (backward) {
                 // wrap value
-                int t = end; end = offset + INTEGER_ONE; offset = t + INTEGER_ONE;
+                int t = end; end = offset + 1; offset = t + 1;
             }
-            if (padLen == INTEGER_ZERO) {
+            if (padLen == 0) {
                 // 没有填充字符串
-                if (end >= INTEGER_ZERO && offset <= valueLen) {
+                if (end >= 0 && offset <= valueLen) {
                     // 返回子字符串
-                    return offset == end ? EMPTY : stringValue.substring(Math.max(offset, INTEGER_ZERO), Math.min(end, valueLen));
+                    return offset == end ? EMPTY : stringValue.substring(Math.max(offset, 0), Math.min(end, valueLen));
                 }
                 // 超出字符串范围
                 return null;
             }
-            if (offset >= INTEGER_ZERO && end <= valueLen) {
+            if (offset >= 0 && end <= valueLen) {
                 // 返回子字符串
                 return noneOffset ? stringValue : stringValue.substring(offset, end);
             }
@@ -236,23 +221,12 @@ public enum FormatTypeEnum implements TextFormatType {
 
         private String padString(String value, int valueLen, String pad, int padLen, int offset, int end, boolean noneOffset, boolean backward) {
             StringBuilder buf = new StringBuilder();
-            if (offset < INTEGER_ZERO) {
+            if (offset < 0) {
                 // 左侧填充
-                int padEnd = Math.min(end, INTEGER_ZERO);
-                int i;
-                if (backward && (i = (padEnd - offset) % padLen) != INTEGER_ZERO) {
-                    buf.append(pad, padLen - i, padLen);
-                    offset += i;
-                }
-                for (i = offset + padLen; i <= padEnd; i += padLen) {
-                    buf.append(pad);
-                }
-                if (!backward && i < padEnd + padLen) {
-                    buf.append(pad, INTEGER_ZERO, padEnd + padLen - i);
-                }
-                offset = INTEGER_ZERO;
+                appendPad(buf, pad, padLen, Math.min(end, 0) - offset, backward);
+                offset = 0;
             }
-            if (valueLen > INTEGER_ZERO) {
+            if (valueLen > 0) {
                 if (noneOffset) {
                     buf.append(value);
                     offset = valueLen;
@@ -264,19 +238,23 @@ public enum FormatTypeEnum implements TextFormatType {
             }
             if (end > offset) {
                 // 右侧填充
-                int i;
-                if (backward && (i = (end - offset) % padLen) != INTEGER_ZERO) {
-                    buf.append(pad, padLen - i, padLen);
-                    end -= i;
-                }
-                for (i = offset + padLen; i <= end; i += padLen) {
-                    buf.append(pad);
-                }
-                if (!backward && i < end + padLen) {
-                    buf.append(pad, INTEGER_ZERO, end + padLen - i);
-                }
+                appendPad(buf, pad, padLen, end - offset, backward);
             }
             return buf.toString();
+        }
+
+        private void appendPad(StringBuilder buf, String pad, int padLen, int len, boolean backward) {
+            int i;
+            if (backward && padLen != 1 && (i = len % padLen) != 0) {
+                buf.append(pad, padLen - i, padLen);
+                len -= i;
+            }
+            for (i = padLen; i <= len; i += padLen) {
+                buf.append(pad);
+            }
+            if (!backward && padLen != 1 && i < len + padLen) {
+                buf.append(pad, 0, len + padLen - i);
+            }
         }
     },
     ;
