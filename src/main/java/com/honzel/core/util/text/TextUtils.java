@@ -1557,12 +1557,12 @@ public class TextUtils {
 	/**
 	 * 获取指定位置的值, 如果列表是null或值索引超出列表元素边界时返回null
 	 * @param valueList 字符串值集合(用项分隔符隔开各值)
-	 * @param index 值在列表中的值索引，负值代表从后面开始算
+	 * @param valueIndex 值在列表中的值索引，负值代表从后面开始算
 	 * @param separator 项分隔符
 	 * @return 返回对应索引的项字符串值
 	 */
-	public static String getValue(String valueList, int index, String separator) {
-		return getValues(valueList, index, 1, separator);
+	public static String getValue(String valueList, int valueIndex, String separator) {
+		return getValues(valueList, valueIndex, 1, separator);
 	}
 
 	/**
