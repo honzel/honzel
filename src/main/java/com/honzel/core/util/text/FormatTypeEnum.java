@@ -172,9 +172,6 @@ public enum FormatTypeEnum implements TextFormatType {
                 return stringValue;
             }
             int valueLen = stringValue.length();
-            //
-            String pad = parameters.length > 2 ? parameters[2] : EMPTY;
-            int padLen = pad.length();
             // 获取偏移量
             boolean noneOffset = EMPTY.equals(parameters[0]);
             boolean existsLength = parameters.length > 1 && !EMPTY.equals(parameters[1]);
@@ -200,6 +197,9 @@ public enum FormatTypeEnum implements TextFormatType {
                 // wrap value
                 int t = end; end = offset + 1; offset = t + 1;
             }
+            //
+            String pad = parameters.length > 2 ? parameters[2] : EMPTY;
+            int padLen = pad.length();
             if (padLen == 0) {
                 // 没有填充字符串
                 if (end >= 0 && offset <= valueLen) {
@@ -209,17 +209,17 @@ public enum FormatTypeEnum implements TextFormatType {
                 // 超出字符串范围
                 return null;
             }
-            if (offset >= 0 && end <= valueLen) {
-                // 返回子字符串
-                return noneOffset ? stringValue : stringValue.substring(offset, end);
-            }
-            if (offset == end)  {
-                return EMPTY;
-            }
             return padString(stringValue, valueLen, pad, padLen, offset, end, noneOffset, backward);
         }
 
         private String padString(String value, int valueLen, String pad, int padLen, int offset, int end, boolean noneOffset, boolean backward) {
+            if (offset >= 0 && end <= valueLen) {
+                // 返回子字符串
+                return noneOffset ? value : value.substring(offset, end);
+            }
+            if (offset == end)  {
+                return EMPTY;
+            }
             StringBuilder buf = new StringBuilder();
             if (offset < 0) {
                 // 左侧填充
