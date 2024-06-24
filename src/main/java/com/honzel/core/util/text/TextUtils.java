@@ -707,7 +707,7 @@ public class TextUtils {
 					Object itemValue = formatValue(resolver, iterator.next(), index++, configParams, params, alternateHolderEnabled, simplified);
 					hasNext = iterator.hasNext();
 					// 附加值
-					originPosition = appendFormatValue(content, resolver, textFormatType, parameters, itemValue, appendForEmpty, originPosition, !hasNext).length();
+					originPosition = appendFormatValue(content, resolver, textFormatType, null, itemValue, appendForEmpty, originPosition, !hasNext).length();
 					if (hasNext) {
 						if (!prefix.isEmpty()) {
 							// 添加前缀
@@ -902,14 +902,14 @@ public class TextUtils {
 			int start = resolver.getStart();
 			int end = resolver.getEnd();
 			boolean match;
-			boolean onlyValue = false;
+			boolean nestPattern = true;
 			if (resolver.isLast()) {
 				if (end == start + 1 && resolver.getInput().charAt(start) == '*') {
 					// 只有一个星号时
 					if (Objects.isNull(parameters)) {
 						return value;
 					}
-					onlyValue = true;
+					nestPattern = false;
 				}
 				match = true;
 			} else {
@@ -931,19 +931,15 @@ public class TextUtils {
 						if (Objects.isNull(parameters)) {
 							return value;
 						}
-						onlyValue = true;
+						nestPattern = false;
 					}
 				}
 			}
 			if (match) {
-				if (onlyValue) {
-					if (stringValue == null) {
-						stringValue = toString(value);
-					}
-				} else {
+				if (nestPattern) {
 					String pattern = resolver.next();
 					// 默认类型
-					TextFormatType defaultFormatType = Objects.isNull(parameters) && Objects.nonNull(textFormatType) ? textFormatType : getFormatType(EMPTY);
+					TextFormatType defaultFormatType = Objects.isNull(parameters) && Objects.nonNull(textFormatType) ? textFormatType : FormatTypeEnum.SIMPLE;
 					// 格式化
 					stringValue = format0(!alternateHolderEnabled, defaultFormatType, pattern, configParams, params, value, valueIndex, simplified);
 				}
@@ -954,7 +950,7 @@ public class TextUtils {
 				//
 				if (Objects.nonNull(parameters)) {
 					// 如果有带参数, 作为结果值的截取
-					stringValue = textFormatType.formatValue(stringValue, parameters);
+					stringValue = textFormatType.formatValue(stringValue == null && !nestPattern ? value : stringValue, parameters);
 					//
 					if (isNotEmpty(stringValue) && parameters.length == 0) {
 						// 非空并且没有参数时，转化结果
