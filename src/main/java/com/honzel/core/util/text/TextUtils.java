@@ -939,7 +939,7 @@ public class TextUtils {
 				if (nestPattern) {
 					String pattern = resolver.next();
 					// 默认类型
-					TextFormatType defaultFormatType = Objects.isNull(parameters) && Objects.nonNull(textFormatType) ? textFormatType : FormatTypeEnum.SIMPLE;
+					TextFormatType defaultFormatType = Objects.isNull(parameters) && Objects.nonNull(textFormatType) ? textFormatType : getFormatType(EMPTY);
 					// 格式化
 					stringValue = format0(!alternateHolderEnabled, defaultFormatType, pattern, configParams, params, value, valueIndex, simplified);
 				}
