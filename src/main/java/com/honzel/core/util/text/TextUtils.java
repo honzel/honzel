@@ -653,7 +653,7 @@ public class TextUtils {
 					// 有格式化类型
 					textFormatType = localDataType;
 					// 格式化参数
-					parameters = parseParameters(resolver, pFlag);
+					parameters = parseParameters(resolver, pFlag, BRACKET_START);
 				}
 				// 解析下一部分
 				resolver.resetToBeyond(1).useTerminal(terminal).hasNext();
@@ -849,7 +849,7 @@ public class TextUtils {
 		int outerTerminal = resolver.getTerminal();
 		while (resolver.isInTokens() && resolver.getInput().charAt(resolver.getStart()) == EXPR_FLAG) {
 			// 起始位置
-			resolver.resetToCurrent(1).useTokens(EQUAL + SEMICOLON);
+			resolver.resetToCurrent(1);
 			// 获取映射值
 			value = getMappingValue(resolver, value, valueIndex, configParams, params, alternateHolderEnabled, simplified);
 			// 获取下一个表达式
@@ -869,6 +869,7 @@ public class TextUtils {
 		String[] parameters = null;
 		// 参数标记
 		String pFlag = alternateHolderEnabled ? BRACE_START : PARENTHESES_START;
+		resolver.useTokens(EQUAL + SEMICOLON);
         while (resolver.hasNext()) {
             if (first) {
 				if (resolver.endsInTokens(SEMICOLON)) {
@@ -879,7 +880,7 @@ public class TextUtils {
 					TextFormatType localDataType = getFormatType(resolver.isInTokens() ? EMPTY : resolver.next(false));
 					if (Objects.nonNull(localDataType)) {
 						// 格式化参数
-						parameters = parseParameters(resolver, pFlag);
+						parameters = parseParameters(resolver, pFlag, EQUAL + SEMICOLON);
 						// 有格式化类型
 						textFormatType = localDataType;
 						// 解析下一部分
@@ -969,7 +970,7 @@ public class TextUtils {
         return null;
     }
 
-	private static String[] parseParameters(Resolver resolver, String pFlag) {
+	private static String[] parseParameters(Resolver resolver, String pFlag, String oriDelim) {
 		if (!resolver.isInTokens() && resolver.endsInTokens(pFlag)) {
 			// 获取参数
 			resolver.hasNext(pFlag);
@@ -986,7 +987,7 @@ public class TextUtils {
 				parameters.add(resolver.next(true, true));
 			} while (resolver.hasNext());
 			// 获取参数后还原上一次的状态
-			resolver.useTerminal(terminal).useTokens(BRACKET_START);
+			resolver.useTerminal(terminal).useTokens(oriDelim);
 			return parameters.toArray(ArrayConstants.EMPTY_STRING_ARRAY);
 		}
 		return null;
