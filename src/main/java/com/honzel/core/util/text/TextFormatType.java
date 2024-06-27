@@ -14,6 +14,13 @@ public interface TextFormatType {
     String getUniqueId();
 
     /**
+     * 是否支持内容自动匹配
+     * @return 是否支持内容自动匹配
+     */
+    default boolean supportsAutoMatch() {
+        return false;
+    }
+    /**
      * 预匹配(简易匹配)
      * @param format 格式内容
      * @return 是否匹配

@@ -31,6 +31,7 @@ public enum FormatTypeEnum implements TextFormatType {
             return isEmpty(format);
         }
 
+
         /**
          * 格式化值
          * @param value 值
@@ -65,6 +66,10 @@ public enum FormatTypeEnum implements TextFormatType {
      * JSON格式化类型
      */
     JSON("json") {
+        @Override
+        public boolean supportsAutoMatch() {
+            return true;
+        }
         public boolean preliminaryMatch(String format) {
             return Objects.nonNull(format) && !EMPTY.equals(format = format.trim()) && (format.startsWith(BRACE_START) && format.endsWith(BRACE_END) || format.startsWith(BRACKET_START) && format.endsWith(BRACKET_END));
         }
@@ -120,6 +125,10 @@ public enum FormatTypeEnum implements TextFormatType {
      * XML格式化类型
      */
     XML("xml") {
+        @Override
+        public boolean supportsAutoMatch() {
+            return true;
+        }
         public boolean preliminaryMatch(String format) {
             return Objects.nonNull(format) && !EMPTY.equals(format = format.trim()) && format.startsWith("<") && format.endsWith(">");
         }
@@ -149,6 +158,10 @@ public enum FormatTypeEnum implements TextFormatType {
      * URL编码格式化类型
      */
     URL_ENCODING("url") {
+        @Override
+        public boolean supportsAutoMatch() {
+            return true;
+        }
         public boolean preliminaryMatch(String format) {
             return Objects.nonNull(format) && !EMPTY.equals(format = format.trim()) && format.lastIndexOf("://", 20) > 0;
         }
@@ -250,6 +263,44 @@ public enum FormatTypeEnum implements TextFormatType {
             return backward ? new String(padding).concat(stringValue) : stringValue.concat(new String(padding));
         }
     },
+//    /**
+//     * URL编码格式化类型
+//     */
+//    RADIX("radix") {
+//        /**
+//         * 格式化值
+//         * @param value 值
+//         * @param parameters 参数 (进制：长度)
+//         * @return 格式化后的值
+//         */
+//        public String formatValue(Object value, String... parameters) {
+//            if (isNotEmpty(value) && parameters.length > 0 && !EMPTY.equals(parameters[0])) {
+//                // 获取进制
+//                int toRadix = Integer.parseInt(parameters[0]);
+//                if (toRadix < Character.MIN_RADIX || toRadix > Character.MAX_RADIX) {
+//                    toRadix = 10;
+//                }
+//                int oriRadix = parameters.length > 1 && !EMPTY.equals(parameters[0]) ? Integer.parseInt(parameters[1]) : 10;
+//                if (oriRadix < Character.MIN_RADIX || oriRadix > Character.MAX_RADIX) {
+//                    oriRadix = 10;
+//                }
+//                Number number;
+//                if (value instanceof Integer || value instanceof Long || value instanceof Short || value instanceof Byte) {
+//                    return Long.toString(((Number) value).longValue(), toRadix);
+//                }
+//                if (value instanceof BigInteger) {
+//                    return ((BigInteger) value).toString(toRadix);
+//                }
+//                if (value instanceof BigDecimal) {
+//                    value = ((BigDecimal) value).unscaledValue();
+//                } else {
+//                    value = value.toString();
+//                }
+//
+//            }
+//            return toString(value);
+//        }
+//    },
     ;
 
     private static final Logger log = LoggerFactory.getLogger(FormatTypeEnum.class);

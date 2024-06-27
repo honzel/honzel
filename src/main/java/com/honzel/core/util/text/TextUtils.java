@@ -10,6 +10,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -112,6 +113,7 @@ public class TextUtils {
 
 	private static final Map<String, TextFormatType> FORMAT_TYPE_MAP = new ConcurrentHashMap<>();
 
+	private static final Queue<TextFormatType> AUTO_MATCH_FORMAT_TYPE_QUEUE = new ConcurrentLinkedQueue<>();
 
 	private static volatile TextUtils utils;
 
@@ -153,28 +155,37 @@ public class TextUtils {
 	 * @return 返回是否注册成功
 	 */
 	public static boolean registerFormatType(TextFormatType textFormatType) {
-		return Objects.isNull(FORMAT_TYPE_MAP.putIfAbsent(textFormatType.getUniqueId(), textFormatType));
+		if (Objects.isNull(FORMAT_TYPE_MAP.putIfAbsent(textFormatType.getUniqueId(), textFormatType))) {
+			if (textFormatType.supportsAutoMatch()) {
+				AUTO_MATCH_FORMAT_TYPE_QUEUE.add(textFormatType);
+			}
+			return true;
+		}
+		return false;
 	}
 
 	public static TextFormatType getFormatType(String tag) {
 		return FORMAT_TYPE_MAP.get(tag);
 	}
 
-	public static TextFormatType getDataType(String content) {
-		return getDataType(content, FORMAT_TYPE_MAP.values(), FormatTypeEnum.SIMPLE);
-	}
-	public static TextFormatType getDataType(String content, Collection<TextFormatType> inDataTypes) {
-		return getDataType(content, inDataTypes, FormatTypeEnum.SIMPLE);
-	}
-	public static TextFormatType getDataType(String content, Collection<TextFormatType> inDataTypes, TextFormatType defaultDataType) {
-		if (Objects.nonNull(content) && !EMPTY.equals(content = content.trim()) && Objects.nonNull(inDataTypes)) {
-			for (TextFormatType value : inDataTypes) {
+	/**
+	 * 查找格式类型
+	 * @param content 内容
+	 * @return 格式类型
+	 */
+	public static TextFormatType lookupFormatType(String content) {
+		if (Objects.nonNull(content) && !EMPTY.equals(content = content.trim())) {
+			for (TextFormatType value : AUTO_MATCH_FORMAT_TYPE_QUEUE) {
 				if (value.preliminaryMatch(content)) {
 					return value;
 				}
 			}
 		}
-		return defaultDataType;
+		return FormatTypeEnum.SIMPLE;
+	}
+	@Deprecated
+	public static TextFormatType getDataType(String content) {
+		return lookupFormatType(content);
 	}
 
 
@@ -375,7 +386,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String format(String pattern, Object param) {
-		return format0(false, getDataType(pattern), pattern, null, param, null, null, false);
+		return format0(false, lookupFormatType(pattern), pattern, null, param, null, null, false);
 	}
 
 	/**
@@ -396,7 +407,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String format(String pattern, Object... params) {
-		return format0(false, getDataType(pattern), pattern, null, params, null, null, false);
+		return format0(false, lookupFormatType(pattern), pattern, null, params, null, null, false);
 	}
 
 	/**
@@ -418,7 +429,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String simplifiedFormat(String pattern, Object param) {
-		return format0(false, getDataType(pattern), pattern, null, param, null, null, true);
+		return format0(false, lookupFormatType(pattern), pattern, null, param, null, null, true);
 	}
 
 	/**
@@ -439,7 +450,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String simplifiedFormat(String pattern, Object... params) {
-		return format0(false, getDataType(pattern), pattern, null, params, null, null, true);
+		return format0(false, lookupFormatType(pattern), pattern, null, params, null, null, true);
 	}
 
 	/**
@@ -461,7 +472,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String alternateSimplifiedFormat(String pattern, Object param) {
-		return format0(true, getDataType(pattern), pattern, null, param, null, null, true);
+		return format0(true, lookupFormatType(pattern), pattern, null, param, null, null, true);
 	}
 
 	/**
@@ -482,7 +493,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String alternateSimplifiedFormat(String pattern, Object... params) {
-		return format0(true, getDataType(pattern), pattern, null, params, null, null, true);
+		return format0(true, lookupFormatType(pattern), pattern, null, params, null, null, true);
 	}
 
 	/**
@@ -515,7 +526,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String alternateFormat(String pattern, Object param) {
-		return format0(true, getDataType(pattern), pattern, null, param, null, null, false);
+		return format0(true, lookupFormatType(pattern), pattern, null, param, null, null, false);
 	}
 
 	/**
@@ -525,7 +536,7 @@ public class TextUtils {
 	 * @return 返回格式化后内容
 	 */
 	public static String alternateFormat(String pattern, Object... params) {
-		return format0(true, getDataType(pattern), pattern, null, params, null, null, false);
+		return format0(true, lookupFormatType(pattern), pattern, null, params, null, null, false);
 	}
 
 	/**
@@ -940,7 +951,7 @@ public class TextUtils {
 				if (nestPattern) {
 					String pattern = resolver.next();
 					// 默认类型
-					TextFormatType defaultFormatType = Objects.isNull(parameters) && Objects.nonNull(textFormatType) ? textFormatType : getFormatType(EMPTY);
+					TextFormatType defaultFormatType = Objects.nonNull(textFormatType) ? (Objects.isNull(parameters) ? textFormatType : getFormatType(EMPTY)) : lookupFormatType(pattern);
 					// 格式化
 					stringValue = format0(!alternateHolderEnabled, defaultFormatType, pattern, configParams, params, value, valueIndex, simplified);
 				}
