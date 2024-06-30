@@ -702,7 +702,7 @@ public class TextUtils {
 			offset ++;
 		}
 		boolean parsed = false;
-		if (parameters == null) {
+		if (parameters == null || parameters.length > 0) {
 			int startLen = content.length();
 			if (value instanceof Iterable) {
 				// 获取解析开始位置
