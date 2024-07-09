@@ -858,11 +858,12 @@ public class TextUtils {
 
 	private static Object formatValue(Resolver resolver, Object value, Integer valueIndex, Object configParams, Object params, boolean alternateHolderEnabled, boolean simplified) {
 		int outerTerminal = resolver.getTerminal();
+		Object valueHolder = value;
 		while (resolver.isInTokens() && resolver.getInput().charAt(resolver.getStart()) == EXPR_FLAG) {
 			// 起始位置
 			resolver.resetToCurrent(1);
 			// 获取映射值
-			value = getMappingValue(resolver, value, valueIndex, configParams, params, alternateHolderEnabled, simplified);
+			value = getMappingValue(resolver, value, valueHolder, valueIndex, configParams, params, alternateHolderEnabled, simplified);
 			// 获取下一个表达式
 			resolver.resetToBeyond(1).useTerminal(outerTerminal).useTokens(BRACKET_START).hasNext();
 		}
@@ -870,7 +871,7 @@ public class TextUtils {
 	}
 
 
-	private static Object getMappingValue(Resolver resolver, Object value, Integer valueIndex, Object configParams, Object params, boolean alternateHolderEnabled, boolean simplified) {
+	private static Object getMappingValue(Resolver resolver, Object filterValue, Object value, Integer valueIndex, Object configParams, Object params, boolean alternateHolderEnabled, boolean simplified) {
         //
         String stringValue = null;
         boolean first = true;
@@ -899,9 +900,9 @@ public class TextUtils {
 						//
 						if (resolver.hasNext() && EMPTY.equals(textFormatType.getUniqueId()) && resolver.isLast()) {
 							// 基础类型格式
-							if (isEmpty(value) || !resolver.isEmpty() && (stringValue = textFormatType.formatValue(value, resolver.next())) != null) {
+							if (isEmpty(filterValue) || !resolver.isEmpty() && (stringValue = textFormatType.formatValue(filterValue, resolver.next())) != null) {
 								// 基本类型或日期格式转化
-								return stringValue != null ? stringValue : value;
+								return stringValue != null ? stringValue : filterValue;
 							}
 						}
 					} else {
@@ -919,7 +920,7 @@ public class TextUtils {
 				if (end == start + 1 && resolver.getInput().charAt(start) == '*') {
 					// 只有一个星号时
 					if (Objects.isNull(parameters)) {
-						return value;
+						return filterValue;
 					}
 					nestPattern = false;
 				}
@@ -927,10 +928,10 @@ public class TextUtils {
 			} else {
 				if (end == start + 1 && resolver.getInput().charAt(start) == '*') {
 					match = true;
-				} else if (value == null) {
+				} else if (filterValue == null) {
 					match = !resolver.containsEscape() && resolver.nextEquals("null");
 				} else {
-					if (stringValue == null && (stringValue = toString(value)) == null) {
+					if (stringValue == null && (stringValue = toString(filterValue)) == null) {
 						stringValue = "null";
 					}
 					match = resolver.nextEquals(stringValue);
@@ -941,7 +942,7 @@ public class TextUtils {
 					} else {
 						// 返回原值
 						if (Objects.isNull(parameters)) {
-							return value;
+							return filterValue;
 						}
 						nestPattern = false;
 					}
@@ -962,7 +963,7 @@ public class TextUtils {
 				//
 				if (Objects.nonNull(parameters)) {
 					// 如果有带参数, 作为结果值的截取
-					stringValue = textFormatType.formatValue(stringValue == null && !nestPattern ? value : stringValue, parameters);
+					stringValue = textFormatType.formatValue(stringValue == null && !nestPattern ? filterValue : stringValue, parameters);
 					//
 					if (isNotEmpty(stringValue) && parameters.length == 0) {
 						// 非空并且没有参数时，转化结果
