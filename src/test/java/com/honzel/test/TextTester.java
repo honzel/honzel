@@ -10,7 +10,7 @@ public class TextTester {
 
 	public static void main(String[] args) {
 		TextTester tester = new TextTester();
-		tester.testGetValue();
+		tester.testFormat();
 	}
 
 	private void testGetValue() {

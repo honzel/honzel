@@ -884,6 +884,7 @@ public class TextUtils {
 		resolver.useTokens(EQUAL + SEMICOLON);
         while (resolver.hasNext()) {
             if (first) {
+				first = false;
 				if (resolver.endsInTokens(SEMICOLON)) {
 					// 带格式化类型
 					int terminal = resolver.getTerminal();
@@ -899,10 +900,20 @@ public class TextUtils {
 						resolver.resetToBeyond(1).useTerminal(terminal);
 						//
 						if (resolver.hasNext() && EMPTY.equals(textFormatType.getUniqueId()) && resolver.isLast()) {
-							// 基础类型格式
-							if (isEmpty(filterValue) || !resolver.isEmpty() && (stringValue = textFormatType.formatValue(filterValue, resolver.next())) != null) {
-								// 基本类型或日期格式转化
-								return stringValue != null ? stringValue : filterValue;
+							int start = resolver.getStart();
+							int end = resolver.getEnd();
+							if (end > start && resolver.getInput().charAt(start) == '*' && (end == start + 1 || end == start + 2 && resolver.getInput().charAt(start + 1) == '*')) {
+								// 一个或两个星号时
+								if (Objects.isNull(parameters) && (Objects.nonNull(filterValue) || end != start + 1)) {
+									return filterValue;
+								}
+								first = true;
+							} else {
+								// 基础类型格式
+								if (isEmpty(filterValue) || end > start && (stringValue = textFormatType.formatValue(filterValue, resolver.next())) != null) {
+									// 基本类型或日期格式转化
+									return stringValue != null ? stringValue : filterValue;
+								}
 							}
 						}
 					} else {
@@ -910,41 +921,55 @@ public class TextUtils {
 						resolver.resetToBeyond(1).useTerminal(terminal).hasNext();
 					}
 				}
-				first = false;
             }
-			int start = resolver.getStart();
-			int end = resolver.getEnd();
+			boolean nestPattern;
 			boolean match;
-			boolean nestPattern = true;
-			if (resolver.isLast()) {
-				if (end == start + 1 && resolver.getInput().charAt(start) == '*') {
-					// 只有一个星号时
-					if (Objects.isNull(parameters)) {
-						return filterValue;
-					}
-					nestPattern = false;
-				}
+			if (first) {
+				first = false;
 				match = true;
+				nestPattern = false;
 			} else {
-				if (end == start + 1 && resolver.getInput().charAt(start) == '*') {
+				nestPattern = true;
+				int start = resolver.getStart();
+				int end = resolver.getEnd();
+				if (resolver.isLast()) {
 					match = true;
-				} else if (filterValue == null) {
-					match = !resolver.containsEscape() && resolver.nextEquals("null");
-				} else {
-					if (stringValue == null && (stringValue = toString(filterValue)) == null) {
-						stringValue = "null";
-					}
-					match = resolver.nextEquals(stringValue);
-				}
-				if (match) {
-					if (resolver.endsInTokens(EQUAL)) {
-						resolver.hasNext(SEMICOLON);
-					} else {
-						// 返回原值
-						if (Objects.isNull(parameters)) {
+					if (end > start && resolver.getInput().charAt(start) == '*') {
+						if (end == start + 1) {
+							match = Objects.nonNull(filterValue);
+							nestPattern = false;
+						} else if (end == start + 2 && resolver.getInput().charAt(start + 1) == '*') {
+							nestPattern = false;
+						}
+						// 只有一个星号时
+						if (match && Objects.isNull(parameters)) {
 							return filterValue;
 						}
-						nestPattern = false;
+					}
+				} else {
+					if (end > start && resolver.getInput().charAt(start) == '*' && (end == start + 1 || end == start + 2 && resolver.getInput().charAt(start + 1) == '*')) {
+						// 匹配星号
+						match = Objects.nonNull(filterValue) || end != start + 1;
+					} else if (filterValue == null) {
+						// 匹配空值
+						match = !resolver.containsEscape() && resolver.nextEquals("null");
+					} else {
+						// 匹配值
+						if (stringValue == null && (stringValue = toString(filterValue)) == null) {
+							stringValue = "null";
+						}
+						match = resolver.nextEquals(stringValue);
+					}
+					if (match) {
+						if (resolver.endsInTokens(EQUAL)) {
+							resolver.hasNext(SEMICOLON);
+						} else {
+							// 返回原值
+							if (Objects.isNull(parameters)) {
+								return filterValue;
+							}
+							nestPattern = false;
+						}
 					}
 				}
 			}
