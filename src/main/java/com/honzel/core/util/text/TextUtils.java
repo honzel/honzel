@@ -902,9 +902,9 @@ public class TextUtils {
 						if (resolver.hasNext() && EMPTY.equals(textFormatType.getUniqueId()) && resolver.isLast()) {
 							int start = resolver.getStart();
 							int end = resolver.getEnd();
-							if (end > start && resolver.getInput().charAt(start) == '*' && (end == start + 1 || end == start + 2 && resolver.getInput().charAt(start + 1) == '*')) {
+							if (end == start + 1 && resolver.getInput().charAt(start) == '*') {
 								// 一个或两个星号时
-								if (Objects.isNull(parameters) && (Objects.nonNull(filterValue) || end != start + 1)) {
+								if (Objects.isNull(parameters)) {
 									return filterValue;
 								}
 								first = true;
@@ -933,23 +933,23 @@ public class TextUtils {
 				int start = resolver.getStart();
 				int end = resolver.getEnd();
 				if (resolver.isLast()) {
-					match = Objects.nonNull(filterValue);
-					if (end > start && resolver.getInput().charAt(start) == '*') {
-						if (end == start + 1) {
-							nestPattern = false;
-						} else if (end == start + 2 && resolver.getInput().charAt(start + 1) == '*') {
-							nestPattern = false;
-							match = true;
-						}
+					if (end == start + 1 && resolver.getInput().charAt(start) == '*') {
 						// 只有一个星号时
-						if (match && Objects.isNull(parameters)) {
+						if (Objects.isNull(parameters)) {
+							return filterValue;
+						}
+						nestPattern = false;
+					} else {
+						// 如果非一个*号
+						if (isEmpty(filterValue)) {
 							return filterValue;
 						}
 					}
+					match = true;
 				} else {
-					if (end > start && resolver.getInput().charAt(start) == '*' && (end == start + 1 || end == start + 2 && resolver.getInput().charAt(start + 1) == '*')) {
+					if (end == start + 1 && resolver.getInput().charAt(start) == '*') {
 						// 匹配星号
-						match = Objects.nonNull(filterValue) || end != start + 1;
+						match = true;
 					} else if (filterValue == null) {
 						// 匹配空值
 						match = !resolver.containsEscape() && resolver.nextEquals("null");
