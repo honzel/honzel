@@ -933,13 +933,13 @@ public class TextUtils {
 				int start = resolver.getStart();
 				int end = resolver.getEnd();
 				if (resolver.isLast()) {
-					match = true;
+					match = Objects.nonNull(filterValue);
 					if (end > start && resolver.getInput().charAt(start) == '*') {
 						if (end == start + 1) {
-							match = Objects.nonNull(filterValue);
 							nestPattern = false;
 						} else if (end == start + 2 && resolver.getInput().charAt(start + 1) == '*') {
 							nestPattern = false;
+							match = true;
 						}
 						// 只有一个星号时
 						if (match && Objects.isNull(parameters)) {
