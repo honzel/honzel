@@ -906,11 +906,12 @@ public class TextUtils {
 			boolean matchResult = false;
 			if (end == start + 1) {
 				// 单个字符
-				if (resolver.getInput().charAt(start) == FOR_EMPTY_FLAG) {
+				char ch = resolver.getInput().charAt(start);
+				if (ch == FOR_EMPTY_FLAG) {
 					// 匹配星号
 					match = isEmpty(filterValue);
 					matchResult = true;
-				}  else if (resolver.getInput().charAt(start) == '*') {
+				}  else if (ch == '*') {
 					match = true;
 					matchResult = true;
 				}
