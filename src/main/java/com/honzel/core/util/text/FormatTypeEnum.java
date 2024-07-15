@@ -107,7 +107,8 @@ public enum FormatTypeEnum implements TextFormatType {
                         formattedContent.append("\\f");
                         break;
                     default:
-                        formattedContent.append("\\u").append(Integer.toHexString(ch));
+                        String hexString = Integer.toHexString(ch);
+                        formattedContent.append("\\u").append("0000", hexString.length(), 4).append(hexString);
                         break;
                 }
                 start = i + 1;
