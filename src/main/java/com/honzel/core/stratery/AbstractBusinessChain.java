@@ -301,6 +301,15 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 		return execute(param, initData, initHandler, getDefaultChainType(param));
 	}
 
+	/**
+	 *
+	 * @param param 参数
+	 * @param initData 初始化数据
+	 * @param initHandler 初始化处理器
+	 * @param chainType 业务链类型
+	 * @param <Q> 初始化数据类型
+	 * @return 返回结果对象
+	 */
 	public<Q> R execute(P param, Q initData, BiConsumer<R, Q> initHandler, int chainType) {
 		// 主链
 		ChainMethodList main = lookupMain(chainType = convertToActualChainType(param, chainType));
@@ -313,6 +322,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 		// 执行结果
 		return execute0(main, secondaries, param, processResult, chainType);
 	}
+
 
 	/**
 	 * 按对应链类型获取初始化的结果对象
@@ -368,6 +378,163 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 				throw e;
 			}
 		}
+	}
+
+	/**
+	 * 执行校验处理
+	 *
+	 * @param main 主处理方法
+	 * @param secondaries 次处理方法
+	 * @param param 参数
+	 * @param processResult 处理上下文结果
+	 * @param chainType 链类型
+	 * @param processType 处理类型
+	 * @return 返回结果
+	 */
+	private boolean doProcess0(ChainMethodList main, ChainMethodList[] secondaries, P param, R processResult, int chainType, ProcessType processType) {
+		try {
+			// 获取全参数位标识
+			int totalArgumentFlags = main.getTotalArgumentFlags(secondaries);
+			// 初始化参数
+			Object[][] allArguments = main.initArgumentsArray(totalArgumentFlags, param, processResult, chainType);
+			switch (processType) {
+				case CHECK:
+					// 执行前预处理
+					preProcess(param, processResult, chainType);
+					return main.doCheck(allArguments, totalArgumentFlags, secondaries);
+				case SAVE:
+					if (main.canDoSave(secondaries)) {
+						if (saveContext != null) {
+							// 在事内执行
+							saveContext.executeInTransaction(allArguments, totalArgumentFlags, secondaries, main::doSave);
+						} else {
+							// 没有事务环境
+							main.doSave(allArguments, totalArgumentFlags, secondaries);
+						}
+					}
+					return true;
+				case AFTER:
+					// 保存后处理
+					boolean result = main.doAfter(allArguments, totalArgumentFlags, secondaries);
+					postProcess(param, processResult, chainType);
+					return result;
+				default:
+					throw new IllegalArgumentException("不支持的处理类型: {}" + processType);
+			}
+
+		} catch (RuntimeException e) {
+			// 异常处理
+			handleException(e, param, processResult, chainType);
+		}
+		return false;
+	}
+
+
+	public<Q> R doCheck(P param, Q initData, BiConsumer<R, Q> initHandler, int chainType) {
+		// 主链
+		ChainMethodList main = lookupMain(chainType = convertToActualChainType(param, chainType));
+		// 副链
+		ChainMethodList[] secondaries = lookupSecondaries(main, chainType);
+		// 构建参数上下文
+		R processResult = main.initProcessResult(secondaries);
+		// 参数转换
+		initHandler.accept(processResult, initData);
+		// 执行结果
+		doProcess0(main, secondaries, param, processResult, chainType, ProcessType.CHECK);
+		return processResult;
+	}
+
+	/**
+	 * 执行校验处理(包括业务链预处理及处理器校验处理)
+	 * @param param 参数
+	 * @return 返回结果
+	 */
+	public R doCheck(P param) {
+		// 执行处理
+		return doCheck(param, getDefaultChainType(param));
+	}
+	/**
+	 * 执行校验处理(包括业务链预处理及处理器校验处理)
+	 * @param param 参数
+	 * @param chainType 链类型
+	 * @return 返回结果
+	 */
+	public R doCheck(P param, int chainType) {
+		// 主链
+		ChainMethodList main = lookupMain(chainType = convertToActualChainType(param, chainType));
+		// 副链
+		ChainMethodList[] secondaries = lookupSecondaries(main, chainType);
+		// 构建参数上下文
+		R processResult = main.initProcessResult(secondaries);
+		// 执行处理
+		doProcess0(main, secondaries, param, processResult, chainType, ProcessType.CHECK);
+		return processResult;
+	}
+
+	/**
+	 * 执行校验处理(包括业务链预处理及处理器校验处理)
+	 * @param param 参数
+	 * @param processResult 处理上下文结果
+	 * @return 返回处理器校验是否全部处理成功
+	 */
+	public boolean doCheck(P param, R processResult) {
+		// 执行处理
+		return doCheck(param, processResult, getDefaultChainType(param));
+	}
+	/**
+	 * 执行校验处理(包括业务链预处理及处理器校验处理)
+	 * @param param 参数
+	 * @param processResult 处理上下文结果
+	 * @param chainType 链类型
+	 * @return 返回处理器校验是否全部处理成功
+	 */
+	public boolean doCheck(P param, R processResult, int chainType) {
+		// 主链
+		ChainMethodList main = lookupMain(chainType = convertToActualChainType(param, chainType));
+		// 执行
+		return doProcess0(main, lookupSecondaries(main, chainType), param, processResult, chainType, ProcessType.CHECK);
+	}
+	/**
+	 * 执行处理器保存处理
+	 * @param param 参数
+	 * @param processResult 处理上下文结果
+	 * @param chainType 链类型
+	 */
+	public void doSave(P param, R processResult, int chainType) {
+		// 主链
+		ChainMethodList main = lookupMain(chainType = convertToActualChainType(param, chainType));
+		// 执行
+		doProcess0(main, lookupSecondaries(main, chainType), param, processResult, chainType, ProcessType.SAVE);
+	}
+	/**
+	 * 执行处理器保存处理, 使用默认链类型
+	 * @param param 参数
+	 * @param processResult 处理上下文结果
+	 */
+	public void doSave(P param, R processResult) {
+		doSave(param, processResult, getDefaultChainType(param));
+	}
+	/**
+	 * 执行后处理(包括处理器后处理及链后处理)
+	 * @param param 参数
+	 * @param processResult 处理上下文结果
+	 * @param chainType 链类型
+	 * @return 后处理是否全部执行成功
+	 */
+	public boolean doAfter(P param, R processResult, int chainType) {
+		// 主链
+		ChainMethodList main = lookupMain(chainType = convertToActualChainType(param, chainType));
+		// 执行
+		return doProcess0(main, lookupSecondaries(main, chainType), param, processResult, chainType, ProcessType.AFTER);
+	}
+	/**
+	 * 执行后处理(包括处理器后处理及链后处理), 使用默认链类型
+	 * @param param 参数
+	 * @param processResult 处理上下文结果
+	 * @return 后处理是否全部执行成功
+	 */
+	public boolean doAfter(P param, R processResult) {
+		return doAfter(param, processResult, getDefaultChainType(param));
 	}
 
 	/**

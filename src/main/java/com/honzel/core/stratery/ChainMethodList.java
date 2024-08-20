@@ -528,8 +528,8 @@ class ChainMethodList {
      * @param totalArgumentFlags 全参数标识
      * @param secondaries 次要方法列表
      */
-    void doAfter(Object[][] allArguments, int totalArgumentFlags, ChainMethodList[] secondaries) {
-        doNonSave(allArguments, totalArgumentFlags, secondaries, ProcessType.AFTER);
+    boolean doAfter(Object[][] allArguments, int totalArgumentFlags, ChainMethodList[] secondaries) {
+        return doNonSave(allArguments, totalArgumentFlags, secondaries, ProcessType.AFTER);
     }
 
 
