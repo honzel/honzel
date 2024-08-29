@@ -333,7 +333,7 @@ public enum FormatTypeEnum implements TextFormatType {
                         break;
                     case "/":
                         if (Objects.nonNull(otherNumber)) {
-                            value = number.divide(otherNumber, RoundingMode.UNNECESSARY);
+                            value = number.divide(otherNumber, 20, RoundingMode.HALF_UP);
                         }
                         break;
                     case "%":
