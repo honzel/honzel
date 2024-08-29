@@ -124,6 +124,7 @@ public class TextUtils {
 		registerFormatType(FormatTypeEnum.URL_ENCODING);
 		registerFormatType(FormatTypeEnum.SUB_STR);
 		registerFormatType(FormatTypeEnum.PAD);
+		registerFormatType(FormatTypeEnum.CALC);
 	}
 
 	protected TextUtils() {
@@ -155,11 +156,12 @@ public class TextUtils {
 	 * @return 返回是否注册成功
 	 */
 	public static boolean registerFormatType(TextFormatType textFormatType) {
-		if (Objects.isNull(FORMAT_TYPE_MAP.putIfAbsent(textFormatType.getUniqueId(), textFormatType))) {
-			if (textFormatType.supportsAutoMatch()) {
-				AUTO_MATCH_FORMAT_TYPE_QUEUE.add(textFormatType);
+		TextFormatType oldFormatType = FORMAT_TYPE_MAP.put(textFormatType.getUniqueId(), textFormatType);
+		if (textFormatType.supportsAutoMatch() && !textFormatType.equals(oldFormatType)) {
+			if (Objects.nonNull(oldFormatType) && oldFormatType.supportsAutoMatch()) {
+				AUTO_MATCH_FORMAT_TYPE_QUEUE.remove(oldFormatType);
 			}
-			return true;
+			AUTO_MATCH_FORMAT_TYPE_QUEUE.add(textFormatType);
 		}
 		return false;
 	}

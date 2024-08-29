@@ -1,10 +1,16 @@
 package com.honzel.core.util.text;
 
+import com.honzel.core.constant.NumberConstants;
 import com.honzel.core.util.time.LocalDateTimeUtils;
 import com.honzel.core.util.web.WebUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.temporal.TemporalAccessor;
@@ -262,6 +268,136 @@ public enum FormatTypeEnum implements TextFormatType {
                 System.arraycopy(padChars, 0, padding, i, pads);
             }
             return backward ? new String(padding).concat(stringValue) : stringValue.concat(new String(padding));
+        }
+    },
+    /**
+     * 数字运算
+     */
+    CALC("calc") {
+        /**
+         * 数字运算
+         * 操作符:
+         *  数学运算: +加法(v+p) -减法(v-p) *乘法(v*p) /除法(v/p) %取余(v%p) abs取绝对值 pow取n次方 point小数点左移n位
+         *  位运算: <<左移n位  >>右移n位 &按位与  ^按位异或  |按位或  &~按位与取反(v &~p)
+         * @param value 值
+         * @param parameters 参数 (参数1:操作符 参数2:另一值 参数3:数字格式)
+         * @return 格式化后的值
+         */
+        public String formatValue(Object value, String... parameters) {
+            if (value == null || parameters.length < 1) {
+                return TextUtils.toString(value);
+            }
+            // 计算符
+            String op = parameters[0];
+            // 另一值
+            String otherValue = parameters.length > 1 ? parameters[1] : EMPTY;
+            // 数字格式化
+            String pattern = parameters.length > 2 ? parameters[2] : EMPTY;
+            //
+            if (value instanceof CharSequence && NumberUtils.isNumber((String)(value = value.toString()))) {
+                // 字符串转换为数字
+                value = new BigDecimal((String) value);
+            }
+            if (!EMPTY.equals(op) && value instanceof Number && (EMPTY.equals(otherValue) || NumberUtils.isNumber(otherValue))) {
+                // 数字运算
+                BigDecimal otherNumber = EMPTY.equals(otherValue) ? null : new BigDecimal(otherValue);
+                BigDecimal number;
+                if (value instanceof BigDecimal) {
+                    number = (BigDecimal) value;
+                } else if (value instanceof BigInteger) {
+                    number = new BigDecimal((BigInteger) value);
+                } else {
+                    long longValue = ((Number) value).longValue();
+                    double doubleValue = ((Number)value).doubleValue();
+                    if (doubleValue > Long.MIN_VALUE && doubleValue < Long.MAX_VALUE) {
+                        if (doubleValue < 0) {
+                            number = doubleValue >= longValue ? BigDecimal.valueOf(longValue) : BigDecimal.valueOf(doubleValue);
+                        } else {
+                            number = doubleValue <= longValue ? BigDecimal.valueOf(longValue) : BigDecimal.valueOf(doubleValue);
+                        }
+                    } else {
+                        number =  BigDecimal.valueOf(doubleValue);
+                    }
+                }
+                switch (op) {
+                    case "+":
+                        value = Objects.nonNull(otherNumber) ? number.add(otherNumber) : number.plus();
+                        break;
+                    case "-":
+                        value = Objects.nonNull(otherNumber) ? number.subtract(otherNumber) : number.negate();
+                        break;
+                    case "*":
+                        if (Objects.nonNull(otherNumber)) {
+                            value = number.multiply(otherNumber);
+                        }
+                        break;
+                    case "/":
+                        if (Objects.nonNull(otherNumber)) {
+                            if (number.scale() == 0 && otherNumber.scale() == 0) {
+                                value = number.divideToIntegralValue(otherNumber);
+                            } else {
+                                value = number.divide(otherNumber, RoundingMode.UNNECESSARY);
+                            }
+                        }
+                        break;
+                    case "%":
+                        if (Objects.nonNull(otherNumber)) {
+                            value = number.remainder(otherNumber);
+                        }
+                        break;
+                    case "<<":
+                        if (Objects.nonNull(otherNumber)) {
+                            value = number.toBigInteger().shiftLeft(otherNumber.intValue());
+                        }
+                        break;
+                    case ">>":
+                    case ">>>":
+                        if (Objects.nonNull(otherNumber)) {
+                            value = number.toBigInteger().shiftRight(otherNumber.intValue());
+                        }
+                        break;
+                    case "|":
+                        if (Objects.nonNull(otherNumber)) {
+                            value = number.toBigInteger().or(otherNumber.toBigInteger());
+                        }
+                        break;
+                    case "&":
+                        if (Objects.nonNull(otherNumber)) {
+                            value = number.toBigInteger().and(otherNumber.toBigInteger());
+                        }
+                        break;
+                    case "^":
+                        if (Objects.nonNull(otherNumber)) {
+                            value = number.toBigInteger().xor(otherNumber.toBigInteger());
+                        }
+                        break;
+                    case "~":
+                        value = number.toBigInteger().not();
+                        break;
+                    case "&~":
+                        if (Objects.nonNull(otherNumber)) {
+                            value = number.toBigInteger().andNot(otherNumber.toBigInteger());
+                        }
+                        break;
+                    case "abs":
+                        value = number.abs();
+                        break;
+                    case "pow":
+                        if (Objects.nonNull(otherNumber)) {
+                            value = number.pow(otherNumber.intValue());
+                        }
+                        break;
+                    case "point":
+                        if (Objects.nonNull(otherNumber)) {
+                            value = number.movePointRight(otherNumber.intValue());
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+            // 如果是数字，则格式化
+            return StringUtils.isNotEmpty(pattern) && value instanceof Number ? new DecimalFormat(pattern).format(value) : TextUtils.toString(value);
         }
     },
 //    /**
