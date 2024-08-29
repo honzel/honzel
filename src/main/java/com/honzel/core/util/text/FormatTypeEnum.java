@@ -389,7 +389,7 @@ public enum FormatTypeEnum implements TextFormatType {
                         break;
                     case "point":
                         if (Objects.nonNull(otherNumber)) {
-                            value = number.movePointRight(otherNumber.intValue());
+                            value = number.movePointLeft(otherNumber.intValue());
                         }
                         break;
                     default:
