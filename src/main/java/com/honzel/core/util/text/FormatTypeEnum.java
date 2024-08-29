@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.MathContext;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -333,7 +334,7 @@ public enum FormatTypeEnum implements TextFormatType {
                         break;
                     case "/":
                         if (Objects.nonNull(otherNumber)) {
-                            value = number.divide(otherNumber, 20, RoundingMode.HALF_UP);
+                            value = number.divide(otherNumber, new MathContext(20, RoundingMode.HALF_UP));
                         }
                         break;
                     case "%":
