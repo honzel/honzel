@@ -419,10 +419,6 @@ public class BeanHelper {
 	@SafeVarargs
 	public static <T> boolean copyOnPreValueCondition(Object origin, T target, Predicate<Object> preValueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
 		String[] names = parseGetterOrSetterNames(ignoreProperties);
-		if (names.length == 0 && preValueCondition == null) {
-			// 没有条件
-			return copyOnCondition(origin, target, (BiPredicate<PropertyDescriptor, Object>) null);
-		}
 		return copyOnCondition(origin, target, (d, v) -> {
 					if (matchTargetProperty(names, d.getName())) {
 						return false;
@@ -433,6 +429,36 @@ public class BeanHelper {
 					Method readMethod = d.getReadMethod();
 					return readMethod != null && preValueCondition.test(SimplePropertyUtilsBean.getInstance().invokeReadMethod(target, d));
 				});
+	}
+	/**
+	 * <p>Copy property values from the "origin" bean to the "destination" bean
+	 * for all cases where the property names are the same and on the specified condition (even though the
+	 * actual getter and setter methods might have been customized via
+	 * <code>BeanInfo</code> classes or specified).
+	 *
+	 * <p>If the origin "bean" is actually a <code>Map</code>, it is assumed
+	 * to contain String-valued <strong>simple</strong> property names as the keys, pointing
+	 * at the corresponding property values that will be set in the destination
+	 * bean.
+	 *
+	 * @param origin Origin bean whose properties are retrieved
+	 * @param target Destination bean whose properties are modified
+	 * @param preValueCondition the target previous value condition
+	 * @return returns false when none property is copied, otherwise returns true
+	 */
+	public static boolean copyOnPreValueCondition(Object origin, Object target, Predicate<Object> preValueCondition) {
+		if (preValueCondition == null) {
+			// 没有条件
+			return copyOnCondition(origin, target, (BiPredicate<PropertyDescriptor, Object>) null);
+		}
+		if (target instanceof Map) {
+			return copyToMapOnCondition(origin, (Map<String, Object>) target, (e, v) -> preValueCondition.test(e.getValue()));
+		} else {
+			return copyOnCondition(origin, target, (d, v) -> {
+						Method readMethod = d.getReadMethod();
+						return readMethod != null && preValueCondition.test(SimplePropertyUtilsBean.getInstance().invokeReadMethod(target, d));
+					});
+		}
 	}
 	/**
 	 * <p>Copy property values from the "origin" bean to the "destination" map
