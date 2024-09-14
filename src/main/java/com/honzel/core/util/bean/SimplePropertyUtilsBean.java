@@ -574,7 +574,7 @@ public class SimplePropertyUtilsBean {
 			Entry<String, Object> targetEntry = new Entry();
 			PropertyDescriptor[] sourceDescriptors = getPropertyDescriptors(source.getClass());
 			for (PropertyDescriptor sourceDescriptor : sourceDescriptors) {
-				if (sourceDescriptor.getReadMethod() == null) {
+				if (sourceDescriptor.getReadMethod() == null || "class".equals(sourceDescriptor.getName())) {
 					// 没有getter
 					continue;
 				}
