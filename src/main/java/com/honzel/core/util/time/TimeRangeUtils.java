@@ -360,7 +360,7 @@ public class TimeRangeUtils {
     public static boolean containsDay(long timeRangeStamp, LocalDate date) {
         if (timeRangeStamp != NONE) {
             // 获取星期几
-            int day = date.getDayOfWeek().getValue() % WEEKDAY_BITS;
+            int day = date.getDayOfWeek().ordinal();
             return ((timeRangeStamp >>> (TIME_BITS + START_TIME_BITS + day)) & FIRST_BIT) != NONE;
         }
         return false;
