@@ -114,7 +114,8 @@ public interface ApiResponse<C, T, THIS extends ApiResponse<C, T, THIS>> extends
      */
     default <R> R mapData(Function<T, R> mapper, R defaultValue) {
         T data = getData();
-        return data != null ? mapper.apply(data) : defaultValue;
+        R result;
+        return data != null && (result = mapper.apply(data)) != null ? result : defaultValue;
     }
     /**
      * 获取结果或处理空值
