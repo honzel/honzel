@@ -274,7 +274,7 @@ public enum FormatTypeEnum implements TextFormatType {
     /**
      * 数字运算
      */
-    CALC("calc") {
+    CALC("c") {
         /**
          * 数字运算
          * 操作符:

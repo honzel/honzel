@@ -30,6 +30,8 @@ public class TextTester {
 		System.out.println(TextUtils.getValues(valueList, 5, 1));
 	}
 	private void testFormat() {
+		String format = "===========${c(/,50);0}=======";
+		System.out.println(TextUtils.format(format, 100));
 		// {"a":"${Action}","b":"{Version}"}
 //		String format = "\\{\"a\":[\"${Format[+\",\"]}\"],\"b\":\"${Version}\",\"c\":\"${time[#;yyyy-MM-dd]}\"}";
 //		String format2="{\"touser\":\"${$receiver[^kkk]}\",\"data\":{\"first\":{\"value\":\"您的${;channelName}店铺审核${;auditStatus[#1=已通过;2=不通过]}\"},\"keyword1\":{\"value\":\"${auditStatus[#1=已通过;2=不通过]}\"},\"keyword2\":{\"value\":\"绑定${channelName}店铺审核\"},\"keyword3\":{\"value\":\"${time[#;yyyy-MM-dd]}\"},\"remark\":{\"value\":\"${xml;auditStatus[#1=$(channelName)可以打印订单&&啦;2=不通过原因:$(reason)]}\"}},\"template_id\":\"ppppp\"}";
