@@ -320,9 +320,9 @@ public class WebUtils {
             String msg = readAsString(input, getResponseCharset(conn.getContentType(), charset));
             int responseCode = ((HttpURLConnection) conn).getResponseCode();
             if (TextUtils.isEmpty(msg)) {
-                throw new IOException(responseCode + ":" + ((HttpURLConnection)conn).getResponseMessage());
+                throw new HttpResponseMessageException(responseCode, ((HttpURLConnection)conn).getResponseMessage());
             } else {
-                throw new IOException(responseCode + ":" + msg);
+                throw new HttpResponseMessageException(responseCode , msg);
             }
         }
     }
