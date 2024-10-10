@@ -318,10 +318,11 @@ public class WebUtils {
             // 异常返回数据
             InputStream input = convertInputStream(((HttpURLConnection)conn).getErrorStream(), conn.getContentEncoding());
             String msg = readAsString(input, getResponseCharset(conn.getContentType(), charset));
+            int responseCode = ((HttpURLConnection) conn).getResponseCode();
             if (TextUtils.isEmpty(msg)) {
-                throw new IOException(((HttpURLConnection)conn).getResponseCode() + ":" + ((HttpURLConnection)conn).getResponseMessage());
+                throw new IOException(responseCode + ":" + ((HttpURLConnection)conn).getResponseMessage());
             } else {
-                throw new IOException(msg);
+                throw new IOException(responseCode + ":" + msg);
             }
         }
     }
