@@ -182,12 +182,12 @@ public class LocalDateTimeUtils {
     private static ZoneId getZoneId(TemporalAccessor parsed, DateTimeFormatter formatter) {
         ZoneId zoneId = parsed.query(TemporalQueries.zone());
         if (zoneId == null) {
-            zoneId = formatter.getZone();
+            zoneId = parsed.query(TemporalQueries.offset());
             if (zoneId == null) {
-                zoneId = parsed.query(TemporalQueries.offset());
+                zoneId = formatter.getZone();
             }
         }
-        return zoneId != null ? zoneId : ZoneId.systemDefault();
+        return zoneId;
     }
 
     /**
@@ -254,7 +254,16 @@ public class LocalDateTimeUtils {
     public static LocalTime parseTime(CharSequence input, ParsePosition position, DateTimeFormatter formatter, String endDelimiters) {
         TemporalAccessor parsed = parse0(input, position, formatter, endDelimiters);
         LocalDateTime dateTime = parseFromInstant(parsed, formatter);
-        return dateTime != null ? dateTime.toLocalTime() : resolveTime(parsed, formatter);
+        if (dateTime != null) {
+            return dateTime.toLocalTime();
+        }
+        LocalTime time = resolveTime(parsed, formatter);
+        ZoneId zoneId, systemZoneId;
+        if (Objects.nonNull(time) && Objects.nonNull(zoneId = getZoneId(parsed, formatter)) && !zoneId.equals(systemZoneId =  ZoneId.systemDefault())) {
+            // 转换为当前系统时区
+            time =  ZonedDateTime.of(EPOCH_DATE, time, zoneId).withZoneSameInstant(systemZoneId).toLocalTime();
+        }
+        return time;
     }
 
     private static LocalDate resolveDate(TemporalAccessor parsed, DateTimeFormatter formatter) {
@@ -457,7 +466,14 @@ public class LocalDateTimeUtils {
         LocalDate date = resolveDate(parsed, formatter);
         LocalTime time = resolveTime(parsed, formatter);
         if (date != null || time != null) {
-            return LocalDateTime.of(date != null ? date : EPOCH_DATE, time != null ? time : LocalTime.MIN);
+            LocalDateTime localDateTime = LocalDateTime.of(date != null ? date : EPOCH_DATE, time != null ? time : LocalTime.MIN);
+            ZoneId systemZoneId, zoneId = getZoneId(parsed, formatter);
+            if (Objects.nonNull(zoneId) && !zoneId.equals(systemZoneId = ZoneId.systemDefault())) {
+                // 转换为当前系统时区
+                return localDateTime.atZone(zoneId).withZoneSameInstant(systemZoneId).toLocalDateTime();
+            } else {
+                return localDateTime;
+            }
         }
         // 日期数字无效
         return null;
@@ -478,12 +494,13 @@ public class LocalDateTimeUtils {
             long nanoSeconds = getNanoSeconds(parsed, subSecondField);
             // 获取实例时间
             Instant instant;
+            ZoneId zoneId = getZoneId(parsed, formatter);
             if (nanoSeconds > 0) {
                 instant = Instant.ofEpochSecond(epochSeconds, nanoSeconds);
             } else {
                 instant = Instant.ofEpochSecond(epochSeconds);
             }
-            return LocalDateTime.ofInstant(instant, getZoneId(parsed, formatter));
+            return LocalDateTime.ofInstant(instant, Objects.nonNull(zoneId) ? zoneId : ZoneId.systemDefault());
         }
         return null;
     }
