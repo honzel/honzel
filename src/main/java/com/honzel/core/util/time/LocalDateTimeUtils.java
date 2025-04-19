@@ -12,6 +12,7 @@ import java.time.chrono.IsoChronology;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.*;
 import java.util.*;
+import java.util.function.Function;
 
 /**
  * 日期时间工具类
@@ -62,7 +63,10 @@ public class LocalDateTimeUtils {
     private static final TemporalUnit[] UNITS = Arrays.copyOf(ChronoUnit.values(), ChronoUnit.FOREVER.ordinal());
     public static final LocalDate EPOCH_DATE = LocalDate.ofEpochDay(0L);
 
+    private static final Function<String, DateTimeFormatter> TIME_FORMATTER_FUNCTION = DateTimeFormatter::ofPattern;
+
     public static final LocalTime MAX_SECOND_TIME = LocalTime.of(23, 59, 59);
+
 
     static {
         BASE_UNIT_FIELD_LIST_MAP = new HashMap<>();
@@ -134,7 +138,7 @@ public class LocalDateTimeUtils {
             default:
                 if (cacheable) {
                     // 如果可缓存时
-                    return OTHER_FORMATTER_MAP.computeIfAbsent(pattern, DateTimeFormatter::ofPattern);
+                    return OTHER_FORMATTER_MAP.computeIfAbsent(pattern, TIME_FORMATTER_FUNCTION);
                 }
                 DateTimeFormatter formatter = OTHER_FORMATTER_MAP.get(pattern);
                 return formatter != null ? formatter : DateTimeFormatter.ofPattern(pattern);
