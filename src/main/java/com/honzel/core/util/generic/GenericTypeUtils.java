@@ -44,7 +44,7 @@ public class GenericTypeUtils {
                 // 获取参数化类型的实际类型
                 Type[] actualTypes = parameterizedType.getActualTypeArguments();
                 // 获取参数化类型的原始类型
-                Class<?> rawType = (Class<?>) parameterizedType.getRawType();
+                Class<?> rawType = getClassFromType(parameterizedType.getRawType());
                 // 获取参数化类型的类型参数
                 TypeVariable<?>[] typeVariables = baseClass.equals(rawType) ? typeParameters : rawType.getTypeParameters();
                 // 解析并记录类型参数到typeMap中
@@ -76,19 +76,15 @@ public class GenericTypeUtils {
             return (Class<?>) type;
         }
         if (type instanceof ParameterizedType) {
-            return (Class<?>) ((ParameterizedType) type).getRawType();
+            return getClassFromType(((ParameterizedType) type).getRawType());
         }
         if (type instanceof TypeVariable) {
             Type[] bounds = ((TypeVariable<?>) type).getBounds();
-            if (bounds.length > 0) {
-                return getClassFromType(bounds[0]);
-            }
+            return bounds.length > 0 ? getClassFromType(bounds[0]) : Object.class;
         }
         if (type instanceof WildcardType) {
             Type[] bounds  = ((WildcardType) type).getUpperBounds();
-            if (bounds.length > 0) {
-                return getClassFromType(bounds[0]);
-            }
+            return bounds.length > 0 ? getClassFromType(bounds[0]) : Object.class;
         }
         return Object.class;
     }
