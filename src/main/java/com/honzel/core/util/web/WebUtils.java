@@ -33,7 +33,7 @@ public class WebUtils {
 
 
     private static final int CONNECT_TIMEOUT = 3000;
-    private static final int READ_TIMEOUT = 20000;
+    private static final int READ_TIMEOUT = 10000;
 
 
 
@@ -631,7 +631,7 @@ public class WebUtils {
             if (conn != null) {
                 ((HttpURLConnection) conn).disconnect();
             }
-            LOG.error("打开http连接时发生错误: {}", e.getMessage());
+            LOG.warn("打开http连接时发生错误: {}", e.getMessage());
             throw e;
         }
         return conn;
