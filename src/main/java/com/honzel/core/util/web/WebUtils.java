@@ -313,10 +313,10 @@ public class WebUtils {
         }
         if (!isHttpConnected || ((HttpURLConnection)conn).getResponseCode() < 400) {
             // 正常返回数据
-            return convertInputStream(conn.getInputStream(), conn.getContentEncoding());
+            return applyResponseInputStream(conn.getInputStream(), conn.getContentEncoding());
         } else {
             // 异常返回数据
-            InputStream input = convertInputStream(((HttpURLConnection)conn).getErrorStream(), conn.getContentEncoding());
+            InputStream input = applyResponseInputStream(((HttpURLConnection)conn).getErrorStream(), conn.getContentEncoding());
             String msg = readAsString(input, getResponseCharset(conn.getContentType(), charset));
             int responseCode = ((HttpURLConnection) conn).getResponseCode();
             if (TextUtils.isEmpty(msg)) {
@@ -328,13 +328,23 @@ public class WebUtils {
     }
 
 
-    private static InputStream convertInputStream(InputStream input, String contentEncoding) {
-        try {
-            if (input != null && contentEncoding != null && contentEncoding.toLowerCase().contains("gzip")) {
-                input = new GZIPInputStream(input);
+    private static InputStream applyResponseInputStream(InputStream input, String contentEncoding) {
+        if (input != null && TextUtils.isNotEmpty(contentEncoding)) {
+            try {
+                InputStream inputStream = getInstance().convertResponseInputStream(input, contentEncoding);
+                if (inputStream != null) {
+                    return inputStream;
+                }
+            } catch (Throwable t) {
+                LOG.warn("返回指定内容编码指定为[{}], 但进行编码转换时发生异常: {}", contentEncoding, t.getMessage(), t);
             }
-        } catch (Throwable t) {
-            LOG.warn("返回指定内容编码指定为[{}], 但进行编码转换时发生异常: {}", contentEncoding, t.getMessage(), t);
+        }
+        return input;
+    }
+    
+    protected InputStream convertResponseInputStream(InputStream input, String contentEncoding) throws Exception {
+        if (contentEncoding.toLowerCase().contains("gzip")) {
+            input = new GZIPInputStream(input);
         }
         return input;
     }
