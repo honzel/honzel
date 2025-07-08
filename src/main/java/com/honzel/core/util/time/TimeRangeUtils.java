@@ -138,7 +138,7 @@ public class TimeRangeUtils {
         // 日期起始位
         int offset = getOffsetIndex(timeRangeStamp);
         if (offset > 0) {
-            times = (times >>> offset) | ((~(-1 << offset) & times) << (TIME_BITS - offset));
+            times = (times >>> offset) | ((~(-FIRST_BIT << offset) & times) << (TIME_BITS - offset));
         }
         for (int i = 0; i < TIME_BITS; i ++, times >>>= 1) {
             if ((times & FIRST_BIT) == NONE) {
