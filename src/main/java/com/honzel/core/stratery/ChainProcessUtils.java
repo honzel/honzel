@@ -179,7 +179,8 @@ public class ChainProcessUtils {
                 }
                 Class<? extends Annotation> nestAnnotationType = annotation.annotationType();
                 // 判断是否属于@BusinessProcessor注解
-                if (BusinessProcessor.class.equals(nestAnnotationType) || AnnotationUtils.isAnnotationMetaPresent(nestAnnotationType, BusinessProcessor.class)) {
+                if (BusinessProcessor.class.equals(nestAnnotationType)
+                        || MergedAnnotations.from(nestAnnotationType, MergedAnnotations.SearchStrategy.INHERITED_ANNOTATIONS, RepeatableContainers.none()).isPresent(BusinessProcessor.class)) {
                     (annotationList == null ? (annotationList = new ArrayList<>(declaredAnnotations.length)) : annotationList).add(annotation);
                 }
             }
