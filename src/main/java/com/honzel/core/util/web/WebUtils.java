@@ -27,16 +27,14 @@ import java.util.zip.GZIPInputStream;
  */
 public class WebUtils {
     private static final Logger LOG = LoggerFactory.getLogger(WebUtils.class);
-    public static final Charset     DEFAULT_CHARSET = StandardCharsets.UTF_8;
+    public static final Charset    DEFAULT_CHARSET = StandardCharsets.UTF_8;
     public static final String     METHOD_POST     = "POST";
     public static final String     METHOD_GET      = "GET";
 
 
-    private static final int CONNECT_TIMEOUT = 3000;
-    private static final int READ_TIMEOUT = 10000;
-
-
-
+    private static final int DEFAULT_CONNECT_TIMEOUT = 3000;
+    private static final int DEFAULT_READ_TIMEOUT = 10000;
+    private static final int DEFAULT_UPLOAD_TIMEOUT = 100000;
 
 
     private HostnameVerifier verifier;
@@ -140,18 +138,31 @@ public class WebUtils {
     protected void initSSLServerSessionContext(SSLSessionContext context) {
     }
 
+    protected int getDefaultConnectTimeout() {
+        return DEFAULT_CONNECT_TIMEOUT;
+    }
+    protected int getDefaultReadTimeout() {
+        return DEFAULT_READ_TIMEOUT;
+    }
+    protected int getUploadReadTimeout() {
+        return DEFAULT_UPLOAD_TIMEOUT;
+    }
+    protected Charset getDefaultCharset() {
+        return DEFAULT_CHARSET;
+    }
     /**
      * 是否启用Cookie管理
      * @param enabled 是否启用cookie
      */
     public static void setCookieEnabled(boolean enabled) {
         if (enabled) {
-            CookieHandler cookieHandler = getInstance().cookieHandler;
+            WebUtils instance = getInstance();
+            CookieHandler cookieHandler = instance.cookieHandler;
             if (cookieHandler == null) {
-                if ((cookieHandler = getInstance().initDefaultCookieHandler()) == null) {
+                if ((cookieHandler = instance.initDefaultCookieHandler()) == null) {
                     cookieHandler = new CookieManager(null, CookiePolicy.ACCEPT_ALL);
                 }
-                getInstance().cookieHandler = cookieHandler;
+                instance.cookieHandler = cookieHandler;
             }
             CookieManager.setDefault(cookieHandler);
         } else {
@@ -178,7 +189,7 @@ public class WebUtils {
      * @throws IOException 异常
      */
     public static String doPost(String url, Map<String, ?> textParams) throws IOException {
-        return doPost(url, textParams, DEFAULT_CHARSET, null);
+        return doPost(url, textParams, (Charset) null, null);
     }
     /**
      * 执行HTTP POST请求。
@@ -191,7 +202,11 @@ public class WebUtils {
      * @throws IOException 异常
      */
     public static String doPost(String url, Map<String, ?> textParams, Charset charset, Map<String, ?> headerMap) throws IOException {
-        return doPost(url, textParams, charset, CONNECT_TIMEOUT, READ_TIMEOUT, headerMap);
+        WebUtils instance = getInstance();
+        if (charset == null) {
+            charset = instance.getDefaultCharset();
+        }
+        return doPost(url, textParams, charset, instance.getDefaultConnectTimeout(), instance.getDefaultReadTimeout(), headerMap);
     }
 
 
@@ -225,7 +240,7 @@ public class WebUtils {
      */
     public static String doPost(String url, String content, Charset charset, int connectTimeout, int readTimeout, Map<String, ?> headerMap) throws IOException {
         if (charset == null) {
-            charset = DEFAULT_CHARSET;
+            charset = getInstance().getDefaultCharset();
         }
         String contentType = null;
         if (headerMap == null) {
@@ -243,7 +258,8 @@ public class WebUtils {
      * @throws IOException 异常
      */
     public static String doPost(String url, String content, Map<String, ?> headerMap) throws IOException {
-        return doPost(url, content, DEFAULT_CHARSET, CONNECT_TIMEOUT, READ_TIMEOUT, headerMap);
+        WebUtils instance = getInstance();
+        return doPost(url, content, instance.getDefaultCharset(), instance.getDefaultConnectTimeout(), instance.getDefaultReadTimeout(), headerMap);
     }
     /**
      * 执行HTTP POST请求。
@@ -269,7 +285,7 @@ public class WebUtils {
         if (conn == null) {
             throw new IOException("connection is null");
         }
-        byte[] data = content != null && content.length() > 0 ? content.getBytes(charset != null ? charset : DEFAULT_CHARSET) : ArrayConstants.EMPTY_BYTE_ARRAY;
+        byte[] data = content != null && content.length() > 0 ? content.getBytes(charset != null ? charset : getInstance().getDefaultCharset()) : ArrayConstants.EMPTY_BYTE_ARRAY;
         try {
             return readAsString(getConnectionInputStream(conn, data, charset), getResponseCharset(conn.getContentType(), charset));
         } finally {
@@ -371,7 +387,7 @@ public class WebUtils {
         if (conn == null) {
             throw new IOException("connection is null");
         }
-        byte[] data = content != null && content.length() > 0 ? content.getBytes(charset != null ? charset : DEFAULT_CHARSET) : ArrayConstants.EMPTY_BYTE_ARRAY;
+        byte[] data = content != null && content.length() > 0 ? content.getBytes(charset != null ? charset : getInstance().getDefaultCharset()) : ArrayConstants.EMPTY_BYTE_ARRAY;
         try {
             return readAsOutputStream(getConnectionInputStream(conn, data, charset));
         } finally {
@@ -424,10 +440,11 @@ public class WebUtils {
      * @throws IOException 异常
      */
     public static String doPost(String url, Map<String, ?> textParams, Map<String, ? extends FileItem> fileParams, Map<String, ?> headerMap) throws IOException {
+        WebUtils instance = getInstance();
         if (fileParams == null || fileParams.isEmpty()) {
-            return doPost(url, textParams, DEFAULT_CHARSET, CONNECT_TIMEOUT, READ_TIMEOUT, headerMap);
+            return doPost(url, textParams, instance.getDefaultCharset(), instance.getDefaultConnectTimeout(), instance.getDefaultReadTimeout(), headerMap);
         } else {
-            return doPost(url, textParams, fileParams, DEFAULT_CHARSET, CONNECT_TIMEOUT, 0, headerMap);
+            return doPost(url, textParams, fileParams, instance.getDefaultCharset(), instance.getDefaultConnectTimeout(), instance.getUploadReadTimeout(), headerMap);
         }
     }
 
@@ -450,9 +467,9 @@ public class WebUtils {
             return doPost(url, textParams, charset, connectTimeout, readTimeout, headerMap);
         }
         if (charset == null) {
-            charset = DEFAULT_CHARSET;
+            charset = getInstance().getDefaultCharset();
         }
-        String boundary = System.currentTimeMillis() + ""; // 随机分隔线
+        String boundary = String.valueOf(System.currentTimeMillis()); // 随机分隔线
         URLConnection conn = null;
         OutputStream out = null;
         try {
@@ -516,7 +533,7 @@ public class WebUtils {
      * @throws IOException 异常
      */
     public static String doGet(String url, Map<String, ?> textParams) throws IOException {
-        return doGet(url, textParams, DEFAULT_CHARSET);
+        return doGet(url, textParams, null);
     }
     /**
      * 执行HTTP GET请求。
@@ -539,10 +556,11 @@ public class WebUtils {
      * @throws IOException 异常
      */
     public static String doGet(String url, Map<String, ?> textParams, Charset charset) throws IOException {
+        WebUtils instance = getInstance();
         if (charset == null) {
-            charset = DEFAULT_CHARSET;
+            charset = instance.getDefaultCharset();
         }
-        return doGet(url, buildQuery(textParams, charset), charset, CONNECT_TIMEOUT, READ_TIMEOUT, null);
+        return doGet(url, buildQuery(textParams, charset), charset, instance.getDefaultConnectTimeout(), instance.getDefaultReadTimeout(), null);
     }
 
     /**
@@ -555,8 +573,10 @@ public class WebUtils {
      * @throws IOException 异常
      */
     public static String doGet(String url, String params, Map<String, ?> headerMap) throws IOException {
-        String contentType = "application/x-www-form-urlencoded;charset=" + DEFAULT_CHARSET;
-        return doRequest(getConnection(buildGetUrl(url, params), METHOD_GET, contentType, CONNECT_TIMEOUT, READ_TIMEOUT, headerMap), null, DEFAULT_CHARSET);
+        WebUtils instance = getInstance();
+        Charset defaultCharset = instance.getDefaultCharset();
+        String contentType = "application/x-www-form-urlencoded;charset=" + defaultCharset;
+        return doRequest(getConnection(buildGetUrl(url, params), METHOD_GET, contentType, instance.getDefaultConnectTimeout(), instance.getDefaultReadTimeout(), headerMap), null, defaultCharset);
     }
 
     /**
@@ -573,7 +593,7 @@ public class WebUtils {
      */
     public static String doGet(String url, String queryString, Charset charset, int connectTimeout, int readTimeout, Map<String, ?> headerMap) throws IOException {
         if (charset == null) {
-            charset = DEFAULT_CHARSET;
+            charset = getInstance().getDefaultCharset();
         }
         String contentType = null;
         if (headerMap == null) {
@@ -611,8 +631,9 @@ public class WebUtils {
             if ("https".equals(endPoint.getProtocol())) {
                 HttpsURLConnection connHttps = (HttpsURLConnection) endPoint.openConnection();
                 conn = connHttps;
-                connHttps.setSSLSocketFactory(getInstance().socketFactory);
-                connHttps.setHostnameVerifier(getInstance().verifier);
+                WebUtils instance = getInstance();
+                connHttps.setSSLSocketFactory(instance.socketFactory);
+                connHttps.setHostnameVerifier(instance.verifier);
             } else {
                 conn = endPoint.openConnection();
             }
@@ -676,7 +697,8 @@ public class WebUtils {
      * @return 返回连接
      */
     public static URLConnection getConnection(String url, String method, String contentType, Map<String, ?> headerMap) throws IOException {
-        return getConnection(url, method, contentType, CONNECT_TIMEOUT, READ_TIMEOUT, headerMap);
+        WebUtils instance = getInstance();
+        return getConnection(url, method, contentType, instance.getDefaultConnectTimeout(), instance.getDefaultReadTimeout(), headerMap);
     }
 
     public static String buildGetUrl(String strUrl, String query) {
@@ -748,7 +770,7 @@ public class WebUtils {
      * @return 返回组装后字符串
      */
     public static String buildQuery(Map<String, ?> textParams) {
-        return buildQuery(textParams, DEFAULT_CHARSET);
+        return buildQuery(textParams, getInstance().getDefaultCharset());
     }
 
 
@@ -807,7 +829,7 @@ public class WebUtils {
      * @return
      */
     public static Charset getResponseCharset(String contentType, Charset defaultCharset) {
-        Charset charset = defaultCharset != null ? defaultCharset : DEFAULT_CHARSET;
+        Charset charset = defaultCharset != null ? defaultCharset : getInstance().getDefaultCharset();
         if (TextUtils.isEmpty(contentType)) {
             return charset;
         }
@@ -834,7 +856,7 @@ public class WebUtils {
      * @return 反编码后的参数值
      */
     public static String decode(String value) {
-        return decode(value, DEFAULT_CHARSET);
+        return decode(value, getInstance().getDefaultCharset());
     }
 
     /**
@@ -844,7 +866,7 @@ public class WebUtils {
      * @return 编码后的参数值
      */
     public static String encode(String value) {
-        return encode(value, DEFAULT_CHARSET);
+        return encode(value, getInstance().getDefaultCharset());
     }
 
     /**
