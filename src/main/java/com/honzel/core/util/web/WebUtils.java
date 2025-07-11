@@ -138,15 +138,34 @@ public class WebUtils {
     protected void initSSLServerSessionContext(SSLSessionContext context) {
     }
 
+    /**
+     * 获取默认的连接超时时间(ms)
+     * @return 连接超时时间(ms)
+     */
     protected int getDefaultConnectTimeout() {
         return DEFAULT_CONNECT_TIMEOUT;
     }
+
+    /**
+     * 获取默认的读取超时(ms)
+     * @return 读取超时(ms)
+     */
     protected int getDefaultReadTimeout() {
         return DEFAULT_READ_TIMEOUT;
     }
+
+    /**
+     * 获取上传超时(ms)
+     * @return 上传超时(ms)
+     */
     protected int getUploadReadTimeout() {
         return DEFAULT_UPLOAD_TIMEOUT;
     }
+
+    /**
+     * 获取默认的字符集
+     * @return 默认字符集
+     */
     protected Charset getDefaultCharset() {
         return DEFAULT_CHARSET;
     }
