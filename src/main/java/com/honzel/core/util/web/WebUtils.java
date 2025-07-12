@@ -32,7 +32,7 @@ public class WebUtils {
     public static final String     METHOD_GET      = "GET";
 
 
-    private static final int DEFAULT_CONNECT_TIMEOUT = 3000;
+    private static final int DEFAULT_CONNECT_TIMEOUT = 2000;
     private static final int DEFAULT_READ_TIMEOUT = 10000;
     private static final int DEFAULT_UPLOAD_TIMEOUT = 100000;
 
