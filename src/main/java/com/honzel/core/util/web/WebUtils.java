@@ -158,7 +158,7 @@ public class WebUtils {
      * 获取上传超时(ms)
      * @return 上传超时(ms)
      */
-    protected int getUploadReadTimeout() {
+    protected int getDefaultUploadReadTimeout() {
         return DEFAULT_UPLOAD_TIMEOUT;
     }
 
@@ -463,7 +463,7 @@ public class WebUtils {
         if (fileParams == null || fileParams.isEmpty()) {
             return doPost(url, textParams, instance.getDefaultCharset(), instance.getDefaultConnectTimeout(), instance.getDefaultReadTimeout(), headerMap);
         } else {
-            return doPost(url, textParams, fileParams, instance.getDefaultCharset(), instance.getDefaultConnectTimeout(), instance.getUploadReadTimeout(), headerMap);
+            return doPost(url, textParams, fileParams, instance.getDefaultCharset(), instance.getDefaultConnectTimeout(), instance.getDefaultUploadReadTimeout(), headerMap);
         }
     }
 
