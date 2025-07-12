@@ -180,7 +180,6 @@ public class LocalDateTimeConverter extends AbstractConverter {
 				} catch (RuntimeException e) {
 					throwException(e, null);
 				}
-				pos.setErrorIndex(NumberConstants.INTEGER_MINUS_ONE);
 				pos.setIndex(NumberConstants.INTEGER_ZERO);
 			} while (index >= 0);
 		}
@@ -189,14 +188,22 @@ public class LocalDateTimeConverter extends AbstractConverter {
 			return localDate != null ? LocalDateTime.of(localDate, LocalTime.MIN) : null;
 		}
 		if (localDate == null) {
-			pos.setErrorIndex(NumberConstants.INTEGER_MINUS_ONE);
 			pos.setIndex(NumberConstants.INTEGER_ZERO);
 		}
-		LocalTime localTime = LocalDateTimeUtils.parseTime(text, pos, DateTimeFormatter.ISO_LOCAL_TIME, TextUtils.EMPTY);
-		if (pos.getErrorIndex() >= NumberConstants.INTEGER_ZERO || (localDate == null && localTime == null)) {
+		LocalDateTime localDateTime = LocalDateTimeUtils.parse(text, pos, DateTimeFormatter.ISO_TIME, TextUtils.EMPTY);
+		if (pos.getErrorIndex() >= NumberConstants.INTEGER_ZERO || (localDate == null && localDateTime == null)) {
+			// 时间数字无效
 			return null;
 		}
-		return LocalDateTime.of(localDate != null ? localDate : LocalDateTimeUtils.EPOCH_DATE, localTime != null ? localTime : LocalTime.MIN);
+		if (localDate == null) {
+			// 缺少日期
+			return localDateTime;
+		}
+		if (Objects.nonNull(localDateTime)) {
+			// 日期时间
+			return localDate.plusDays(localDateTime.toLocalDate().toEpochDay()).atTime(localDateTime.toLocalTime());
+		}
+		return LocalDateTime.of(localDate, LocalTime.MIN);
 	}
 
 	protected Object convertToType(Object value, Class toType) throws ConversionException {
@@ -231,7 +238,7 @@ public class LocalDateTimeConverter extends AbstractConverter {
 	private Instant convertToInstant(Object value) {
 		if (value instanceof CharSequence) {
 			LocalDateTime localDateTime;
-			return Objects.nonNull(localDateTime = parseByFormatter((CharSequence) value, LocalDateTime.class)) ? localDateTime.atZone(ofZoneId(localDateTime)).toInstant() : Instant.parse((CharSequence) value);
+			return Objects.nonNull(localDateTime = parseByFormatter((CharSequence) value, LocalDateTime.class)) ? localDateTime.atZone(ZoneId.systemDefault()).toInstant() : Instant.parse((CharSequence) value);
 		}
 		if (value instanceof LocalDateTime) {
 			return ((LocalDateTime) value).atZone(ofZoneId(value)).toInstant();

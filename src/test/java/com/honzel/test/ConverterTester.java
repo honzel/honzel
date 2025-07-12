@@ -20,10 +20,8 @@ public class ConverterTester {
 	
 	public void testAbstractArrayConverter() {
 		registerConverters();
-		String input = "2014-11-20 23:00,2014-11-22 22:222";
+		String input = "2025-11-20 23:00,2025-11-22 22:22-08:00,2025-11-22 22:22+09:00";
 		Object result = BeanHelper.convert(input, LocalDateTime[].class);
-		System.out.println(BeanHelper.convert(result, Date.class));
-		System.out.println(BeanHelper.convert(BeanHelper.convert(result, Calendar[].class), String.class));
 		System.out.println(BeanHelper.convert(result, String.class));
 	}
 

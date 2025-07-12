@@ -160,8 +160,6 @@ public class LocalDateTimeUtils {
         }
         if (position == null) {
             position = new ParsePosition(0);
-        } else {
-            position.setErrorIndex(-1);
         }
         // 解析日期时间
         TemporalAccessor parsed = formatter.parseUnresolved(input, position);
@@ -187,13 +185,7 @@ public class LocalDateTimeUtils {
 
     private static ZoneId getZoneId(TemporalAccessor parsed, DateTimeFormatter formatter) {
         ZoneId zoneId = parsed.query(TemporalQueries.zone());
-        if (zoneId == null) {
-            zoneId = parsed.query(TemporalQueries.offset());
-            if (zoneId == null) {
-                zoneId = formatter.getZone();
-            }
-        }
-        return zoneId;
+        return zoneId != null ? zoneId : formatter.getZone();
     }
 
     /**
