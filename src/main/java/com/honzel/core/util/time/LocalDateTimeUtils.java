@@ -160,6 +160,8 @@ public class LocalDateTimeUtils {
         }
         if (position == null) {
             position = new ParsePosition(0);
+        } else {
+            position.setErrorIndex(-1);
         }
         // 解析日期时间
         TemporalAccessor parsed = formatter.parseUnresolved(input, position);
