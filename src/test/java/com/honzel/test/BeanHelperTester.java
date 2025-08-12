@@ -6,6 +6,7 @@ import com.honzel.core.util.converter.StandardConverter;
 import com.honzel.core.vo.Branch;
 import com.honzel.core.vo.Entry;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -28,9 +29,9 @@ public class BeanHelperTester {
 		return this;
 	}
 	
-	private void testBeanAccess() {
+	private void testBeanAccess() throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
 		// TODO Auto-generated method stub
-		Branch bean = new Branch();
+		Branch bean = BeanHelper.newInstance(Branch.class);
 		BeanHelper.setProperty(bean, "key", "中国人");
 		BeanHelper.setProperty(bean, "left", new Branch());
 		BeanHelper.setProperty(bean, "right", new Entry());
@@ -49,7 +50,7 @@ public class BeanHelperTester {
 	
 	
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 		BeanHelperTester tester = new BeanHelperTester().init();
 		tester.testBeanAccess();
 	}

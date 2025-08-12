@@ -9,6 +9,7 @@ import com.honzel.core.vo.Entry;
 
 import java.beans.PropertyDescriptor;
 import java.lang.invoke.SerializedLambda;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Objects;
@@ -268,7 +269,7 @@ public class BeanHelper {
      * @return returns the destination bean whose properties are modified
      */
 	public static<T>  T copyProperties(Object source, T target) {
-		return NestedPropertyUtilsBean.getInstance().copyProperties(source, target);
+		return SimplePropertyUtilsBean.getInstance().copyProperties(source, target);
 	}
 
 	/**
@@ -308,6 +309,22 @@ public class BeanHelper {
 		return null;
 	}
 
+	/**
+	 * Creates a new instance of the class represented by this {@code Class}
+	 * object.  The class is instantiated as if by a {@code new}
+	 * expression with an empty argument list.  The class is initialized if it
+	 * has not already been initialized.
+	 * @param clazz the class to create an instance of
+	 * @return  a newly allocated instance of the class represented by this
+	 * @throws InvocationTargetException InvocationTargetException
+	 * @throws NoSuchMethodException if a matching method is not found
+	 *         or if the name is "&lt;init&gt;"or "&lt;clinit&gt;".
+	 * @throws  IllegalAccessException  if the class or its nullary
+	 *          constructor is not accessible.
+	 */
+	public static<T> T newInstance(Class<T> clazz) throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
+		return SimplePropertyUtilsBean.getInstance().newInstance(clazz);
+	}
 	/**
 	 * <p>Copy property values from the "origin" bean to the "destination" bean
 	 * for all cases where the property names are the same and on the specified condition (even though the

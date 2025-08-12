@@ -1,5 +1,7 @@
 package com.honzel.core.util.bean;
 
+import com.honzel.core.constant.ArrayConstants;
+import com.honzel.core.util.lambda.MethodHandleUtils;
 import com.honzel.core.util.resolver.ResolverUtils;
 import com.honzel.core.util.converter.AbstractConverter;
 import com.honzel.core.util.converter.Converter;
@@ -7,6 +9,7 @@ import com.honzel.core.util.converter.TypeConverter;
 import com.honzel.core.util.resolver.Resolver;
 
 import java.beans.PropertyDescriptor;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -145,7 +148,7 @@ public class NestedPropertyUtilsBean {
 		if (descriptorMap != null) {
 			return Collections.unmodifiableMap(descriptorMap);
 		}
-		return Collections.EMPTY_MAP;
+		return Collections.emptyMap();
 	}
 	/**
 	 * <p>Retrieve the property descriptors for the specified bean class,
@@ -221,7 +224,7 @@ public class NestedPropertyUtilsBean {
    	return getPropertyType(beanClass, name, true);
    }
 
-	/**
+
 	 /**
 	 * <p>Copy property values from the "origin" bean to the "destination" bean
 	 * for all cases where the property names are the same (even though the
@@ -241,22 +244,7 @@ public class NestedPropertyUtilsBean {
 	 * @return returns the destination bean whose properties are modified
 	 */
 	public <T> T copyProperties(Object source, T target) {
-		if (source == null || target == null || source == target)
-			return target;
-		if (source instanceof Map) {
-			if (target instanceof Map) {
-				((Map) target).putAll((Map) source);
-			} else {
-				copyBeanByMap(target, (Map) source);
-			}
-		} else {
-			if (target instanceof Map) {
-				propertyUtilsBean.copyMapByBean((Map) target, source);
-			} else {
-				this.propertyUtilsBean.copyBeanByBean(target, source);
-			}
-		}
-		return target;
+		return propertyUtilsBean.copyProperties(source,  target);
 	}
 
 	private  PropertyDescriptor getDescriptor(Object bean, String name, boolean classInstance) {
@@ -612,7 +600,7 @@ public class NestedPropertyUtilsBean {
 						} else if (propClass.isAssignableFrom(LinkedHashSet.class)) {
 							prop = new LinkedHashSet();
 						} else {
-							prop = propClass.newInstance();
+							prop = propertyUtilsBean.newInstance(propClass);
 						}
 					} else //array object
 					if (propClass.isArray()) {
@@ -657,7 +645,7 @@ public class NestedPropertyUtilsBean {
 						if (itemClass.isArray()) {
 							item = Array.newInstance(itemClass, 0);
 						} else {
-							item = itemClass.newInstance();
+							item = propertyUtilsBean.newInstance(itemClass);
 						}
 						if (split) {
 							if(!propertyUtilsBean.setProperty(prop, itemKey, item, itemMapped)) {
@@ -687,9 +675,12 @@ public class NestedPropertyUtilsBean {
 					prop = item;
 				} else // if the usual property is null
 				if (prop == null) {
-					prop = propClass.getConstructor(EMPTY_CLASS_ARRAY).newInstance(EMPTY_OBJECT_ARRAY);
+					prop = propertyUtilsBean.newInstance(propClass);
 					if (split) {
-						descriptor.getWriteMethod().invoke(bean, prop);
+						if (!propertyUtilsBean.invokeWriteMethod(bean, descriptor, prop)) {
+							// invoke write method failed
+							return false;
+						}
 					} else {
 						splitBean = bean;
 						splitProp = prop;
@@ -707,46 +698,17 @@ public class NestedPropertyUtilsBean {
 			boolean mapped = resolver.isPair();
 			if (result || propertyUtilsBean.setProperty(bean, findKey(resolver, root), value, mapped)) {
 				//set the nested property
-				if (split && !propertyUtilsBean.setProperty(splitBean, splitKey, splitProp, splitMapped)) {
-					return false;
-				}
-				return true;
+				return !split || propertyUtilsBean.setProperty(splitBean, splitKey, splitProp, splitMapped);
 			}
-		} catch (Exception e) {
-			error(e, "Fail to set the specified property '" + name + "' for the specified bean of the type '"
-					+ getTypeName(root) + "', reason: " + e.toString());
+		} catch (Throwable t) {
+			error(t, "Fail to set the specified property '" + name + "' for the specified bean of the type '"
+					+ getTypeName(root) + "', reason: " + t);
 		}
 		return false;
 	}
 
-	private void copyBeanByMap(Object target, Map source) {
-		Set<Map.Entry> entries = source.entrySet();
-		for (Map.Entry entry : entries) {
-			String name = (String) entry.getKey();
-			PropertyDescriptor descriptor = propertyUtilsBean.getDescriptor(target.getClass(), name);
-			if (descriptor == null) {
-				if (getPropertyType(target, name, false) != null) {
-					setProperty(target, name, entry.getValue());
-				}
-				continue;
-			}
-			if (descriptor.getWriteMethod() == null) {
-				continue;
-			}
-			try {
-				TypeConverter typeConverter = propertyUtilsBean.getTypeConverter();
-				Object value = entry.getValue();
-				if (typeConverter != null) {
-					value = typeConverter.convert(value, descriptor.getPropertyType());
-				}
-				descriptor.getWriteMethod().invoke(target, value);
-			} catch (Exception e) {
-				error(e, "Fail to set the specified property '" + name + "' for the specified bean of the type '"
-						+ getTypeName(target) + "', reason: " + e.toString());
-			}
-		}
 
-	}
+
 
 	public int nestedPos(String name) {
 		if (name == null) {

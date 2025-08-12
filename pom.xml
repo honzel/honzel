@@ -95,7 +95,7 @@
                 <extensions>true</extensions>
                 <configuration>
                     <publishingServerId>sonatype-nexus-staging</publishingServerId>
-                    <autoPublish>true</autoPublish>
+                    <autoPublish>false</autoPublish>
                 </configuration>
             </plugin>
 
@@ -110,15 +110,6 @@
                         <goals>
                             <goal>jar-no-fork</goal>
                         </goals>
-                    </execution>
-                    <execution>
-                        <id>attach-sources-with-classifier</id>
-                        <goals>
-                            <goal>jar-no-fork</goal>
-                        </goals>
-                        <configuration>
-                            <classifier>additional</classifier> <!-- 添加分类器 -->
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>

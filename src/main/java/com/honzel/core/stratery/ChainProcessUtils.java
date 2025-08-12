@@ -10,10 +10,7 @@ import org.springframework.core.annotation.*;
 
 import java.lang.annotation.Annotation;
 import java.lang.ref.SoftReference;
-import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
+import java.lang.reflect.*;
 import java.util.*;
 
 import static com.honzel.core.constant.ArrayConstants.*;
@@ -183,6 +180,9 @@ public class ChainProcessUtils {
                         || MergedAnnotations.from(nestAnnotationType, MergedAnnotations.SearchStrategy.INHERITED_ANNOTATIONS, RepeatableContainers.none()).isPresent(BusinessProcessor.class)) {
                     (annotationList == null ? (annotationList = new ArrayList<>(declaredAnnotations.length)) : annotationList).add(annotation);
                 }
+//                if (BusinessProcessor.class.equals(nestAnnotationType) || AnnotationUtils.isAnnotationMetaPresent(nestAnnotationType, BusinessProcessor.class)) {
+//                    (annotationList == null ? (annotationList = new ArrayList<>(declaredAnnotations.length)) : annotationList).add(annotation);
+//                }
             }
             // 转成数组
             annotations = (annotationList == null) ? EMPTY_ANNOTATION_ARRAY : annotationList.toArray(EMPTY_ANNOTATION_ARRAY);
@@ -307,15 +307,11 @@ public class ChainProcessUtils {
             return (T) enhancer.create();
         }
         try {
-            Constructor<? extends T> constructor = type.getDeclaredConstructor(EMPTY_CLASS_ARRAY);
-            if (!(Modifier.isPublic(type.getModifiers()) && Modifier.isPublic(constructor.getModifiers()))) {
-                // 设置为可访问
-                constructor.setAccessible(true);
-            }
-            return constructor.newInstance(EMPTY_OBJECT_ARRAY);
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
+            return BeanHelper.newInstance(type);
+        } catch (InvocationTargetException e) {
+            Throwable throwable = e.getTargetException();
+            throw throwable instanceof RuntimeException ? (RuntimeException) throwable : new RuntimeException(throwable);
+        } catch (NoSuchMethodException | IllegalAccessException e) {
             throw new RuntimeException(e);
         }
     }
