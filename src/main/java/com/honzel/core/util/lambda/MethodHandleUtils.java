@@ -1,6 +1,5 @@
 package com.honzel.core.util.lambda;
 
-import com.honzel.core.util.ConcurrentReferenceHashMap;
 import com.honzel.core.util.bean.SimplePropertyUtilsBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,7 +7,6 @@ import org.slf4j.LoggerFactory;
 import java.lang.invoke.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
-import java.util.Map;
 import java.util.Objects;
 import java.util.function.*;
 
