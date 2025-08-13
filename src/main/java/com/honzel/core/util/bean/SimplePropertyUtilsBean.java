@@ -129,7 +129,7 @@ public class SimplePropertyUtilsBean {
 		Object[] descriptorArray = getDescriptorArray(beanClass);
 		String name = null;
 		if (!mapped && key != null) {
-			descriptor = getDescriptor0(descriptorArray, name = key.toString());
+			descriptor = getDescriptor(descriptorArray, name = key.toString());
 		}
 		try {
 			if (descriptor == null) {
@@ -143,7 +143,7 @@ public class SimplePropertyUtilsBean {
 					return true;
 				}
 				if (mapped) {
-					descriptor = getDescriptor0(descriptorArray, name = key.toString());
+					descriptor = getDescriptor(descriptorArray, name = key.toString());
 				}
 				if (descriptor == null) {
 					throw new PropertyException("The property  '" + key + "' of bean type  '"
@@ -301,7 +301,10 @@ public class SimplePropertyUtilsBean {
 	 * @return The property type of the specified bean class
 	 */
 	public Class getPropertyType(Class beanClass, String name) {
-		PropertyDescriptor descriptor = getDescriptor0(getDescriptorArray(beanClass), name);
+		if (beanClass == null) {
+			return null;
+		}
+		PropertyDescriptor descriptor = getDescriptor(getDescriptorArray(beanClass), name);
 		if (descriptor != null) {
 			return descriptor.getPropertyType();
 		}
@@ -322,37 +325,40 @@ public class SimplePropertyUtilsBean {
 		return null;
 	}
 
-	void copyBeanByBean(Object target, Object source) {
-		Object[] srcDescriptorArray = getDescriptorArray(source.getClass());
-		PropertyDescriptor[] descriptors0 = getDescriptors0(srcDescriptorArray);
-		if (descriptors0.length == 0) {
+	void copyBeanToBean(Object source, Object target) {
+		Object[] dstDescriptorArray = getDescriptorArray(target.getClass());
+		PropertyDescriptor[] dstDestDescriptors = getDescriptors(dstDescriptorArray);
+		if (dstDestDescriptors.length == 0) {
 			return;
 		}
-		Class targetType = target.getClass();
-		Object[] destDescriptorArray = getDescriptorArray(targetType);
-		for (PropertyDescriptor descriptor0 : descriptors0) {
-			if (descriptor0 == null || descriptor0.getReadMethod() == null) {
+		Object[] srcDescriptorArray = getDescriptorArray(source.getClass());
+		for (PropertyDescriptor descriptor : dstDestDescriptors) {
+			String name = descriptor.getName();
+			Function<Object, Object> getter = getGetter(srcDescriptorArray, name);
+			if (getter == null) {
+				// No getter for the specified property
 				continue;
 			}
-			String name = descriptor0.getName();
-			BiConsumer<Object, Object> setter = getSetter(destDescriptorArray, name);
+			BiConsumer<Object, Object> setter = getSetter(dstDescriptorArray, name);
 			if (setter != null) {
-				Object value = invokeReadMethod(source, getGetter(srcDescriptorArray, name), srcDescriptorArray, name);
-				invokeWriteMethod(target, getDescriptor0(destDescriptorArray, name), value);
+				Object value = invokeReadMethod(source, getter, srcDescriptorArray, name);
+				invokeWriteMethod(target, setter, descriptor, value);
 			}
 		}
 	}
 
-	void copyMapByBean(Map target, Object source) {
+	void copyBeanToMap(Object source, Map target) {
 		Class sourceType = source.getClass();
-		Object[] descriptorArray = getDescriptorArray(sourceType);
-		for (PropertyDescriptor descriptor : getDescriptors0(descriptorArray)) {
+		Object[] srcDescriptorArray = getDescriptorArray(sourceType);
+		for (PropertyDescriptor descriptor : getDescriptors(srcDescriptorArray)) {
 			String name = descriptor.getName();
-			if ("class".equals(name) || descriptor.getReadMethod() == null) {
+			Function<Object, Object> getter = getGetter(srcDescriptorArray, name);
+			if (getter == null || getter == INVALID_GETTER && "class".equals(name)) {
+				// No getter for the specified property or "class" property
 				continue;
 			}
 			try {
-				target.put(name, invokeReadMethod(source, getGetter(descriptorArray, name), descriptorArray, name));
+				target.put(name, invokeReadMethod(source, getter, srcDescriptorArray, name));
 			} catch (Exception e) {
 				this.error(e, "Fail to get the specified property '" + name + "' for  the specified bean of the type '" + sourceType.getName() + "', reason: " + e);
 			}
@@ -360,34 +366,20 @@ public class SimplePropertyUtilsBean {
 
 	}
 
-	private void copyBeanByMap(Object target, Map source) {
+	private void copyMapToBean(Map source, Object target) {
 		if (source.isEmpty()) {
 			return;
 		}
 		Set<Map.Entry> entries = source.entrySet();
-		Class<?> targetType = target.getClass();
-		Object[] descriptorArray = getDescriptorArray(targetType);
+		Object[] descriptorArray = getDescriptorArray(target.getClass());
 		for (Map.Entry entry : entries) {
 			if (!(entry.getKey() instanceof String)) {
 				continue;
 			}
 			String name = (String) entry.getKey();
 			BiConsumer<Object, Object> setter = getSetter(descriptorArray, name);
-			if (setter == null) {
-				// No setter
-				continue;
-			}
-			try {
-				PropertyDescriptor descriptor = getDescriptor0(descriptorArray, name);
-				Object value = entry.getValue();
-				if (typeConverter != null) {
-					//
-					value = typeConverter.convert(value, descriptor.getPropertyType());
-				}
-				propertyUtilsBean.invokeWriteMethod(target, setter, descriptor, value);
-			} catch (Exception e) {
-				error(e, "Fail to set the specified property '" + name + "' for the specified bean of the type '"
-						+ targetType.getName() + "', reason: " + e);
+			if (setter != null) {
+				propertyUtilsBean.invokeWriteMethod(target, setter, getDescriptor(descriptorArray, name), entry.getValue());
 			}
 		}
 	}
@@ -419,13 +411,13 @@ public class SimplePropertyUtilsBean {
 			if (target instanceof Map) {
 				((Map) target).putAll((Map) source);
 			} else {
-				copyBeanByMap(target, (Map) source);
+				copyMapToBean((Map) source, target);
 			}
 		} else {
 			if (target instanceof Map) {
-				copyMapByBean((Map) target, source);
+				copyBeanToMap(source, (Map) target);
 			} else {
-				copyBeanByBean(target, source);
+				copyBeanToBean(source, target);
 			}
 		}
 		return target;
@@ -441,15 +433,12 @@ public class SimplePropertyUtilsBean {
 	 * @return the property descriptor for the specified property of the
      * specified bean, or return <code>null</code>
 	 */
-	public PropertyDescriptor getDescriptor(Class beanClass, String name) {
-		return getDescriptor0(getDescriptorArray(beanClass), name);
+	public PropertyDescriptor getPropertyDescriptor(Class beanClass, String name) {
+		return beanClass != null ? getDescriptor(getDescriptorArray(beanClass), name) : null;
     }
 
 
 	private Object[] getDescriptorArray(Class beanClass) {
-		if (beanClass == null) {
-			return null;
-        }
 		return (Object[]) getInstance().descriptorsCache.computeIfAbsent(beanClass, clazz -> {
 			MethodHandles.Lookup lookup = MethodHandleUtils.lookup(beanClass);
 			Object[] descriptorArray = new Object[6];
@@ -475,7 +464,6 @@ public class SimplePropertyUtilsBean {
 			descriptorArray[DESCRIPTOR_MAP] = descriptorMap;
 			descriptorArray[GETTER_MAP] = getterMap;
 			descriptorArray[SETTER_MAP] = setterMap;
-			MethodType getterSignature = MethodType.methodType(Object.class, beanClass);
 			for (PropertyDescriptor descriptor : descriptors) {
 				String name = descriptor.getName();
 				descriptorMap.put(name, descriptor);
@@ -483,14 +471,20 @@ public class SimplePropertyUtilsBean {
 					Method method = descriptor.getReadMethod();
 					if (method != null) {
 						// getter
-						try {
-							MethodHandle handle = lookup.unreflect(method);
-							CallSite callSite = LambdaMetafactory.metafactory(lookup, "apply", GETTER_FACTORY, GETTER_ERASE, handle, getterSignature);
-							getterMap.put(name, (Function<Object, Object>) callSite.getTarget().invokeExact());
-						} catch (Throwable e) {
-							logger.warn("Failed to generate getter[{}] lambda", name, e);
-							method.setAccessible(true);
+						if ("class".equals(name)) {
 							getterMap.put(name, INVALID_GETTER);
+							method.setAccessible(true);
+						} else {
+							try {
+								MethodHandle handle = lookup.unreflect(method);
+								MethodType getterSignature = MethodType.methodType(descriptor.getPropertyType(), beanClass);
+								CallSite callSite = LambdaMetafactory.metafactory(lookup, "apply", GETTER_FACTORY, GETTER_ERASE, handle, getterSignature);
+								getterMap.put(name, (Function<Object, Object>) callSite.getTarget().invokeExact());
+							} catch (Throwable e) {
+								logger.warn("Failed to generate getter[{}] lambda", name, e);
+								getterMap.put(name, INVALID_GETTER);
+								method.setAccessible(true);
+							}
 						}
 					}
 					method = descriptor.getWriteMethod();
@@ -503,8 +497,8 @@ public class SimplePropertyUtilsBean {
 							setterMap.put(name, (BiConsumer<Object, Object>) callSite.getTarget().invokeExact());
 						} catch (Throwable e) {
 							logger.warn("Failed to generate setter[{}] lambda", name, e);
-							method.setAccessible(true);
 							setterMap.put(name, INVALID_SETTER);
+							method.setAccessible(true);
 						}
 					}
 				} catch (Exception e) {
@@ -524,11 +518,7 @@ public class SimplePropertyUtilsBean {
 	 * @return the property descriptors for the specified class
 	 */
 	Map getDescriptorMap(Class beanClass) {
-		Object[] descriptorArray = getDescriptorArray(beanClass);
-		if (descriptorArray != null) {
-			return (Map) descriptorArray[DESCRIPTOR_MAP];
-        }
-		return null;
+		return beanClass != null ? (Map) getDescriptorArray(beanClass)[DESCRIPTOR_MAP] : null;
 	}
 
 	/**
@@ -540,11 +530,7 @@ public class SimplePropertyUtilsBean {
 	 * @return the property descriptors for the specified class
 	 */
 	public PropertyDescriptor[] getPropertyDescriptors(Class beanClass) {
-		Object[] descriptorArray = getDescriptorArray(beanClass);
-		if (descriptorArray != null) {
-			return (PropertyDescriptor[]) descriptorArray[DESCRIPTORS];
-		}
-		return ArrayConstants.EMPTY_DESCRIPTOR_ARRAY;
+		return beanClass != null ? getDescriptors(getDescriptorArray(beanClass)) : ArrayConstants.EMPTY_DESCRIPTOR_ARRAY;
 	}
 
 	/**
@@ -628,20 +614,21 @@ public class SimplePropertyUtilsBean {
 			if (source == null || target == null) {
 				return false;
 			}
-			Object[] destDescriptorArray = getDescriptorArray(target.getClass());
-			if (destDescriptorArray == null) {
-				return false;
-			}
+			Object[] dstDescriptorArray = getDescriptorArray(target.getClass());
 			boolean result = false;
 			if (source instanceof Map) {
 				// 原类型为map
-				for (Map.Entry<String, Object> entry : ((Map<String, Object>) source).entrySet()) {
-					BiConsumer<Object, Object> setter = getSetter(destDescriptorArray, entry.getKey());
+				for (Map.Entry<Object, Object> entry : ((Map<Object, Object>) source).entrySet()) {
+					if (!(entry.getKey() instanceof String)) {
+						continue;
+					}
+					String name = (String) entry.getKey();
+					BiConsumer<Object, Object> setter = getSetter(dstDescriptorArray, name);
 					if (setter == null) {
 						// 没有目标setter
 						continue;
 					}
-					PropertyDescriptor targetDescriptor = getDescriptor0(destDescriptorArray, entry.getKey());
+					PropertyDescriptor targetDescriptor = getDescriptor(dstDescriptorArray, name);
 					// 获取原属性值
 					Object value = entry.getValue();
 					// 条件校验
@@ -655,20 +642,21 @@ public class SimplePropertyUtilsBean {
 			} else {
 				// 原始类型为bean
 				Object[] srcDescriptorArray = getDescriptorArray(source.getClass());
-				for (PropertyDescriptor sourceDescriptor : getDescriptors0(srcDescriptorArray)) {
-					if (sourceDescriptor.getReadMethod() == null) {
-						// 没有getter
+				for (PropertyDescriptor dstDescriptor : getDescriptors(dstDescriptorArray)) {
+					String name = dstDescriptor.getName();
+					Function<Object, Object> getter = getGetter(srcDescriptorArray, name);
+					if (getter == null) {
+						// No getter
 						continue;
 					}
-					String name = sourceDescriptor.getName();
-					BiConsumer<Object, Object> setter = getSetter(destDescriptorArray, name);
+					BiConsumer<Object, Object> setter = getSetter(dstDescriptorArray, name);
 					if (setter == null) {
-						// 没有目标setter
+						// No setter
 						continue;
 					}
-					PropertyDescriptor targetDescriptor = getDescriptor0(destDescriptorArray, name);
+					PropertyDescriptor targetDescriptor = getDescriptor(dstDescriptorArray, name);
 					// 获取原属性值
-					Object value = invokeReadMethod(source, getGetter(srcDescriptorArray, name), srcDescriptorArray, name);
+					Object value = invokeReadMethod(source, getter, srcDescriptorArray, name);
 					// 条件校验
 					if (condition != null && !condition.test(targetDescriptor, value)) {
 						continue;
@@ -688,11 +676,11 @@ public class SimplePropertyUtilsBean {
 			if (setter == null) {
 				return false;
 			}
-			if (typeConverter != null) {
-				// 转换类型
-				value = typeConverter.convert(value, descriptor.getPropertyType());
-			}
 			try {
+				if (typeConverter != null) {
+					// 转换类型
+					value = typeConverter.convert(value, descriptor.getPropertyType());
+				}
 				if (setter != INVALID_SETTER) {
 					setter.accept(bean, value);
 				} else {
@@ -716,7 +704,7 @@ public class SimplePropertyUtilsBean {
 					if (getter != INVALID_GETTER) {
 						return getter.apply(bean);
 					} else {
-						getDescriptor0(descriptorArray, name).getReadMethod().invoke(bean);
+						getDescriptor(descriptorArray, name).getReadMethod().invoke(bean);
 					}
 				}
 			} catch (Throwable e) {
@@ -728,16 +716,16 @@ public class SimplePropertyUtilsBean {
 
 
 		private Function<Object, Object> getGetter(Object[] descriptorArray, String name) {
-			return descriptorArray != null ? ((Map<String, Function<Object, Object>>)descriptorArray[GETTER_MAP]).get(name) :  null;
+			return ((Map<String, Function<Object, Object>>)descriptorArray[GETTER_MAP]).get(name);
 		}
 		private BiConsumer<Object, Object> getSetter(Object[] descriptorArray, String name) {
-			return descriptorArray != null ? ((Map<String, BiConsumer<Object, Object>>)descriptorArray[SETTER_MAP]).get(name) :  null;
+			return ((Map<String, BiConsumer<Object, Object>>)descriptorArray[SETTER_MAP]).get(name);
 		}
-		private PropertyDescriptor getDescriptor0(Object[] descriptorArray, String name) {
-			return descriptorArray != null ? ((Map<String, PropertyDescriptor>)descriptorArray[DESCRIPTOR_MAP]).get(name) :  null;
+		private PropertyDescriptor getDescriptor(Object[] descriptorArray, String name) {
+			return ((Map<String, PropertyDescriptor>)descriptorArray[DESCRIPTOR_MAP]).get(name);
 		}
-		private PropertyDescriptor[] getDescriptors0(Object[] descriptorArray) {
-			return descriptorArray != null ? ((PropertyDescriptor[])descriptorArray[DESCRIPTORS]) :  null;
+		private PropertyDescriptor[] getDescriptors(Object[] descriptorArray) {
+			return (PropertyDescriptor[])descriptorArray[DESCRIPTORS];
 		}
 
 
@@ -780,16 +768,17 @@ public class SimplePropertyUtilsBean {
 				// 原始类型为bean
 				Entry<String, Object> targetEntry = new Entry();
 				Object[] srcDescriptorArray = getDescriptorArray(source.getClass());
-				for (PropertyDescriptor sourceDescriptor : getDescriptors0(srcDescriptorArray)) {
-					String name = sourceDescriptor.getName();
-					if (sourceDescriptor.getReadMethod() == null || "class".equals(name)) {
+				for (PropertyDescriptor srcDescriptor : getDescriptors(srcDescriptorArray)) {
+					String name = srcDescriptor.getName();
+					Function<Object, Object> getter = getGetter(srcDescriptorArray, name);
+					if (getter == null || getter == INVALID_GETTER && "class".equals(name)) {
 						// 没有getter
 						continue;
 					}
 					targetEntry.setKey(name);
 					targetEntry.setValue(target.get(targetEntry.getKey()));
 					// 获取原属性值
-					Object value = invokeReadMethod(source, getGetter(srcDescriptorArray, name), srcDescriptorArray, name);
+					Object value = invokeReadMethod(source, getter, srcDescriptorArray, name);
 					// 条件校验
 					if (condition != null && !condition.test(targetEntry, value)) {
 						continue;

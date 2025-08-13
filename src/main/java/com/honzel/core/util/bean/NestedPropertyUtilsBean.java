@@ -1,7 +1,5 @@
 package com.honzel.core.util.bean;
 
-import com.honzel.core.constant.ArrayConstants;
-import com.honzel.core.util.lambda.MethodHandleUtils;
 import com.honzel.core.util.resolver.ResolverUtils;
 import com.honzel.core.util.converter.AbstractConverter;
 import com.honzel.core.util.converter.Converter;
@@ -9,7 +7,6 @@ import com.honzel.core.util.converter.TypeConverter;
 import com.honzel.core.util.resolver.Resolver;
 
 import java.beans.PropertyDescriptor;
-import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -17,9 +14,6 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
-
-import static com.honzel.core.constant.ArrayConstants.EMPTY_CLASS_ARRAY;
-import static com.honzel.core.constant.ArrayConstants.EMPTY_OBJECT_ARRAY;
 
 /**
  * 嵌套bean工具类
@@ -255,7 +249,7 @@ public class NestedPropertyUtilsBean {
 		int pos = nestedPos(name);
 		Class beanClass = classInstance ?  (Class) bean : bean.getClass();
 		if(pos < 0) {
-			return propertyUtilsBean.getDescriptor(beanClass, name);
+			return propertyUtilsBean.getPropertyDescriptor(beanClass, name);
 		}
 		Resolver resolver = getResolver(name, pos);
 		while (resolver.hasNext() && !resolver.isLast()) {
@@ -285,7 +279,7 @@ public class NestedPropertyUtilsBean {
 		if (beanClass != null) {
 			Object key = findKey(resolver, bean);
 			if (key != null) {
-				return propertyUtilsBean.getDescriptor(beanClass, key.toString());
+				return propertyUtilsBean.getPropertyDescriptor(beanClass, key.toString());
 			}
 		}
 		return null;
@@ -380,7 +374,7 @@ public class NestedPropertyUtilsBean {
 				} else //map type
 				if(Map.class.isAssignableFrom(beanClass)) {
 					if(!mapped) {
-						descriptor = propertyUtilsBean.getDescriptor(beanClass, (String) key);
+						descriptor = propertyUtilsBean.getPropertyDescriptor(beanClass, (String) key);
 					}
 					if(descriptor != null) {
 						propClass = descriptor.getPropertyType();
@@ -389,7 +383,7 @@ public class NestedPropertyUtilsBean {
 				} else //collection type
 				if(Iterable.class.isAssignableFrom(beanClass)) {
 					if(!mapped) {
-						descriptor = propertyUtilsBean.getDescriptor(beanClass, (String) key);
+						descriptor = propertyUtilsBean.getPropertyDescriptor(beanClass, (String) key);
 					}
 					if(descriptor != null) {
 						propClass = descriptor.getPropertyType();
@@ -403,7 +397,7 @@ public class NestedPropertyUtilsBean {
 					if(key != null) {
 						pName = key.toString();
 					}
-					descriptor = propertyUtilsBean.getDescriptor(beanClass, pName);
+					descriptor = propertyUtilsBean.getPropertyDescriptor(beanClass, pName);
 					if(descriptor == null) {
 						return null;
 					}
@@ -427,7 +421,7 @@ public class NestedPropertyUtilsBean {
 		if (beanClass == null || property == null) {
 			return Object.class;
 		} else {
-			PropertyDescriptor descriptor = propertyUtilsBean.getDescriptor(beanClass, property.toString());
+			PropertyDescriptor descriptor = propertyUtilsBean.getPropertyDescriptor(beanClass, property.toString());
 			return (descriptor != null) ? getItemClass(descriptor) : Object.class;
 		}
 	}
@@ -554,7 +548,7 @@ public class NestedPropertyUtilsBean {
 					propClass = prop.getClass();
 				} else {
 					if (!mapped) {
-						descriptor = propertyUtilsBean.getDescriptor(bean.getClass(), key.toString());
+						descriptor = propertyUtilsBean.getPropertyDescriptor(bean.getClass(), key.toString());
 					}
 					if (descriptor == null) {
 						if(bean.getClass().isArray()) {
@@ -562,7 +556,7 @@ public class NestedPropertyUtilsBean {
 							propClass = bean.getClass().getComponentType();
 						} else if (mapped) {
 							mapped = false;
-							descriptor = propertyUtilsBean.getDescriptor(bean.getClass(), name);
+							descriptor = propertyUtilsBean.getPropertyDescriptor(bean.getClass(), name);
 						}
 					}
 					if (propClass == null && descriptor != null) {
@@ -638,7 +632,7 @@ public class NestedPropertyUtilsBean {
 					if (item == null) {
 						if (itemClass == null) {
 							if (descriptor == null) {
-								descriptor = propertyUtilsBean.getDescriptor(bean.getClass(), key.toString());
+								descriptor = propertyUtilsBean.getPropertyDescriptor(bean.getClass(), key.toString());
 							}
 							itemClass = getItemClass(descriptor);
 						}
