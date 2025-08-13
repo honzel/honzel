@@ -166,7 +166,7 @@ public class NestedPropertyUtilsBean {
      * specified bean, or return <code>null</code>
 	 */
 	public PropertyDescriptor getPropertyDescriptor(Class beanClass, String name) {
-		return getDescriptor(beanClass, name, true);
+		return getPropertyDescriptor(beanClass, name, true);
 	}
 
 	/**
@@ -180,7 +180,7 @@ public class NestedPropertyUtilsBean {
      * specified bean, or return <code>null</code>
 	 */
 	public PropertyDescriptor getPropertyDescriptor(Object bean, String name) {
-		return getDescriptor(bean, name, false);
+		return getPropertyDescriptor(bean, name, false);
 	}
 
 
@@ -241,7 +241,7 @@ public class NestedPropertyUtilsBean {
 		return propertyUtilsBean.copyProperties(source,  target);
 	}
 
-	private  PropertyDescriptor getDescriptor(Object bean, String name, boolean classInstance) {
+	private  PropertyDescriptor getPropertyDescriptor(Object bean, String name, boolean classInstance) {
 		if(bean == null || name == null) {
 			return null;
 		}
