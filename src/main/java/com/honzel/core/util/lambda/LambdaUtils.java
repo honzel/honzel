@@ -3,6 +3,7 @@ package com.honzel.core.util.lambda;
 import com.honzel.core.util.ConcurrentReferenceHashMap;
 
 import java.io.Serializable;
+import java.lang.invoke.MethodType;
 import java.lang.invoke.SerializedLambda;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
@@ -15,6 +16,15 @@ import java.util.function.*;
  * date 2022/1/4
  */
 public class LambdaUtils {
+
+    public static final MethodType METHOD_TYPE_VOID = MethodType.methodType(void.class);
+    public static final MethodType METHOD_TYPE_SUPPLIER = MethodType.methodType(Supplier.class);
+    public static final MethodType METHOD_TYPE_FUNCTION = MethodType.methodType(Function.class);
+    public static final MethodType METHOD_TYPE_CONSUMER = MethodType.methodType(Consumer.class);
+    public static final MethodType METHOD_TYPE_BI_FUNCTION = MethodType.methodType(BiFunction.class);
+    public static final MethodType METHOD_TYPE_BI_CONSUMER = MethodType.methodType(BiConsumer.class);
+    public static final MethodType METHOD_TYPE_TI_FUNCTION = MethodType.methodType(SerializeTiFunction.class);
+    public static final MethodType METHOD_TYPE_TI_CONSUMER = MethodType.methodType(SerializeTiConsumer.class);
 
     protected LambdaUtils() {
     }

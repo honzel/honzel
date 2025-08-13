@@ -19,16 +19,6 @@ public class MethodHandleUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SimplePropertyUtilsBean.class);
 
-    public static final MethodType METHOD_TYPE_SUPPLIER = MethodType.methodType(Supplier.class);
-
-    public static final MethodType METHOD_TYPE_FUNCTION = MethodType.methodType(Function.class);
-
-    public static final MethodType METHOD_TYPE_CONSUMER = MethodType.methodType(Consumer.class);
-
-    public static final MethodType METHOD_TYPE_BI_FUNCTION = MethodType.methodType(BiFunction.class);
-
-    public static final MethodType METHOD_TYPE_BI_CONSUMER = MethodType.methodType(BiConsumer.class);
-
 
     private static final BiFunction<Class<?>, MethodHandles.Lookup, MethodHandles.Lookup> LOOKUP_FUNCTION;
     private static final Function<Class<?>, MethodHandles.Lookup> LOW_VERSION_LOOKUP_FUNCTION;
@@ -46,19 +36,19 @@ public class MethodHandleUtils {
     @SuppressWarnings("unchecked")
     private static Function<Class<?>, MethodHandles.Lookup> initJavaLowVersionCreateLookupFunction(MethodHandles.Lookup lookup) {
         try {
-            // 2. 获取构造方法的 MethodHandle（实际签名是 (Class,int)Lookup，但通过绑定固定权限值）
+            // 1. 获取构造方法的 MethodHandle（实际签名是 (Class,int)Lookup，但通过绑定固定权限值）,只有java8有
             Constructor<MethodHandles.Lookup> constructor = MethodHandles.Lookup.class.getDeclaredConstructor(Class.class, int.class);
             constructor.setAccessible(true);
             MethodHandle handle = lookup.unreflectConstructor(constructor);
-            // 1. 定义函数式接口类型 (Function<Class<?>, Lookup>)
-            MethodType funcType = MethodType.methodType(MethodHandles.Lookup.class, Class.class);
-            // 绑定全权限标志位（15）
+            // 2.绑定全权限标志位（15）
             MethodHandle boundHandle = MethodHandles.insertArguments(handle, 1, Modifier.PUBLIC | Modifier.PRIVATE | Modifier.PROTECTED | Modifier.STATIC);
-            // 3. 创建 CallSite（模拟方法引用 Lookup::new）
+            // 3. 定义函数式接口类型 (Function<Class<?>, Lookup>)
+            MethodType funcType = MethodType.methodType(MethodHandles.Lookup.class, Class.class);
+            // 4. 创建 CallSite（模拟方法引用 Lookup::new）
             CallSite callSite = LambdaMetafactory.metafactory(
                     lookup,
                     "apply",
-                    METHOD_TYPE_FUNCTION,
+                    LambdaUtils.METHOD_TYPE_FUNCTION,
                     funcType.generic(),
                     boundHandle,
                     funcType
@@ -84,7 +74,7 @@ public class MethodHandleUtils {
             MethodHandle privateLookupInHandle = lookup.findStatic(MethodHandles.class, "privateLookupIn", targetSignature);
             // 3. 创建 CallSite
             CallSite callSite = LambdaMetafactory.metafactory(lookup, "apply", // BiFunction 的抽象方法名
-                    METHOD_TYPE_BI_FUNCTION, // 工厂方法签名
+                    LambdaUtils.METHOD_TYPE_BI_FUNCTION, // 工厂方法签名
                     targetSignature.generic(), // 泛型擦除后的 BiFunction.apply 签名 (Object,Object)Object
                     privateLookupInHandle, // 目标方法句柄
                     targetSignature // 实际方法签名 (Class,Lookup)Lookup

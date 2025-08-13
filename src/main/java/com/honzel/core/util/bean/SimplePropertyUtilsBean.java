@@ -4,6 +4,7 @@ import com.honzel.core.constant.ArrayConstants;
 import com.honzel.core.util.ConcurrentReferenceHashMap;
 import com.honzel.core.util.converter.TypeConverter;
 import com.honzel.core.util.exception.PropertyException;
+import com.honzel.core.util.lambda.LambdaUtils;
 import com.honzel.core.util.lambda.MethodHandleUtils;
 import com.honzel.core.vo.Entry;
 import org.slf4j.Logger;
@@ -37,12 +38,12 @@ public class SimplePropertyUtilsBean {
 			new TypeConverter()
 	);
 
-	private static final MethodType GETTER_FACTORY = MethodHandleUtils.METHOD_TYPE_FUNCTION;
+	private static final MethodType GETTER_FACTORY = LambdaUtils.METHOD_TYPE_FUNCTION;
 	private static final Function<Object, Object> INVALID_GETTER = Function.identity();
 	private static final MethodType GETTER_ERASE = MethodType.methodType(Object.class, Object.class);
-	private static final MethodType SETTER_FACTORY = MethodHandleUtils.METHOD_TYPE_BI_CONSUMER;
+	private static final MethodType SETTER_FACTORY = LambdaUtils.METHOD_TYPE_BI_CONSUMER;
 	private static final MethodType SETTER_ERASE = MethodType.methodType(void.class, Object.class, Object.class);
-	private static final MethodType CONSTRUCTOR_FACTORY = MethodHandleUtils.METHOD_TYPE_SUPPLIER;
+	private static final MethodType CONSTRUCTOR_FACTORY = LambdaUtils.METHOD_TYPE_SUPPLIER;
 	private static final MethodType VOID_TYPE = MethodType.methodType(void.class);
 	private static final BiConsumer<Object, Object> INVALID_SETTER = (b, v) -> {};
 	private static final int DESCRIPTORS = 0;
@@ -424,6 +425,15 @@ public class SimplePropertyUtilsBean {
 	}
 
 	/**
+	 * This lookup method is the alternate implementation of
+	 * the lookup method with a leading caller class argument which is
+	 * non-caller-sensitive.  This method is only invoked by reflection
+	 * and method handle.
+	 */
+	public MethodHandles.Lookup getMethodLookup(Class beanClass) {
+		return beanClass != null ? (MethodHandles.Lookup) getDescriptorArray(beanClass)[LOOKUP] : null;
+    }
+	/**
 	 * <p>Retrieve the property descriptor for the specified property of the
      * specified bean class, or return <code>null</code> if there is no such
      * descriptor. </p>
@@ -436,6 +446,49 @@ public class SimplePropertyUtilsBean {
 	public PropertyDescriptor getPropertyDescriptor(Class beanClass, String name) {
 		return beanClass != null ? getDescriptor(getDescriptorArray(beanClass), name) : null;
     }
+
+	/**
+	 * fetch getter
+	 * @param beanClass bean class
+	 * @param name property name
+	 * @return getter
+	 */
+	public<T, P> Function<T, P> getPropertyGetter(Class<T> beanClass, String name) {
+		if (beanClass == null) {
+			return null;
+		}
+		Object[] descriptorArray = getDescriptorArray(beanClass);
+		Function<T, P> getter = getGetter(descriptorArray, name);
+		if (getter == null) {
+			return null;
+		}
+		if (getter != INVALID_GETTER) {
+			return getter;
+		}
+		PropertyDescriptor descriptor = getDescriptor(descriptorArray, name);
+		return bean -> (P) invokeReadMethod(bean, descriptor);
+	}
+	/**
+	 * fetch setter
+	 * @param beanClass bean class
+	 * @param name property name
+	 * @return setter
+	 */
+	public<T, P> BiConsumer<T, P> getPropertySetter(Class<T> beanClass, String name) {
+		if (beanClass == null) {
+			return null;
+		}
+		Object[] descriptorArray = getDescriptorArray(beanClass);
+		BiConsumer<T, P> setter = getSetter(descriptorArray, name);
+		if (setter == null) {
+			return null;
+		}
+		if (setter != INVALID_SETTER) {
+			return setter;
+		}
+		PropertyDescriptor descriptor = getDescriptor(descriptorArray, name);
+		return (bean, value) -> invokeWriteMethod(bean, descriptor, value);
+	}
 
 
 	private Object[] getDescriptorArray(Class beanClass) {
@@ -530,7 +583,7 @@ public class SimplePropertyUtilsBean {
 	 * @return the property descriptors for the specified class
 	 */
 	public PropertyDescriptor[] getPropertyDescriptors(Class beanClass) {
-		return beanClass != null ? getDescriptors(getDescriptorArray(beanClass)) : ArrayConstants.EMPTY_DESCRIPTOR_ARRAY;
+		return beanClass != null ? getDescriptors(getDescriptorArray(beanClass)).clone() : ArrayConstants.EMPTY_DESCRIPTOR_ARRAY;
 	}
 
 	/**
@@ -566,7 +619,7 @@ public class SimplePropertyUtilsBean {
 					CallSite callSite = LambdaMetafactory.metafactory(
 							lookup,
 							"get",
-							MethodHandleUtils.METHOD_TYPE_SUPPLIER,
+							LambdaUtils.METHOD_TYPE_SUPPLIER,
 							MethodType.methodType(Object.class),
 							constructor,
 							MethodType.methodType(clazz)
@@ -715,16 +768,17 @@ public class SimplePropertyUtilsBean {
 		}
 
 
-		private Function<Object, Object> getGetter(Object[] descriptorArray, String name) {
-			return ((Map<String, Function<Object, Object>>)descriptorArray[GETTER_MAP]).get(name);
+
+		private<T, P> Function<T, P> getGetter(Object[] descriptorArray, String name) {
+			return ((Map<String, Function<T, P>>)descriptorArray[GETTER_MAP]).get(name);
 		}
-		private BiConsumer<Object, Object> getSetter(Object[] descriptorArray, String name) {
-			return ((Map<String, BiConsumer<Object, Object>>)descriptorArray[SETTER_MAP]).get(name);
+		private<T, P> BiConsumer<T, P> getSetter(Object[] descriptorArray, String name) {
+			return ((Map<String, BiConsumer<T, P>>)descriptorArray[SETTER_MAP]).get(name);
 		}
 		private PropertyDescriptor getDescriptor(Object[] descriptorArray, String name) {
 			return ((Map<String, PropertyDescriptor>)descriptorArray[DESCRIPTOR_MAP]).get(name);
 		}
-		private PropertyDescriptor[] getDescriptors(Object[] descriptorArray) {
+		PropertyDescriptor[] getDescriptors(Object[] descriptorArray) {
 			return (PropertyDescriptor[])descriptorArray[DESCRIPTORS];
 		}
 

@@ -13,7 +13,9 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BiConsumer;
 import java.util.function.BiPredicate;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
@@ -36,7 +38,7 @@ public class BeanHelper {
 	public static void setDisableException(boolean disableException) {
 		NestedPropertyUtilsBean.getInstance().setDisableException(disableException);
 	}
-	
+
 	public static boolean isDisableException() {
 		return NestedPropertyUtilsBean.getInstance().isDisableException();
 	}
@@ -53,7 +55,7 @@ public class BeanHelper {
 	public static void  registerConverter(Class toType, Converter converter, boolean overriddenByGlobalEnableException) {
 		NestedPropertyUtilsBean.getInstance().registerConverter(toType, converter, overriddenByGlobalEnableException);
 	}
-	
+
 	/**
      * Register a custom {@link Converter} for the specified destination
      * <code>Class</code>, replacing any previously registered Converter.
@@ -65,9 +67,9 @@ public class BeanHelper {
 	public static void  registerConverter(Class toType, Converter converter) {
 		NestedPropertyUtilsBean.getInstance().registerConverter(toType, converter);
 	}
-	
+
 	/**
-	 * Returns the {@link TypeConverter} 
+	 * Returns the {@link TypeConverter}
 	 * @return the <code>TypeConverter</code> instance.
 	 */
 	public static TypeConverter getTypeConverter() {
@@ -98,8 +100,8 @@ public class BeanHelper {
 	public static <E> E convert(Object value, Class<E> toType) {
 		return NestedPropertyUtilsBean.getInstance().convert(value, toType);
 	}
-	
-	
+
+
 	/**
      * <p>Retrieve the property descriptors for the specified bean class,
      * 	introspecting and caching them the first time a particular bean class
@@ -110,7 +112,7 @@ public class BeanHelper {
 	public static Map<String, PropertyDescriptor> getPropertyDescriptorMap(Class beanClass) {
 		return NestedPropertyUtilsBean.getInstance().getPropertyDescriptorMap(beanClass);
 	}
-	
+
 	/**
 	 * <p>Retrieve the property descriptors for the specified bean class,
 	 * 	introspecting and caching them the first time a particular bean class
@@ -121,7 +123,7 @@ public class BeanHelper {
 	public static  PropertyDescriptor[] getPropertyDescriptors(Class beanClass) {
 		return NestedPropertyUtilsBean.getInstance().getPropertyDescriptors(beanClass);
 	}
-	
+
 	/**
 	 * <p>Retrieve the property descriptor for the specified property of the
      * specified bean class, or return <code>null</code> if there is no such
@@ -135,6 +137,7 @@ public class BeanHelper {
 	public static PropertyDescriptor getPropertyDescriptor(Class beanClass, String name) {
 		return NestedPropertyUtilsBean.getInstance().getPropertyDescriptor(beanClass, name);
 	}
+
 	/**
 	 * <p>Retrieve the property descriptor for the specified property of the
      * specified bean, or return <code>null</code> if there is no such
@@ -148,8 +151,28 @@ public class BeanHelper {
 	public static PropertyDescriptor getPropertyDescriptor(Object bean, String name) {
 		return NestedPropertyUtilsBean.getInstance().getPropertyDescriptor(bean, name);
 	}
-	
-	
+
+	/**
+	 * fetch getter
+	 * @param beanClass bean class
+	 * @param name property name
+	 * @return getter
+	 */
+	public static<T, P> Function<T, P> getPropertyGetter(Class<T> beanClass, String name) {
+		return SimplePropertyUtilsBean.getInstance().getPropertyGetter(beanClass, name);
+	}
+
+
+	/**
+	 * fetch setter
+	 * @param beanClass bean class
+	 * @param name property name
+	 * @return setter
+	 */
+	public<T, P> BiConsumer<T, P> getPropertySetter(Class<T> beanClass, String name) {
+		return SimplePropertyUtilsBean.getInstance().getPropertySetter(beanClass, name);
+	}
+
 	/**
      * Test whether or not exists the  specified name for the specified property of the
      * specified bean class<br>
@@ -158,9 +181,10 @@ public class BeanHelper {
      *  which a property descriptor is requested
      * @return if exists，return true, otherwise return false
      */
-	public static  boolean hasProperty(Class beanClass , String name) {
+	public static boolean hasProperty(Class beanClass , String name) {
 		return NestedPropertyUtilsBean.getInstance().getPropertyDescriptor(beanClass, name) != null;
 	}
+
 	/**
      * Return the Java Class representing the property type of the specified
      * property, or <code>null</code> if there is no such property for the
@@ -192,12 +216,11 @@ public class BeanHelper {
     * @return  The property type
     */
    public static  Class getPropertyType(Class beanClass, String name) {
-   		return NestedPropertyUtilsBean.getInstance().getPropertyType(beanClass, name);
+	   return NestedPropertyUtilsBean.getInstance().getPropertyType(beanClass, name);
    }
 
-   
-	
-	 /**
+
+	/**
      * Return the value of the specified property of the specified bean,
      * no matter which property reference format is used, with no
      * type conversions. 
@@ -211,7 +234,7 @@ public class BeanHelper {
 	}
 
 
-	 /**
+	/**
      * Return the value of the specified property of the specified bean,
      * no matter which property reference format is used, with no
      * type conversions.
@@ -325,6 +348,7 @@ public class BeanHelper {
 	public static<T> T newInstance(Class<T> clazz) throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
 		return SimplePropertyUtilsBean.getInstance().newInstance(clazz);
 	}
+
 	/**
 	 * <p>Copy property values from the "origin" bean to the "destination" bean
 	 * for all cases where the property names are the same and on the specified condition (even though the
@@ -437,16 +461,17 @@ public class BeanHelper {
 	public static <T> boolean copyOnPreValueCondition(Object origin, T target, Predicate<Object> preValueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
 		String[] names = parseGetterOrSetterNames(ignoreProperties);
 		return copyOnCondition(origin, target, (d, v) -> {
-					if (matchTargetProperty(names, d.getName())) {
-						return false;
-					}
-					if (preValueCondition == null) {
-						return true;
-					}
-					Method readMethod = d.getReadMethod();
-					return readMethod != null && preValueCondition.test(SimplePropertyUtilsBean.getInstance().invokeReadMethod(target, d));
-				});
+			if (matchTargetProperty(names, d.getName())) {
+				return false;
+			}
+			if (preValueCondition == null) {
+				return true;
+			}
+			Method readMethod = d.getReadMethod();
+			return readMethod != null && preValueCondition.test(SimplePropertyUtilsBean.getInstance().invokeReadMethod(target, d));
+		});
 	}
+
 	/**
 	 * <p>Copy property values from the "origin" bean to the "destination" bean
 	 * for all cases where the property names are the same and on the specified condition (even though the
@@ -472,11 +497,12 @@ public class BeanHelper {
 			return copyToMapOnCondition(origin, (Map<String, Object>) target, (e, v) -> preValueCondition.test(e.getValue()));
 		} else {
 			return copyOnCondition(origin, target, (d, v) -> {
-						Method readMethod = d.getReadMethod();
-						return readMethod != null && preValueCondition.test(SimplePropertyUtilsBean.getInstance().invokeReadMethod(target, d));
-					});
+				Method readMethod = d.getReadMethod();
+				return readMethod != null && preValueCondition.test(SimplePropertyUtilsBean.getInstance().invokeReadMethod(target, d));
+			});
 		}
 	}
+
 	/**
 	 * <p>Copy property values from the "origin" bean to the "destination" map
 	 * for all cases where the property names are the same with map key and on the specified value condition is pass.

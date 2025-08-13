@@ -1,10 +1,7 @@
 package com.honzel.core.util.generic;
 import com.honzel.core.constant.ArrayConstants;
 
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.lang.reflect.TypeVariable;
-import java.lang.reflect.WildcardType;
+import java.lang.reflect.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -44,7 +41,7 @@ public class GenericTypeUtils {
                 // 获取参数化类型的实际类型
                 Type[] actualTypes = parameterizedType.getActualTypeArguments();
                 // 获取参数化类型的原始类型
-                Class<?> rawType = getClassFromType(parameterizedType.getRawType());
+                Class<?> rawType = erase(parameterizedType.getRawType());
                 // 获取参数化类型的类型参数
                 TypeVariable<?>[] typeVariables = baseClass.equals(rawType) ? typeParameters : rawType.getTypeParameters();
                 // 解析并记录类型参数到typeMap中
@@ -65,27 +62,32 @@ public class GenericTypeUtils {
         Class<?>[] result = new Class<?>[typeParameters.length];
         for (int i = 0; i < typeParameters.length; i++) {
             Type resolvedType = typeMap.getOrDefault(typeParameters[i], typeParameters[i]);
-            result[i] = getClassFromType(resolvedType);
+            result[i] = erase(resolvedType);
         }
         return result;
     }
 
     // 将Type转换为Class，处理ParameterizedType的情况
-    private static Class<?> getClassFromType(Type type) {
+    public static Class<?> erase(Type type) {
         if (type instanceof Class) {
             return (Class<?>) type;
         }
         if (type instanceof ParameterizedType) {
-            return getClassFromType(((ParameterizedType) type).getRawType());
+            return erase(((ParameterizedType) type).getRawType());
         }
         if (type instanceof TypeVariable) {
             Type[] bounds = ((TypeVariable<?>) type).getBounds();
-            return bounds.length > 0 ? getClassFromType(bounds[0]) : Object.class;
+            return bounds.length > 0 ? erase(bounds[0]) : Object.class;
         }
         if (type instanceof WildcardType) {
             Type[] bounds  = ((WildcardType) type).getUpperBounds();
-            return bounds.length > 0 ? getClassFromType(bounds[0]) : Object.class;
+            return bounds.length > 0 ? erase(bounds[0]) : Object.class;
+        }
+        if (type instanceof GenericArrayType) {
+            GenericArrayType gat = (GenericArrayType)type;
+            return Array.newInstance(erase(gat.getGenericComponentType()), 0).getClass();
         }
         return Object.class;
     }
+
 }
