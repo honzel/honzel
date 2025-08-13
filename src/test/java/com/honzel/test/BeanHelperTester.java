@@ -35,8 +35,8 @@ public class BeanHelperTester {
 		Branch<Long, Object, Object> bean = BeanHelper.newInstance(Branch.class);
 		Method readMethod = BeanHelper.getPropertyDescriptor(Branch.class, "key").getReadMethod();
 		Method writtenMethod = BeanHelper.getPropertyDescriptor(Branch.class, "key").getWriteMethod();
-		Function<Branch, Long> getter = SimplePropertyUtilsBean.getInstance().getPropertyGetter(Branch.class, "key");
-		BiConsumer<Branch, Long> setter = SimplePropertyUtilsBean.getInstance().getPropertySetter(Branch.class, "key");
+		Function<Branch, Long> getter = BeanHelper.getPropertyGetter(Branch.class, "key");
+		BiConsumer<Branch, Long> setter = BeanHelper.getPropertySetter(Branch.class, "key");
 		MethodHandles.Lookup lookup = SimplePropertyUtilsBean.getInstance().getMethodLookup(Branch.class);
 		MethodHandle getterHandle = lookup.unreflect(readMethod);
 		MethodHandle setterHandle = lookup.unreflect(writtenMethod);
@@ -64,7 +64,7 @@ public class BeanHelperTester {
 
 		stopWatch.start();
 		for (long i = 0; i < count; i++) {
-			Object key = getterHandle.invokeExact(bean);
+			Object key = getterHandle.invoke(bean);
 		}
 		stopWatch.suspend();
 		System.out.println("getterHandle: " + stopWatch.getTime() + "毫秒");

@@ -169,7 +169,7 @@ public class BeanHelper {
 	 * @param name property name
 	 * @return setter
 	 */
-	public<T, P> BiConsumer<T, P> getPropertySetter(Class<T> beanClass, String name) {
+	public static<T, P> BiConsumer<T, P> getPropertySetter(Class<T> beanClass, String name) {
 		return SimplePropertyUtilsBean.getInstance().getPropertySetter(beanClass, name);
 	}
 
