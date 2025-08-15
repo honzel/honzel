@@ -81,6 +81,14 @@ public class BeanHelperTester {
 
 		stopWatch.start();
 		for (long i = 0; i < count; i++) {
+			Object key = LambdaPropertyUtilsBean.getInstance().getProperty(bean, "key", false);
+		}
+		stopWatch.suspend();
+		System.out.println("getProperty: " + stopWatch.getTime() + "毫秒");
+		stopWatch.reset();
+
+		stopWatch.start();
+		for (long i = 0; i < count; i++) {
 			bean.setKey(i);
 		}
 		stopWatch.suspend();

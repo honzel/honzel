@@ -479,8 +479,8 @@ abstract class BasePropertyUtilsBean<G, S, F> {
 		return beanInfoArray;
 	}
 
-	protected Object[] getBeanInfoIfPresent(Class beanClass) {
-		return descriptorsCache.get(beanClass);
+	public boolean containsClass(Class beanClass) {
+		return descriptorsCache.containsKey(beanClass);
 	}
 
 	Object[] findBeanInfoArray(Class beanClass) {
@@ -553,66 +553,67 @@ abstract class BasePropertyUtilsBean<G, S, F> {
 		}
 	}
 
-//	@SuppressWarnings("unchecked")
-public boolean copyOnCondition(Object source, Object target, BiPredicate<PropertyDescriptor, Object> condition) {
-	if (source == null || target == null) {
-		return false;
-	}
-	Map<String, Object[]> dstPropertyMap = findPropertyMap(target.getClass());
-	boolean result = false;
-	if (source instanceof Map) {
-		// 原类型为map
-		for (Map.Entry<Object, Object> entry : ((Map<Object, Object>) source).entrySet()) {
-			Object name = entry.getKey();
-			if (!(name instanceof String)) {
-				continue;
+
+	//	@SuppressWarnings("unchecked")
+	public boolean copyOnCondition(Object source, Object target, BiPredicate<PropertyDescriptor, Object> condition) {
+		if (source == null || target == null) {
+			return false;
+		}
+		Map<String, Object[]> dstPropertyMap = findPropertyMap(target.getClass());
+		boolean result = false;
+		if (source instanceof Map) {
+			// 原类型为map
+			for (Map.Entry<Object, Object> entry : ((Map<Object, Object>) source).entrySet()) {
+				Object name = entry.getKey();
+				if (!(name instanceof String)) {
+					continue;
+				}
+				Object[] propertyArray = dstPropertyMap.get(name);
+				S setter = getSetter(propertyArray);
+				if (setter == null) {
+					// 没有目标setter
+					continue;
+				}
+				PropertyDescriptor targetDescriptor = getDescriptor(propertyArray);
+				// 获取原属性值
+				Object value = entry.getValue();
+				// 条件校验
+				if (condition != null && !condition.test(targetDescriptor, value)) {
+					continue;
+				}
+				if (invokeWriteMethod(target, setter, targetDescriptor, value)) {
+					result = true;
+				}
 			}
-			Object[] propertyArray = dstPropertyMap.get(name);
-			S setter = getSetter(propertyArray);
-			if (setter == null) {
-				// 没有目标setter
-				continue;
-			}
-			PropertyDescriptor targetDescriptor = getDescriptor(propertyArray);
-			// 获取原属性值
-			Object value = entry.getValue();
-			// 条件校验
-			if (condition != null && !condition.test(targetDescriptor, value)) {
-				continue;
-			}
-			if (invokeWriteMethod(target, setter, targetDescriptor, value)) {
-				result = true;
+		} else {
+			// 原始类型为bean
+			Map<String, Object[]> srcPropertyMap = findPropertyMap(source.getClass());
+			for (Map.Entry<String, Object[]> entry : dstPropertyMap.entrySet()) {
+				S setter = getSetter(entry.getValue());
+				if (setter == null) {
+					// No setter
+					continue;
+				}
+				Object[] srcPropertyArray = srcPropertyMap.get(entry.getKey());
+				G getter = getGetter(srcPropertyArray);
+				if (getter == null) {
+					// No getter
+					continue;
+				}
+				PropertyDescriptor targetDescriptor = getDescriptor(entry.getValue());
+				// 获取原属性值
+				Object value = invokeReadMethod(source, getter, getDescriptor(srcPropertyArray));
+				// 条件校验
+				if (condition != null && !condition.test(targetDescriptor, value)) {
+					continue;
+				}
+				if (invokeWriteMethod(target, setter, targetDescriptor, value)) {
+					result = true;
+				}
 			}
 		}
-	} else {
-		// 原始类型为bean
-		Map<String, Object[]> srcPropertyMap = findPropertyMap(source.getClass());
-		for (Map.Entry<String, Object[]> entry : dstPropertyMap.entrySet()) {
-			S setter = getSetter(entry.getValue());
-			if (setter == null) {
-				// No setter
-				continue;
-			}
-			Object[] srcPropertyArray = srcPropertyMap.get(entry.getKey());
-			G getter = getGetter(srcPropertyArray);
-			if (getter == null) {
-				// No getter
-				continue;
-			}
-			PropertyDescriptor targetDescriptor = getDescriptor(entry.getValue());
-			// 获取原属性值
-			Object value = invokeReadMethod(source, getter, getDescriptor(srcPropertyArray));
-			// 条件校验
-			if (condition != null && !condition.test(targetDescriptor, value)) {
-				continue;
-			}
-			if (invokeWriteMethod(target, setter, targetDescriptor, value)) {
-				result = true;
-			}
-		}
+		return result;
 	}
-	return result;
-}
 
 	protected abstract boolean invokeWriteMethod(Object bean, S setter, PropertyDescriptor descriptor, Object value);
 

@@ -308,6 +308,9 @@ public class BeanHelper {
      * @return returns the destination bean whose properties are modified
      */
 	public static<T>  T copyProperties(Object source, T target) {
+		if (target != null && LambdaPropertyUtilsBean.getInstance().containsClass(target.getClass())) {
+			return LambdaPropertyUtilsBean.getInstance().copyProperties(source, target);
+		}
 		return SimplePropertyUtilsBean.getInstance().copyProperties(source, target);
 	}
 
@@ -382,6 +385,10 @@ public class BeanHelper {
 	 * @return returns false when none property is copied, otherwise returns true
 	 */
 	public static boolean copyOnCondition(Object source, Object target, BiPredicate<PropertyDescriptor, Object> condition) {
+		if (target != null && LambdaPropertyUtilsBean.getInstance().containsClass(target.getClass())) {
+			// lambda
+			return LambdaPropertyUtilsBean.getInstance().copyOnCondition(source, target, condition);
+		}
 		return SimplePropertyUtilsBean.getInstance().copyOnCondition(source, target, condition);
 	}
 
@@ -400,6 +407,10 @@ public class BeanHelper {
 	 * @return returns false when none property is copied, otherwise returns true
 	 */
 	public static boolean copyToMapOnCondition(Object origin, Map<String, Object> target, BiPredicate<Entry<String, Object>, Object> condition) {
+		if (origin != null && LambdaPropertyUtilsBean.getInstance().containsClass(origin.getClass())) {
+			// lambda
+			return LambdaPropertyUtilsBean.getInstance().copyToMapOnCondition(origin, target, condition);
+		}
 		return SimplePropertyUtilsBean.getInstance().copyToMapOnCondition(origin, target, condition);
 	}
 
