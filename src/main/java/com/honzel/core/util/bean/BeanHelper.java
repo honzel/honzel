@@ -9,6 +9,7 @@ import com.honzel.core.vo.Entry;
 
 import java.beans.PropertyDescriptor;
 import java.lang.invoke.SerializedLambda;
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -84,7 +85,7 @@ public class BeanHelper {
 	 * @param toType Class for which to return a registered Converter
 	 * @return the registered <code>Converter</code> for the specified type
 	 */
-	public static Converter lookup(Class toType) {
+	public static Converter lookupConverter(Class toType) {
 		return NestedPropertyUtilsBean.getInstance().lookup(toType);
 	}
 
@@ -121,7 +122,7 @@ public class BeanHelper {
 	 * @return the property descriptors
 	 */
 	public static  PropertyDescriptor[] getPropertyDescriptors(Class beanClass) {
-		return NestedPropertyUtilsBean.getInstance().getPropertyDescriptors(beanClass);
+		return SimplePropertyUtilsBean.getInstance().getPropertyDescriptors(beanClass);
 	}
 
 	/**
@@ -159,7 +160,7 @@ public class BeanHelper {
 	 * @return getter
 	 */
 	public static<T, P> Function<T, P> getPropertyGetter(Class<T> beanClass, String name) {
-		return SimplePropertyUtilsBean.getInstance().getPropertyGetter(beanClass, name);
+		return LambdaPropertyUtilsBean.getInstance().getPropertyGetter(beanClass, name);
 	}
 
 
@@ -170,7 +171,22 @@ public class BeanHelper {
 	 * @return setter
 	 */
 	public static<T, P> BiConsumer<T, P> getPropertySetter(Class<T> beanClass, String name) {
-		return SimplePropertyUtilsBean.getInstance().getPropertySetter(beanClass, name);
+		return LambdaPropertyUtilsBean.getInstance().getPropertySetter(beanClass, name);
+	}
+
+
+	/**
+	 * If this method is invoked by JNI code with no caller class on the stack, the accessible flag can only be set if the member and the declaring class are public, and the class is in a package that is exported unconditionally.
+	 * If there is a security manager, its checkPermission method is first called with a ReflectPermission("suppressAccessChecks") permission.
+	 * Returns:
+	 * true if the accessible flag is set to true; false if access cannot be enabled.
+	 * Throws:
+	 * SecurityException – if the request is denied by the security manager
+	 * @param accessible the accessible object
+	 * @return true if the accessible flag is set to true; false if access cannot be enabled.
+	 */
+	public static boolean trySetAccessible(AccessibleObject accessible) {
+		return BasePropertyUtilsBean.trySetAccessible(accessible);
 	}
 
 	/**
@@ -230,7 +246,7 @@ public class BeanHelper {
      * @return Return the value of the specified simple property
      */
 	public static  Object getSimpleProperty(Object bean , String name) {
-		return NestedPropertyUtilsBean.getInstance().getSimpleProperty(bean, name);
+		return SimplePropertyUtilsBean.getInstance().getProperty(bean, name, false);
 	}
 
 
@@ -270,7 +286,7 @@ public class BeanHelper {
      * @return Return true when success to set,otherwise return false
      */
 	public static boolean setSimpleProperty(Object bean , String name, Object value) {
-		return NestedPropertyUtilsBean.getInstance().setSimpleProperty(bean, name, value);
+		return SimplePropertyUtilsBean.getInstance().setProperty(bean, name, value, false);
 	}
 
     /**

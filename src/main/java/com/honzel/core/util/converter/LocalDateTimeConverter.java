@@ -368,7 +368,7 @@ public class LocalDateTimeConverter extends AbstractConverter {
 				seconds = temporal.getLong(ChronoField.INSTANT_SECONDS);
 			} else {
 				supported = temporal.isSupported(ChronoField.EPOCH_DAY);
-				seconds = supported ? temporal.getLong(ChronoField.EPOCH_DAY) : 0L;
+				seconds = supported ? TimeUnit.DAYS.toSeconds(temporal.getLong(ChronoField.EPOCH_DAY)) : 0L;
 				if (temporal.isSupported(ChronoField.SECOND_OF_DAY)) {
 					seconds += temporal.getLong(ChronoField.SECOND_OF_DAY);
 					supported = true;

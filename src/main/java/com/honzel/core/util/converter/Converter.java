@@ -1,4 +1,9 @@
 package com.honzel.core.util.converter;
+
+import com.honzel.core.util.generic.GenericTypeUtils;
+
+import java.lang.reflect.Type;
+
 /**
   * <p>General purpose data type converter that can be registered and used
  * within the BeanHelper package to manage the conversion of objects from
@@ -17,4 +22,8 @@ public interface Converter {
 	 * @return The converted  value.
 	 */
 	Object convert(Object value, Class toType);
+
+	default Object convert(Object value, Type toType) {
+		return convert(value, GenericTypeUtils.erase(toType));
+	}
 }

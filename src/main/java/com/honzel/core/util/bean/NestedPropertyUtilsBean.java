@@ -14,6 +14,7 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 嵌套bean工具类
@@ -23,37 +24,30 @@ import java.util.*;
 @SuppressWarnings({"rawtypes","unchecked"})
 public class NestedPropertyUtilsBean {
 
-	private static NestedPropertyUtilsBean nestedPropertyUtilsBean = new NestedPropertyUtilsBean();
-	
-	
+	private static final NestedPropertyUtilsBean simpleNestedPropertyUtilsBean = new NestedPropertyUtilsBean(SimplePropertyUtilsBean.getInstance());
+	private static final NestedPropertyUtilsBean lambdaNestedPropertyUtilsBean = new NestedPropertyUtilsBean(LambdaPropertyUtilsBean.getInstance());
+
+
 	private static final String opened = "[.";
 	private static final String closed = "]";
 
 	private static final int ERROR_TYPES = Resolver.LINK | Resolver.END;
 
 
+	private BasePropertyUtilsBean propertyUtilsBean;
 
-	private SimplePropertyUtilsBean propertyUtilsBean;
-
-	private NestedPropertyUtilsBean() {
-		this.propertyUtilsBean = SimplePropertyUtilsBean.getInstance();
+	private NestedPropertyUtilsBean(BasePropertyUtilsBean propertyUtilsBean) {
+		this.propertyUtilsBean = propertyUtilsBean;
 	}
 
-	private NestedPropertyUtilsBean(TypeConverter typeConverter) {
-		this.propertyUtilsBean = SimplePropertyUtilsBean.getInstance(typeConverter);
-	}
 
 	public static NestedPropertyUtilsBean getInstance() {
-		return nestedPropertyUtilsBean;
+		return simpleNestedPropertyUtilsBean;
 	}
-	/**
-	 *
-	 * @param typeConverter the type converter for this instance
-	 * @return returns the instance of this class
-	 */
-	public static NestedPropertyUtilsBean getInstance(TypeConverter typeConverter) {
-		return new NestedPropertyUtilsBean(typeConverter);
+	public static NestedPropertyUtilsBean getLambdaInstance() {
+		return lambdaNestedPropertyUtilsBean;
 	}
+
 
 	/**
 	 * disable exception or not
@@ -66,6 +60,7 @@ public class NestedPropertyUtilsBean {
 	public boolean isDisableException() {
 		return propertyUtilsBean.isDisableException();
 	}
+
 	/**
      * Register a custom {@link Converter} for the specified destination
      * <code>Class</code>, replacing any previously registered Converter.
@@ -78,6 +73,7 @@ public class NestedPropertyUtilsBean {
 	public void  registerConverter(Class toType, Converter converter) {
 		registerConverter(toType, converter, true);
 	}
+
 	/**
 	 * Returns the {@link TypeConverter}
 	 * @return returns the type converter of this util
@@ -105,13 +101,13 @@ public class NestedPropertyUtilsBean {
 		}
 	}
 
-	 /**
+	/**
      * Look up and return any registered {@link Converter} for the specified
      * destination class; if there is no registered Converter, return
      * <code>null</code>.
      *
      * @param toType Class for which to return a registered Converter
-	  * @return returns the converter for the specified type
+	 * @return returns the converter for the specified type
      */
 	public Converter lookup(Class toType) {
 		return getTypeConverter().lookup(toType);
@@ -138,12 +134,16 @@ public class NestedPropertyUtilsBean {
 	 * @return the property descriptors
 	 */
 	public Map<String, PropertyDescriptor> getPropertyDescriptorMap(Class beanClass) {
-		Map<String, PropertyDescriptor> descriptorMap = propertyUtilsBean.getDescriptorMap(beanClass);
-		if (descriptorMap != null) {
-			return Collections.unmodifiableMap(descriptorMap);
+		if (beanClass == null) {
+			return null;
 		}
-		return Collections.emptyMap();
+		Map<String, Object[]> descriptorMap = propertyUtilsBean.findPropertyMap(beanClass);
+		if (descriptorMap.isEmpty()) {
+			return Collections.emptyMap();
+		}
+		return descriptorMap.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, entry -> propertyUtilsBean.getDescriptor(entry.getValue())));
 	}
+
 	/**
 	 * <p>Retrieve the property descriptors for the specified bean class,
 	 * 	introspecting and caching them the first time a particular bean class
@@ -198,7 +198,7 @@ public class NestedPropertyUtilsBean {
 	 * @return returns the Java Class representing the property type of the specified  property
 	 */
 	public Class getPropertyType(Object bean, String name) {
-	   return getPropertyType(bean, name, false);
+		return getPropertyType(bean, name, false);
 	}
 
    /**
@@ -215,11 +215,11 @@ public class NestedPropertyUtilsBean {
     * @return returns the Java Class representing the property type of the specified  property
     */
    public  Class getPropertyType(Class beanClass, String name) {
-   	return getPropertyType(beanClass, name, true);
+	   return getPropertyType(beanClass, name, true);
    }
 
 
-	 /**
+	/**
 	 * <p>Copy property values from the "origin" bean to the "destination" bean
 	 * for all cases where the property names are the same (even though the
 	 * actual getter and setter methods might have been customized via
@@ -238,7 +238,7 @@ public class NestedPropertyUtilsBean {
 	 * @return returns the destination bean whose properties are modified
 	 */
 	public <T> T copyProperties(Object source, T target) {
-		return propertyUtilsBean.copyProperties(source,  target);
+		return (T) propertyUtilsBean.copyProperties(source, target);
 	}
 
 	private  PropertyDescriptor getPropertyDescriptor(Object bean, String name, boolean classInstance) {
@@ -284,7 +284,6 @@ public class NestedPropertyUtilsBean {
 		}
 		return null;
 	}
-
 
 
 	/**
@@ -372,37 +371,37 @@ public class NestedPropertyUtilsBean {
 					if(ind < 0) return null;
 					propClass = beanClass.getComponentType();
 				} else //map type
-				if(Map.class.isAssignableFrom(beanClass)) {
-					if(!mapped) {
-						descriptor = propertyUtilsBean.getPropertyDescriptor(beanClass, (String) key);
-					}
-					if(descriptor != null) {
-						propClass = descriptor.getPropertyType();
-					} else
-						propClass = getItemClass(parentClass, pKey);
-				} else //collection type
-				if(Iterable.class.isAssignableFrom(beanClass)) {
-					if(!mapped) {
-						descriptor = propertyUtilsBean.getPropertyDescriptor(beanClass, (String) key);
-					}
-					if(descriptor != null) {
-						propClass = descriptor.getPropertyType();
-					} else {
-						int ind = propertyUtilsBean.findIndex(key);
-						if(ind < 0) return null;
-						propClass = getItemClass(parentClass, pKey);
-					}
-				} else { //common type
-					String pName = null;
-					if(key != null) {
-						pName = key.toString();
-					}
-					descriptor = propertyUtilsBean.getPropertyDescriptor(beanClass, pName);
-					if(descriptor == null) {
-						return null;
-					}
-					propClass = descriptor.getPropertyType();
-				}
+					if(Map.class.isAssignableFrom(beanClass)) {
+						if(!mapped) {
+							descriptor = propertyUtilsBean.getPropertyDescriptor(beanClass, (String) key);
+						}
+						if(descriptor != null) {
+							propClass = descriptor.getPropertyType();
+						} else
+							propClass = getItemClass(parentClass, pKey);
+					} else //collection type
+						if(Iterable.class.isAssignableFrom(beanClass)) {
+							if(!mapped) {
+								descriptor = propertyUtilsBean.getPropertyDescriptor(beanClass, (String) key);
+							}
+							if(descriptor != null) {
+								propClass = descriptor.getPropertyType();
+							} else {
+								int ind = propertyUtilsBean.findIndex(key);
+								if(ind < 0) return null;
+								propClass = getItemClass(parentClass, pKey);
+							}
+						} else { //common type
+							String pName = null;
+							if(key != null) {
+								pName = key.toString();
+							}
+							descriptor = propertyUtilsBean.getPropertyDescriptor(beanClass, pName);
+							if(descriptor == null) {
+								return null;
+							}
+							propClass = descriptor.getPropertyType();
+						}
 				if(propClass == null) {
 					return null;
 				}
@@ -426,7 +425,7 @@ public class NestedPropertyUtilsBean {
 		}
 	}
 
-	 /**
+	/**
      * Return the value of the specified property of the specified bean,
      * no matter which property reference format is used, with no
      * type conversions.
@@ -439,7 +438,8 @@ public class NestedPropertyUtilsBean {
 	public Object getSimpleProperty(Object bean , String name) {
 		return propertyUtilsBean.getProperty(bean, name, false);
 	}
-	 /**
+
+	/**
      * Return the value of the specified property of the specified bean,
      * no matter which property reference format is used, with no
      * type conversions.
@@ -468,7 +468,7 @@ public class NestedPropertyUtilsBean {
 				return null;
 			}
 		}
-    	Resolver resolver = getResolver(name, pos);
+		Resolver resolver = getResolver(name, pos);
 		while (resolver.hasNext()) {
 			if (pos > 0 && resolver.getType() == Resolver.START)
 				continue;
@@ -501,7 +501,8 @@ public class NestedPropertyUtilsBean {
 	public boolean setSimpleProperty(Object bean, String name, Object value) {
 		return propertyUtilsBean.setProperty(bean, name, value, false);
 	}
-	 /**
+
+	/**
      * <p>Set the specified property value, performing type conversions as
      * required to conform to the type of the destination property.</p>
      *
@@ -520,8 +521,8 @@ public class NestedPropertyUtilsBean {
 			if(name != null) {
 				name = name.trim();
 			}
-    		return propertyUtilsBean.setProperty(bean, name, value, false);
-    	}
+			return propertyUtilsBean.setProperty(bean, name, value, false);
+		}
 		Object root = bean;
 		Resolver resolver = getResolver(name, 0);
 		Object splitBean = null;
@@ -537,30 +538,28 @@ public class NestedPropertyUtilsBean {
 						continue;
 					throw new IllegalArgumentException("The property expression '" + name + "' is invalid .");
 				}
-				Object prop = null;
-				Object key =null;
 				boolean mapped = resolver.isPair();
-				key = findKey(resolver, root);
-				prop = propertyUtilsBean.getProperty(bean, key, mapped);
+				Object key = findKey(resolver, root);
+				Object prop = propertyUtilsBean.getProperty(bean, key, mapped);
 				Class propClass = null;
-				PropertyDescriptor descriptor = null;
+				Object[] propertyArray = null;
 				if (prop != null) {
 					propClass = prop.getClass();
 				} else {
 					if (!mapped) {
-						descriptor = propertyUtilsBean.getPropertyDescriptor(bean.getClass(), key.toString());
+						propertyArray = propertyUtilsBean.getPropertyArray(bean.getClass(), key.toString());
 					}
-					if (descriptor == null) {
+					if (propertyArray == null) {
 						if(bean.getClass().isArray()) {
 							mapped = true;
 							propClass = bean.getClass().getComponentType();
 						} else if (mapped) {
 							mapped = false;
-							descriptor = propertyUtilsBean.getPropertyDescriptor(bean.getClass(), name);
+							propertyArray = propertyUtilsBean.getPropertyArray(bean.getClass(), name);
 						}
 					}
-					if (propClass == null && descriptor != null) {
-						propClass = descriptor.getPropertyType();
+					if (propClass == null && propertyArray != null) {
+						propClass = propertyUtilsBean.getDescriptor(propertyArray).getPropertyType();
 					}
 					if (propClass == null) {
 						throw new IllegalArgumentException("Can not be introspected the property type of  the property '"
@@ -597,20 +596,20 @@ public class NestedPropertyUtilsBean {
 							prop = propertyUtilsBean.newInstance(propClass);
 						}
 					} else //array object
-					if (propClass.isArray()) {
-						int ind = propertyUtilsBean.findIndex(itemKey);
-						if (itemMapped && ind < 0) {
-							throw new ArrayIndexOutOfBoundsException(ind);
+						if (propClass.isArray()) {
+							int ind = propertyUtilsBean.findIndex(itemKey);
+							if (itemMapped && ind < 0) {
+								throw new ArrayIndexOutOfBoundsException(ind);
+							}
+							int len = Array.getLength(prop);
+							itemClass = propClass.getComponentType();
+							if (ind >= len) {
+								Object arr = Array.newInstance(itemClass, ind + 1);
+								System.arraycopy(prop, 0, arr, 0, len);
+								prop = arr;
+								isNew = true;
+							}
 						}
-						int len = Array.getLength(prop);
-						itemClass = propClass.getComponentType();
-						if (ind >= len) {
-							Object arr = Array.newInstance(itemClass, ind + 1);
-							System.arraycopy(prop, 0, arr, 0, len);
-							prop = arr;
-							isNew = true;
-						}
-					}
 					if (resolver.isLast()) {
 						if (!propertyUtilsBean.setProperty(prop, itemKey, value, itemMapped)) {
 							return false;
@@ -631,10 +630,10 @@ public class NestedPropertyUtilsBean {
 					}
 					if (item == null) {
 						if (itemClass == null) {
-							if (descriptor == null) {
-								descriptor = propertyUtilsBean.getPropertyDescriptor(bean.getClass(), key.toString());
+							if (propertyArray == null) {
+								propertyArray = propertyUtilsBean.getPropertyArray(bean.getClass(), key.toString());
 							}
-							itemClass = getItemClass(descriptor);
+							itemClass = getItemClass(propertyUtilsBean.getDescriptor(propertyArray));
 						}
 						if (itemClass.isArray()) {
 							item = Array.newInstance(itemClass, 0);
@@ -648,8 +647,7 @@ public class NestedPropertyUtilsBean {
 							if(isNew && !propertyUtilsBean.setProperty(bean, key, prop, mapped)) {
 								return false;
 							}
-						} else
-						if (isNew) {
+						} else if (isNew) {
 							if(!propertyUtilsBean.setProperty(prop, itemKey, item, itemMapped)) {
 								return false;
 							}
@@ -668,21 +666,21 @@ public class NestedPropertyUtilsBean {
 					}
 					prop = item;
 				} else // if the usual property is null
-				if (prop == null) {
-					prop = propertyUtilsBean.newInstance(propClass);
-					if (split) {
-						if (!propertyUtilsBean.invokeWriteMethod(bean, descriptor, prop)) {
-							// invoke write method failed
-							return false;
+					if (prop == null) {
+						prop = propertyUtilsBean.newInstance(propClass);
+						if (split) {
+							if (!propertyUtilsBean.invokeWriteMethod(bean, propertyArray, prop)) {
+								// invoke write method failed
+								return false;
+							}
+						} else {
+							splitBean = bean;
+							splitProp = prop;
+							splitKey = key;
+							splitMapped = mapped;
+							split = true;
 						}
-					} else {
-						splitBean = bean;
-						splitProp = prop;
-						splitKey = key;
-						splitMapped = mapped;
-						split = true;
 					}
-				}
 				bean = prop;
 			}
 			if (resolver.isInTypes(ERROR_TYPES)) {
@@ -700,8 +698,6 @@ public class NestedPropertyUtilsBean {
 		}
 		return false;
 	}
-
-
 
 
 	public int nestedPos(String name) {
@@ -840,11 +836,11 @@ public class NestedPropertyUtilsBean {
 				case 9 :
 					key = new BigDecimal(expr);
 					break;
-				}
-			} catch (Exception e) {
-				key = getProperty(root, expr);
 			}
-		    return key;
+		} catch (Exception e) {
+			key = getProperty(root, expr);
+		}
+		return key;
 	}
 
 	/**
@@ -883,32 +879,31 @@ public class NestedPropertyUtilsBean {
 		boolean fraction = false;
 		for(int i = start; i < end; i++) {
 			switch(value.charAt(i)) {
-			case '.' :
-				if(fraction) {
+				case '.' :
+					if(fraction) {
+						return -1;
+					}
+					fraction = true;
+					break;
+				case '0' :
+				case '1' :
+				case '2' :
+				case '3' :
+				case '4' :
+				case '5' :
+				case '6' :
+				case '7' :
+				case '8' :
+				case '9' :
+					break;
+				default :
 					return -1;
-				}
-				fraction = true;
-				break;
-			 case '0' :
-			 case '1' :
-			 case '2' :
-			 case '3' :
-			 case '4' :
-			 case '5' :
-			 case '6' :
-			 case '7' :
-			 case '8' :
-			 case '9' :
-				 break;
-			default :
-				return -1;
 			}
 		}
 		if(fraction) {
 			if(type == -1) {
 				type = 8; //double
-			} else
-			if(type < 7) {
+			} else if(type < 7) {
 				return -1;
 			}
 		} else {
@@ -918,6 +913,7 @@ public class NestedPropertyUtilsBean {
 		}
 		return type;
 	}
+
 	/**
 	 * exception or error info
 	 * @param e cause exception

@@ -1,13 +1,14 @@
 package com.honzel.core.util.lambda;
 
 import com.honzel.core.util.ConcurrentReferenceHashMap;
+import com.honzel.core.vo.Entry;
 
 import java.io.Serializable;
-import java.lang.invoke.MethodType;
-import java.lang.invoke.SerializedLambda;
+import java.lang.invoke.*;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.*;
 
 /**
@@ -29,39 +30,51 @@ public class LambdaUtils {
     protected LambdaUtils() {
     }
 
-    private static final Map<Class<?>, WeakReference<SerializedLambda>> FUNC_CACHE = new ConcurrentReferenceHashMap<>();
+    private static final Map<Class<?>, Entry<Method, WeakReference<SerializedLambda>>> FUNC_CACHE = new ConcurrentReferenceHashMap<>();
     private static final String WRITE_REPLACE_METHOD = "writeReplace";
     private static final String LAMBADA_BLOCK_METHOD_PREFIX = "lambda$";
 
-    public static SerializedLambda resolveLambda(Serializable lambda) {
-        return resolveLambda(lambda, true);
-    }
 
-    public static SerializedLambda resolveLambda(Serializable lambda, boolean onlyClassInfo) {
+    public static SerializedLambda resolveLambda(Serializable lambda) {
         Class<?> clazz = lambda.getClass();
         // 获取缓存数据
-        WeakReference<SerializedLambda> ref = FUNC_CACHE.get(clazz);
-        SerializedLambda serializedLambda = (ref != null ? ref.get() : null);
-        if (serializedLambda != null && (onlyClassInfo || isStaticLambda(serializedLambda))) {
+        Entry<Method, WeakReference<SerializedLambda>> entry = FUNC_CACHE.computeIfAbsent(clazz,
+                cls -> new Entry<>(createSerializedLambdaMethod(cls), null));
+        SerializedLambda serializedLambda;
+        if (Objects.nonNull(entry.getValue()) && Objects.nonNull(serializedLambda = entry.getValue().get())) {
             // 如果只能获取类型信息时
             return serializedLambda;
         }
         // 如果缓存不存在或已gc回收, 重新获取序列化对象
-        if (!clazz.isSynthetic()) {
+        try {
+            entry.setNewValue(new WeakReference<>(serializedLambda = (SerializedLambda) entry.getKey().invoke(lambda)));
+            return serializedLambda;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("解析lambda对象失败: " + e.getMessage(), e);
+        }
+    }
+
+
+//    @SuppressWarnings("unchecked")
+    private static Method createSerializedLambdaMethod(Class<?> lambdaClass) throws IllegalArgumentException {
+        if (!lambdaClass.isSynthetic()) {
             // 非合成类（lambda)
             throw new IllegalArgumentException("该方法仅能传入 lambda 表达式产生的合成类");
         }
         try {
-            Method method = clazz.getDeclaredMethod(WRITE_REPLACE_METHOD);
+            Method method = lambdaClass.getDeclaredMethod(WRITE_REPLACE_METHOD);
             method.setAccessible(true);
-            serializedLambda = (SerializedLambda) method.invoke(lambda);
-            if (ref == null || ref.get() == null) {
-                FUNC_CACHE.put(clazz, new WeakReference<>(serializedLambda));
-            }
-        } catch (Exception e) {
-            throw new IllegalArgumentException("解析lambda对象失败: " + e.getMessage(), e);
+            return method;
+//            MethodHandles.Lookup lookup = MethodHandleUtils.lookup(lambdaClass);
+//            // 获取writeReplace方法句柄
+//            MethodHandle handle = lookup.findVirtual(lambdaClass, "writeReplace", MethodType.methodType(Object.class));
+//            MethodType methodType = MethodType.methodType(SerializedLambda.class, lambdaClass);
+//            // 使用LambdaMetafactory绑定到writeReplace方法
+//            CallSite callSite = LambdaMetafactory.metafactory(lookup, "apply", METHOD_TYPE_FUNCTION, methodType.generic(), handle, methodType);
+//            return (Function<Serializable, SerializedLambda>) callSite.getTarget().invokeExact();
+        } catch (Throwable e) {
+            throw new IllegalArgumentException("解析lambda生成SerializedLambda对象的方法失败: " + e.getMessage(), e);
         }
-        return serializedLambda;
     }
 
     public static boolean isSpecifiedMethodLambda(SerializedLambda serializedLambda) {

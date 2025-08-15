@@ -123,13 +123,16 @@ public class TypeConverter extends AbstractConverter {
 	 */
 	protected Converter lookup(Object value, Class targetType) {
 		Converter converter = (Converter) converters.get(targetType);
-		if (converter == null && targetType.isArray()) {
+		if (converter != null) {
+			return converter;
+		}
+		if (targetType.isArray()) {
 			return getArrayConverter();
 		}
-		if (converter == null && targetType.isEnum()) {
-			converter = (Converter) converters.get(Enum.class);
+		if (targetType.isEnum()) {
+			return (Converter) converters.get(Enum.class);
 		}
-		return converter;
+		return (Converter) converters.get(Object.class);
 	}
 
 	protected Object convertToType(Object value, Class toType) throws ConversionException {
@@ -191,7 +194,7 @@ public class TypeConverter extends AbstractConverter {
 	}
 
 	private void registerStandard() {
-		register(Integer.TYPE, standardConverter);
+//		register(Integer.TYPE, standardConverter);
 		register(Short.TYPE, standardConverter);
 		register(Boolean.TYPE, standardConverter);
 		register(Byte.TYPE, standardConverter);
@@ -206,7 +209,7 @@ public class TypeConverter extends AbstractConverter {
 		register(Character.class, standardConverter);
 		register(Float.class, standardConverter);
 		register(Double.class, standardConverter);
-		register(Integer.class, standardConverter);
+//		register(Integer.class, standardConverter);
 		register(BigInteger.class, standardConverter);
 		register(BigDecimal.class, standardConverter);
 		register(Class.class, standardConverter);
@@ -219,6 +222,8 @@ public class TypeConverter extends AbstractConverter {
 		register(Instant.class, dateTimeConverter);
 		register(Long.class, dateTimeConverter);
 		register(Long.TYPE, dateTimeConverter);
+		register(Integer.TYPE, dateTimeConverter);
+		register(Integer.class, dateTimeConverter);
 		register(String.class, dateTimeConverter);
 	}
 }

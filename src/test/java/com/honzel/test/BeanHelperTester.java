@@ -1,6 +1,7 @@
 package com.honzel.test;
 
 import com.honzel.core.util.bean.BeanHelper;
+import com.honzel.core.util.bean.LambdaPropertyUtilsBean;
 import com.honzel.core.util.bean.SimplePropertyUtilsBean;
 import com.honzel.core.util.converter.DateConverter;
 import com.honzel.core.util.converter.StandardConverter;
@@ -37,7 +38,7 @@ public class BeanHelperTester {
 		Method writtenMethod = BeanHelper.getPropertyDescriptor(Branch.class, "key").getWriteMethod();
 		Function<Branch, Long> getter = BeanHelper.getPropertyGetter(Branch.class, "key");
 		BiConsumer<Branch, Long> setter = BeanHelper.getPropertySetter(Branch.class, "key");
-		MethodHandles.Lookup lookup = SimplePropertyUtilsBean.getInstance().getMethodLookup(Branch.class);
+		MethodHandles.Lookup lookup = LambdaPropertyUtilsBean.getInstance().getMethodLookup(Branch.class);
 		MethodHandle getterHandle = lookup.unreflect(readMethod);
 		MethodHandle setterHandle = lookup.unreflect(writtenMethod);
 
@@ -56,7 +57,7 @@ public class BeanHelperTester {
 
 		stopWatch.start();
 		for (long i = 0; i < count; i++) {
-			Long key = getter.apply(bean);
+			Object key = getter.apply(bean);
 		}
 		stopWatch.suspend();
 		System.out.println("getter: " + stopWatch.getTime() + "毫秒");

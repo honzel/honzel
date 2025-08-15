@@ -1,8 +1,10 @@
 package com.honzel.core.util.converter;
 
 import com.honzel.core.util.exception.ConversionException;
+import com.honzel.core.util.generic.GenericTypeUtils;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.Type;
 
 /**
  * Base {@link Converter} implementation that provides the structure
@@ -113,6 +115,30 @@ public abstract  class AbstractConverter implements Converter {
 		}
 		return getDefault(null, toType);
 	}
+
+	public Object convert(Object value, Type toType) {
+		if (toType instanceof Class) {
+			return convert(value, (Class) toType);
+		}
+		if (toType == null) {
+			throwException(null, "Target type is missing");
+			return null;
+		}
+		if (value == null) {
+			return getDefault(null, toType, false);
+		}
+		try {
+			// object -> Type
+			return convertToGenericType(value, toType);
+		} catch (ConversionException e) {
+			throwException(e, null);
+		} catch (RuntimeException e) {
+			throwException(e, "Error occurs when Converting the value of the type  '" + getTypeName(value)
+					+ "' to an object of the type '" + getName(toType) + "'.");
+		}
+		return convert(value, GenericTypeUtils.erase(toType));
+	}
+
     /**
      * Convert the input object  into an output object of the
      * specified type.
@@ -125,6 +151,19 @@ public abstract  class AbstractConverter implements Converter {
      */
     protected Object convertToType(Object value, Class toType) throws ConversionException {
     	return getDefault(value, toType);
+    }
+    /**
+     * Convert the input object  into an output object of the
+     * specified type.
+     * <br>
+     *
+     * @param value The input value to be converted.
+     * @param toType Data type to which this value should be converted.
+     * @return The converted value.
+     * @throws RuntimeException if an error occurs converting to the specified type
+     */
+    protected Object convertToGenericType(Object value, Type toType) throws ConversionException {
+    	return convertToType(value, GenericTypeUtils.erase(toType));
     }
 
     /**
@@ -160,9 +199,21 @@ public abstract  class AbstractConverter implements Converter {
 	 * @return the converted default value
 	 */
     public Object getDefault(Object value, Class toType) {
+	   return getDefault(value, toType, true);
+	}
+
+	/**
+	 * Return default value of the specified type,
+	 * if this converter has a default converter, use the default converter first .
+	 * <br>
+	* @param value The specified value to be converted to the specified type.
+	 * @param toType Data type to which this value should be converted
+	 * @return the converted default value
+	 */
+    public Object getDefault(Object value, Type toType, boolean asClass) {
 	   if (defaultConverter != null) {
 			try {
-				return defaultConverter.convert(value, toType);
+				return asClass ? defaultConverter.convert(value, (Class) toType) : defaultConverter.convert(value, toType);
 			} catch (ConversionException e) {
 				throwException(e, null);
 			} catch (RuntimeException e) {
@@ -181,8 +232,8 @@ public abstract  class AbstractConverter implements Converter {
 	 * @param type the specified type.
 	 * @return the name of the specified type.
 	 */
-	protected String getName(Class type) {
-		return type == null ? "null" : type.getName();
+	protected String getName(Type type) {
+		return type == null ? "null" : type.getTypeName();
 	}
 
 	/**
