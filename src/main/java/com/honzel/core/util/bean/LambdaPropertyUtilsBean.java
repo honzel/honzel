@@ -1,6 +1,5 @@
 package com.honzel.core.util.bean;
 
-import com.honzel.core.util.ConcurrentReferenceHashMap;
 import com.honzel.core.util.lambda.LambdaUtils;
 import com.honzel.core.util.lambda.MethodHandleUtils;
 import org.slf4j.Logger;
@@ -11,6 +10,7 @@ import java.lang.invoke.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -34,7 +34,7 @@ public class LambdaPropertyUtilsBean extends BasePropertyUtilsBean<Function<Obje
 	private static final Function<Object, Object> INVALID_GETTER = Function.identity();
 	private static final BiConsumer<Object, Object> INVALID_SETTER = (b, v) -> {};
 
-	private static final LambdaPropertyUtilsBean propertyUtilsBean = new LambdaPropertyUtilsBean(new ConcurrentReferenceHashMap<>());
+	private static final LambdaPropertyUtilsBean propertyUtilsBean = new LambdaPropertyUtilsBean(new ConcurrentHashMap<>());
 
 	private LambdaPropertyUtilsBean(Map<Class<?>, Object[]> descriptorsCache) {
 		super(descriptorsCache);
