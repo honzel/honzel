@@ -194,7 +194,6 @@ public class TypeConverter extends AbstractConverter {
 	}
 
 	private void registerStandard() {
-//		register(Integer.TYPE, standardConverter);
 		register(Short.TYPE, standardConverter);
 		register(Boolean.TYPE, standardConverter);
 		register(Byte.TYPE, standardConverter);
@@ -202,14 +201,15 @@ public class TypeConverter extends AbstractConverter {
 		register(Float.TYPE, standardConverter);
 		register(Double.TYPE, standardConverter);
 		register(Short.class, standardConverter);
+//		register(Integer.TYPE, standardConverter);
 //		register(Long.TYPE, standardConverter);
+//		register(Integer.class, standardConverter);
 //		register(Long.class, standardConverter);
 		register(Boolean.class, standardConverter);
 		register(Byte.class, standardConverter);
 		register(Character.class, standardConverter);
 		register(Float.class, standardConverter);
 		register(Double.class, standardConverter);
-//		register(Integer.class, standardConverter);
 		register(BigInteger.class, standardConverter);
 		register(BigDecimal.class, standardConverter);
 		register(Class.class, standardConverter);
