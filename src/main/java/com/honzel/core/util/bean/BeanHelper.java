@@ -4,8 +4,8 @@ import com.honzel.core.constant.ArrayConstants;
 import com.honzel.core.util.converter.Converter;
 import com.honzel.core.util.converter.TypeConverter;
 import com.honzel.core.util.lambda.LambdaUtils;
+import com.honzel.core.util.lambda.MethodHandleUtils;
 import com.honzel.core.util.text.TextUtils;
-import com.honzel.core.vo.Entry;
 
 import java.beans.PropertyDescriptor;
 import java.lang.invoke.SerializedLambda;
@@ -186,7 +186,7 @@ public class BeanHelper {
 	 * @return true if the accessible flag is set to true; false if access cannot be enabled.
 	 */
 	public static boolean trySetAccessible(AccessibleObject accessible) {
-		return BasePropertyUtilsBean.trySetAccessible(accessible);
+		return MethodHandleUtils.trySetAccessible(accessible);
 	}
 
 	/**
@@ -331,7 +331,7 @@ public class BeanHelper {
 		}
 		int index = name.lastIndexOf('.');
 		if (index >= 0) {
-			clazz = NestedPropertyUtilsBean.getInstance().getPropertyType(clazz, name.substring(0, index));
+			clazz = NestedPropertyUtilsBean.getInstance(clazz).getPropertyType(clazz, name.substring(0, index));
 			if (clazz == null) {
 				return null;
 			}
@@ -365,7 +365,7 @@ public class BeanHelper {
 	 *          constructor is not accessible.
 	 */
 	public static<T> T newInstance(Class<T> clazz) throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
-		return SimplePropertyUtilsBean.getInstance().newInstance(clazz);
+		return NestedPropertyUtilsBean.getInstance(clazz).newInstance(clazz);
 	}
 
 	/**
@@ -385,11 +385,31 @@ public class BeanHelper {
 	 * @return returns false when none property is copied, otherwise returns true
 	 */
 	public static boolean copyOnCondition(Object source, Object target, BiPredicate<PropertyDescriptor, Object> condition) {
-		if (target != null && LambdaPropertyUtilsBean.getInstance().containsClass(target.getClass())) {
-			// lambda
-			return LambdaPropertyUtilsBean.getInstance().copyOnCondition(source, target, condition);
+		return target != null && NestedPropertyUtilsBean.getInstance(target.getClass()).copyToBeanOnCondition(source, target, condition);
+	}
+
+	/**
+	 * <p>Copy property values from the "origin" bean to the "destination" bean
+	 * for all cases where the property names are the same and on the specified condition (even though the
+	 * actual getter and setter methods might have been customized via
+	 * <code>BeanInfo</code> classes or specified).
+	 *
+	 * <p>If the origin "bean" is actually a <code>Map</code>, it is assumed
+	 * to contain String-valued <strong>simple</strong> property names as the keys, pointing
+	 * at the corresponding property values that will be set in the destination
+	 * bean.
+	 *
+	 * @param source Origin bean whose properties are retrieved
+	 * @param target Destination bean whose properties are modified
+	 * @param condition the condition
+	 * @return returns false when none property is copied, otherwise returns true
+	 */
+	public static boolean copyOnCondition(Object source, Object target, LambdaUtils.TiPredicate<String, Object, Object> condition) {
+		if (target instanceof Map) {
+			return source != null && NestedPropertyUtilsBean.getInstance(source.getClass()).copyToMapOnCondition(source, target, condition);
+		} else {
+			return target != null && NestedPropertyUtilsBean.getInstance(target.getClass()).copyToBeanOnCondition(source, target, condition);
 		}
-		return SimplePropertyUtilsBean.getInstance().copyOnCondition(source, target, condition);
 	}
 
 	/**
@@ -406,12 +426,8 @@ public class BeanHelper {
 	 * @param condition the condition
 	 * @return returns false when none property is copied, otherwise returns true
 	 */
-	public static boolean copyToMapOnCondition(Object origin, Map<String, Object> target, BiPredicate<Entry<String, Object>, Object> condition) {
-		if (origin != null && LambdaPropertyUtilsBean.getInstance().containsClass(origin.getClass())) {
-			// lambda
-			return LambdaPropertyUtilsBean.getInstance().copyToMapOnCondition(origin, target, condition);
-		}
-		return SimplePropertyUtilsBean.getInstance().copyToMapOnCondition(origin, target, condition);
+	public static boolean copyToMapOnCondition(Object origin, Map<String, Object> target, BiPredicate<String, Object> condition) {
+		return origin != null && NestedPropertyUtilsBean.getInstance(origin.getClass()).copyToMapOnCondition(origin, target, condition);
 	}
 
 	/**
@@ -433,9 +449,17 @@ public class BeanHelper {
 	@SuppressWarnings("unchecked")
 	public static boolean copyOnCondition(Object origin, Object target, Predicate<Object> valueCondition) {
 		if (target instanceof Map) {
-			return copyToMapOnCondition(origin, (Map<String, Object>) target, (e, v) -> valueCondition == null || valueCondition.test(v));
+			if (valueCondition == null) {
+				return copyToMapOnCondition(origin, (Map) target, (k, v) -> true);
+			} else {
+				return copyToMapOnCondition(origin, (Map) target, (k, v) -> valueCondition.test(v));
+			}
 		} else {
-			return copyOnCondition(origin, target, (d, v) -> valueCondition == null || valueCondition.test(v));
+			if (valueCondition == null) {
+				return copyOnCondition(origin, target, (d, v) -> true);
+			} else {
+				return copyOnCondition(origin, target, (d, v) -> valueCondition.test(v));
+			}
 		}
 	}
 
@@ -486,17 +510,14 @@ public class BeanHelper {
 	 */
 	@SafeVarargs
 	public static <T> boolean copyOnPreValueCondition(Object origin, T target, Predicate<Object> preValueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
+		if (target == null) {
+			return false;
+		}
 		String[] names = parseGetterOrSetterNames(ignoreProperties);
-		return copyOnCondition(origin, target, (d, v) -> {
-			if (matchTargetProperty(names, d.getName())) {
-				return false;
-			}
-			if (preValueCondition == null) {
-				return true;
-			}
-			Method readMethod = d.getReadMethod();
-			return readMethod != null && preValueCondition.test(SimplePropertyUtilsBean.getInstance().invokeReadMethod(target, d));
-		});
+		if (preValueCondition == null) {
+			return NestedPropertyUtilsBean.getInstance(target.getClass()).copyToBeanOnCondition(origin, target, (d, value) -> !matchTargetProperty(names, d.getName()));
+		}
+		return NestedPropertyUtilsBean.getInstance(target.getClass()).copyToBeanOnCondition(origin, target, (k, pv, v) -> !matchTargetProperty(names, k) && preValueCondition.test(pv));
 	}
 
 	/**
@@ -518,16 +539,9 @@ public class BeanHelper {
 	public static boolean copyOnPreValueCondition(Object origin, Object target, Predicate<Object> preValueCondition) {
 		if (preValueCondition == null) {
 			// 没有条件
-			return copyOnCondition(origin, target, (BiPredicate<PropertyDescriptor, Object>) null);
+			return copyOnCondition(origin, target, (Predicate<Object>) null);
 		}
-		if (target instanceof Map) {
-			return copyToMapOnCondition(origin, (Map<String, Object>) target, (e, v) -> preValueCondition.test(e.getValue()));
-		} else {
-			return copyOnCondition(origin, target, (d, v) -> {
-				Method readMethod = d.getReadMethod();
-				return readMethod != null && preValueCondition.test(SimplePropertyUtilsBean.getInstance().invokeReadMethod(target, d));
-			});
-		}
+		return copyOnCondition(origin, target, (k, pv, v) -> preValueCondition.test(pv));
 	}
 
 	/**
@@ -551,7 +565,7 @@ public class BeanHelper {
 		if (names.length == 0 && valueCondition == null) {
 			return copyToMapOnCondition(origin, target, null);
 		}
-		return copyToMapOnCondition(origin, target, (e, v) -> !matchTargetProperty(names, e.getKey()) && (valueCondition == null || valueCondition.test(v)));
+		return copyToMapOnCondition(origin, target, (k, v) -> !matchTargetProperty(names, k) && (valueCondition == null || valueCondition.test(v)));
 	}
 
 	/**
@@ -571,14 +585,15 @@ public class BeanHelper {
 	 */
 	@SafeVarargs
 	public static <T> boolean copyChangeOnCondition(Object origin, T target, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
+		if (target == null) {
+			return false;
+		}
 		String[] names = parseGetterOrSetterNames(ignoreProperties);
-		return copyOnCondition(origin, target, (d, v) -> {
-			if (matchTargetProperty(names, d.getName()) || (valueCondition != null && !valueCondition.test(v))) {
+		return NestedPropertyUtilsBean.getInstance(target.getClass()).copyToBeanOnCondition(origin, target, (k, pv, v) -> {
+			if (matchTargetProperty(names, k) || (valueCondition != null && !valueCondition.test(v))) {
 				return false;
 			}
-			Method readMethod = d.getReadMethod();
-			// 值没有变化
-			return readMethod == null || !Objects.equals(SimplePropertyUtilsBean.getInstance().invokeReadMethod(target, d), v);
+			return !Objects.equals(pv, v);
 		});
 	}
 
@@ -599,12 +614,15 @@ public class BeanHelper {
 	 */
 	@SafeVarargs
 	public static <T> boolean copyChangeToMapOnCondition(T origin, Map<String, Object> target, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
+		if (origin == null) {
+			return false;
+		}
 		String[] names = parseGetterOrSetterNames(ignoreProperties);
-		return copyToMapOnCondition(origin, target, (d, v) -> {
-			if (matchTargetProperty(names, d.getKey()) || (valueCondition != null && !valueCondition.test(v))) {
+		return NestedPropertyUtilsBean.getInstance(origin.getClass()).copyToMapOnCondition(origin, target, (k, pv, v) -> {
+			if (matchTargetProperty(names, k) || (valueCondition != null && !valueCondition.test(v))) {
 				return false;
 			}
-			return Objects.equals(d.getValue(), v);
+			return !Objects.equals(pv, v);
 		});
 	}
 

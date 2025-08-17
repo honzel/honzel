@@ -4,7 +4,8 @@ import com.honzel.core.util.ConcurrentReferenceHashMap;
 import com.honzel.core.vo.Entry;
 
 import java.io.Serializable;
-import java.lang.invoke.*;
+import java.lang.invoke.MethodType;
+import java.lang.invoke.SerializedLambda;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -63,7 +64,6 @@ public class LambdaUtils {
         }
         try {
             Method method = lambdaClass.getDeclaredMethod(WRITE_REPLACE_METHOD);
-            method.setAccessible(true);
             return method;
 //            MethodHandles.Lookup lookup = MethodHandleUtils.lookup(lambdaClass);
 //            // 获取writeReplace方法句柄
@@ -136,7 +136,7 @@ public class LambdaUtils {
      * @param <R> 返回类型
      */
     @FunctionalInterface
-    public interface SerializeTiFunction<T, U, P, R>  extends Serializable {
+    public interface TiFunction<T, U, P, R> {
         R apply(T t, U u, P p);
     }
     /**
@@ -146,9 +146,11 @@ public class LambdaUtils {
      * @param <P> 参数3类型
      */
     @FunctionalInterface
-    public interface SerializeTiConsumer<T, U, P>  extends Serializable {
-        void accept(T t, U u, P p);
+    public interface TiPredicate<T, U, P>  {
+        boolean test(T t, U u, P p);
     }
+
+
     /**
      * 三参数
      * @param <T> 参数1类型
@@ -156,8 +158,34 @@ public class LambdaUtils {
      * @param <P> 参数3类型
      */
     @FunctionalInterface
-    public interface SerializeTiPredicate<T, U, P>  extends Serializable {
-        boolean test(T t, U u, P p);
+    public interface TiConsumer<T, U, P> {
+        void accept(T t, U u, P p);
     }
+    /**
+     * 三参数
+     * @param <T> 参数1类型
+     * @param <U> 参数2类型
+     * @param <P> 参数3类型
+     * @param <R> 返回类型
+     */
+    @FunctionalInterface
+    public interface SerializeTiFunction<T, U, P, R>  extends TiFunction<T, U, P, R> {}
+    /**
+     * 三参数
+     * @param <T> 参数1类型
+     * @param <U> 参数2类型
+     * @param <P> 参数3类型
+     */
+    @FunctionalInterface
+    public interface SerializeTiConsumer<T, U, P>  extends TiConsumer<T, U, P> {}
+    /**
+     * 三参数
+     * @param <T> 参数1类型
+     * @param <U> 参数2类型
+     * @param <P> 参数3类型
+     */
+    @FunctionalInterface
+    public interface SerializeTiPredicate<T, U, P>  extends TiPredicate<T, U, P> {}
+
 
 }

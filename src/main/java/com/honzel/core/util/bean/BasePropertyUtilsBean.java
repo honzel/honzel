@@ -4,21 +4,16 @@ import com.honzel.core.constant.ArrayConstants;
 import com.honzel.core.util.converter.TypeConverter;
 import com.honzel.core.util.exception.PropertyException;
 import com.honzel.core.util.lambda.LambdaUtils;
-import com.honzel.core.util.lambda.MethodHandleUtils;
-import com.honzel.core.vo.Entry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
-import java.lang.invoke.*;
-import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 import java.util.function.BiPredicate;
-import java.util.function.Function;
 
 /**
  * 简单bean工具类
@@ -29,37 +24,7 @@ import java.util.function.Function;
 abstract class BasePropertyUtilsBean<G, S, F> {
 
 	private static final Logger log = LoggerFactory.getLogger(BasePropertyUtilsBean.class);
-	private static final Function<AccessibleObject, Boolean> TRY_SET_ACCESSIBLE_FUNCTION;
-	static {
-		// init functions
-		TRY_SET_ACCESSIBLE_FUNCTION = initTrySetAccessibleFunction();
-	}
-	/**
-	 * 获取java9+的trySetAccessible方法
-	 * @return 返回trySetAccessible的function
-	 */
-	@SuppressWarnings("unchecked")
-	private static Function<AccessibleObject, Boolean> initTrySetAccessibleFunction() {
-		try {
-			// 1. 获取 MethodHandles.Lookup 对象
-			MethodHandles.Lookup lookup = MethodHandleUtils.lookup(AccessibleObject.class);
-			// 获取 MethodHandles.trySetAccessible 的 MethodHandle
-			MethodHandle handle = lookup.findVirtual(AccessibleObject.class, "trySetAccessible", MethodType.methodType(boolean.class));
-			MethodType targetSignature = MethodType.methodType(Boolean.class, AccessibleObject.class);
-			// 3. 创建 CallSite
-			CallSite callSite = LambdaMetafactory.metafactory(lookup, "apply", // Function 的抽象方法名
-					LambdaUtils.METHOD_TYPE_FUNCTION, // 工厂方法签名
-					targetSignature.generic(), // 泛型擦除后的 Function.apply 签名 (Object)Object
-					handle, // 目标方法句柄
-					targetSignature // 实际方法签名 (AccessibleObject)boolean
-			);
-			// 4. 获取 Function 实例
-			return  (Function<AccessibleObject, Boolean>) callSite.getTarget().invokeExact();
-		} catch (Throwable e) {
-			log.info("JVM version(less than java9) - AccessibleObject#trySetAccessible method is not exits.");
-		}
-		return null;
-	}
+
 	static final int LOOKUP = 0;
 	static final int PROPERTY_MAP = 1;
 	static final int CONSTRUCTOR = 2;
@@ -479,7 +444,7 @@ abstract class BasePropertyUtilsBean<G, S, F> {
 		return beanInfoArray;
 	}
 
-	public boolean containsClass(Class beanClass) {
+	boolean containsClass(Class beanClass) {
 		return descriptorsCache.containsKey(beanClass);
 	}
 
@@ -555,7 +520,7 @@ abstract class BasePropertyUtilsBean<G, S, F> {
 
 
 	//	@SuppressWarnings("unchecked")
-	public boolean copyOnCondition(Object source, Object target, BiPredicate<PropertyDescriptor, Object> condition) {
+	public boolean copyToBeanOnCondition(Object source, Object target, BiPredicate<PropertyDescriptor, Object> condition) {
 		if (source == null || target == null) {
 			return false;
 		}
@@ -614,6 +579,71 @@ abstract class BasePropertyUtilsBean<G, S, F> {
 		}
 		return result;
 	}
+	//	@SuppressWarnings("unchecked")
+	public boolean copyToBeanOnCondition(Object source, Object target, LambdaUtils.TiPredicate<String, Object, Object> condition) {
+		if (source == null || target == null) {
+			return false;
+		}
+		Map<String, Object[]> dstPropertyMap = findPropertyMap(target.getClass());
+		boolean result = false;
+		if (source instanceof Map) {
+			// 原类型为map
+			for (Map.Entry<Object, Object> entry : ((Map<Object, Object>) source).entrySet()) {
+				if (!(entry.getKey() instanceof String)) {
+					continue;
+				}
+				String name = (String) entry.getKey();
+				Object[] propertyArray = dstPropertyMap.get(name);
+				S setter = getSetter(propertyArray);
+				if (setter == null) {
+					// 没有目标setter
+					continue;
+				}
+				PropertyDescriptor targetDescriptor = getDescriptor(propertyArray);
+				// 获取原属性值
+				Object value = entry.getValue();
+				//
+				Object preValue = invokeReadMethod(target, getGetter(propertyArray), targetDescriptor);
+				// 条件校验
+				if (condition != null && !condition.test(name, preValue, value)) {
+					continue;
+				}
+				if (invokeWriteMethod(target, setter, targetDescriptor, value)) {
+					result = true;
+				}
+			}
+		} else {
+			// 原始类型为bean
+			Map<String, Object[]> srcPropertyMap = findPropertyMap(source.getClass());
+			for (Map.Entry<String, Object[]> entry : dstPropertyMap.entrySet()) {
+				S setter = getSetter(entry.getValue());
+				if (setter == null) {
+					// No setter
+					continue;
+				}
+				String name = entry.getKey();
+				Object[] srcPropertyArray = srcPropertyMap.get(name);
+				G getter = getGetter(srcPropertyArray);
+				if (getter == null) {
+					// No getter
+					continue;
+				}
+				PropertyDescriptor targetDescriptor = getDescriptor(entry.getValue());
+				// 获取原属性值
+				Object value = invokeReadMethod(source, getter, getDescriptor(srcPropertyArray));
+				//
+				Object preValue = invokeReadMethod(target, getGetter(entry.getValue()), targetDescriptor);
+				// 条件校验
+				if (condition != null && !condition.test(name, preValue, value)) {
+					continue;
+				}
+				if (invokeWriteMethod(target, setter, targetDescriptor, value)) {
+					result = true;
+				}
+			}
+		}
+		return result;
+	}
 
 	protected abstract boolean invokeWriteMethod(Object bean, S setter, PropertyDescriptor descriptor, Object value);
 
@@ -647,7 +677,7 @@ abstract class BasePropertyUtilsBean<G, S, F> {
 	 * @return 如果所有属性都没进行复制操作则返回false, 否则返回true
 	 */
 //	@SuppressWarnings("unchecked")
-	public boolean copyToMapOnCondition(Object source, Map<String, Object> target, BiPredicate<Entry<String, Object>, Object> condition) {
+	public boolean copyToMapOnCondition(Object source, Map<String, Object> target, LambdaUtils.TiPredicate<String, Object, Object> condition) {
 		if (source == null || target == null) {
 			return false;
 		}
@@ -660,22 +690,18 @@ abstract class BasePropertyUtilsBean<G, S, F> {
 				target.putAll((Map<String, Object>) source);
 				return true;
 			}
-			Entry<String, Object> targetEntry = new Entry<>();
 			// 原类型为map
 			for (Map.Entry<String, Object> entry : ((Map<String, Object>) source).entrySet()) {
 				// 获取原属性值
 				String key = entry.getKey();
-				targetEntry.setKey(key);
-				targetEntry.setValue(target.get(key));
 				// 条件校验
-				if (condition.test(targetEntry, entry.getValue())) {
+				if (condition.test(key, target.get(key), entry.getValue())) {
 					target.put(key, entry.getValue());
 					result = true;
 				}
 			}
 		} else {
 			// 原始类型为bean
-			Entry<String, Object> targetEntry = new Entry();
 			Map<String, Object[]> srcPropertyMap = findPropertyMap(source.getClass());
 			for (Map.Entry<String, Object[]> entry : srcPropertyMap.entrySet()) {
 				G getter = getGetter(entry.getValue());
@@ -684,12 +710,10 @@ abstract class BasePropertyUtilsBean<G, S, F> {
 					// 没有getter
 					continue;
 				}
-				targetEntry.setKey(name);
-				targetEntry.setValue(target.get(targetEntry.getKey()));
 				// 获取原属性值
 				Object value = invokeReadMethod(source, getter, getDescriptor(entry.getValue()));
 				// 条件校验
-				if (condition != null && !condition.test(targetEntry, value)) {
+				if (condition != null && !condition.test(name, target.get(name), value)) {
 					continue;
 				}
 				target.put(name, value);
@@ -698,14 +722,59 @@ abstract class BasePropertyUtilsBean<G, S, F> {
 		}
 		return result;
 	}
-
-	public static boolean trySetAccessible(AccessibleObject accessible) {
-		if (TRY_SET_ACCESSIBLE_FUNCTION != null) {
-			return TRY_SET_ACCESSIBLE_FUNCTION.apply(accessible);
+	/**
+	 * 复制原对象中符合条件的属性到目标对象
+	 *
+	 * @param source    原对象
+	 * @param target    目标对象
+	 * @param condition 条件
+	 * @return 如果所有属性都没进行复制操作则返回false, 否则返回true
+	 */
+//	@SuppressWarnings("unchecked")
+	public boolean copyToMapOnCondition(Object source, Map<String, Object> target, BiPredicate<String, Object> condition) {
+		if (source == null || target == null) {
+			return false;
 		}
-		// java8
-		accessible.setAccessible(true);
-		return true;
+		boolean result = false;
+		if (source instanceof Map) {
+			if (condition == null) {
+				if (((Map) source).isEmpty()) {
+					return false;
+				}
+				target.putAll((Map<String, Object>) source);
+				return true;
+			}
+			// 原类型为map
+			for (Map.Entry<String, Object> entry : ((Map<String, Object>) source).entrySet()) {
+				// 获取原属性值
+				String key = entry.getKey();
+				// 条件校验
+				if (condition.test(key,  entry.getValue())) {
+					target.put(key, entry.getValue());
+					result = true;
+				}
+			}
+		} else {
+			// 原始类型为bean
+			Map<String, Object[]> srcPropertyMap = findPropertyMap(source.getClass());
+			for (Map.Entry<String, Object[]> entry : srcPropertyMap.entrySet()) {
+				G getter = getGetter(entry.getValue());
+				String name = entry.getKey();
+				if (getter == null || "class".equals(name)) {
+					// 没有getter
+					continue;
+				}
+				// 获取原属性值
+				Object value = invokeReadMethod(source, getter, getDescriptor(entry.getValue()));
+				// 条件校验
+				if (condition != null && !condition.test(name, value)) {
+					continue;
+				}
+				target.put(name, value);
+				result = true;
+			}
+		}
+		return result;
 	}
 
 }

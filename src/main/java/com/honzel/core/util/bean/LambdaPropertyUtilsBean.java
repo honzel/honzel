@@ -204,7 +204,7 @@ public class LambdaPropertyUtilsBean extends BasePropertyUtilsBean<Function<Obje
 				setter.accept(bean, value);
 			} else {
 				Method writeMethod = descriptor.getWriteMethod();
-				trySetAccessible(writeMethod);
+				MethodHandleUtils.trySetAccessible(writeMethod);
 				writeMethod.invoke(bean, value);
 			}
 			return true;
@@ -230,7 +230,7 @@ public class LambdaPropertyUtilsBean extends BasePropertyUtilsBean<Function<Obje
 				return getter.apply(bean);
 			}
 			Method readMethod = descriptor.getReadMethod();
-			trySetAccessible(readMethod);
+			MethodHandleUtils.trySetAccessible(readMethod);
 			readMethod.invoke(bean);
 		} catch (Throwable e) {
 			error(e, "Fail to get the property '" + descriptor.getName() + "' for the bean of the type '"

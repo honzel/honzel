@@ -1,5 +1,6 @@
 package com.honzel.core.util.bean;
 
+import com.honzel.core.util.lambda.LambdaUtils;
 import com.honzel.core.util.resolver.ResolverUtils;
 import com.honzel.core.util.converter.AbstractConverter;
 import com.honzel.core.util.converter.Converter;
@@ -7,13 +8,11 @@ import com.honzel.core.util.converter.TypeConverter;
 import com.honzel.core.util.resolver.Resolver;
 
 import java.beans.PropertyDescriptor;
-import java.lang.reflect.Array;
-import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
+import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 
 /**
@@ -34,7 +33,7 @@ public class NestedPropertyUtilsBean {
 	private static final int ERROR_TYPES = Resolver.LINK | Resolver.END;
 
 
-	private BasePropertyUtilsBean propertyUtilsBean;
+	private final BasePropertyUtilsBean propertyUtilsBean;
 
 	private NestedPropertyUtilsBean(BasePropertyUtilsBean propertyUtilsBean) {
 		this.propertyUtilsBean = propertyUtilsBean;
@@ -47,6 +46,13 @@ public class NestedPropertyUtilsBean {
 	public static NestedPropertyUtilsBean getLambdaInstance() {
 		return lambdaNestedPropertyUtilsBean;
 	}
+	public static NestedPropertyUtilsBean getInstance(Class<?> beanClass) {
+		if (lambdaNestedPropertyUtilsBean.propertyUtilsBean.containsClass(beanClass)) {
+			return lambdaNestedPropertyUtilsBean;
+		}
+		return simpleNestedPropertyUtilsBean;
+	}
+
 
 
 	/**
@@ -54,11 +60,11 @@ public class NestedPropertyUtilsBean {
 	 * @param disableException whether or not to disable throw exception.
 	 */
 	public void setDisableException(boolean disableException) {
-		propertyUtilsBean.setDisableException(disableException);
+		BasePropertyUtilsBean.setDisableException(disableException);
 	}
 
 	public boolean isDisableException() {
-		return propertyUtilsBean.isDisableException();
+		return BasePropertyUtilsBean.isDisableException();
 	}
 
 	/**
@@ -79,7 +85,7 @@ public class NestedPropertyUtilsBean {
 	 * @return returns the type converter of this util
 	 */
 	public TypeConverter getTypeConverter() {
-		return propertyUtilsBean.getTypeConverter();
+		return BasePropertyUtilsBean.getTypeConverter();
 	}
 
 	/**
@@ -284,7 +290,9 @@ public class NestedPropertyUtilsBean {
 		}
 		return null;
 	}
-
+	public <T> T newInstance(Class<T> beanClass) throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
+		return (T) propertyUtilsBean.newInstance(beanClass);
+	}
 
 	/**
      * Return the Java Class representing the property type of the specified
@@ -500,6 +508,21 @@ public class NestedPropertyUtilsBean {
 
 	public boolean setSimpleProperty(Object bean, String name, Object value) {
 		return propertyUtilsBean.setProperty(bean, name, value, false);
+	}
+
+	public boolean copyToMapOnCondition(Object source, Map<String, Object> target, BiPredicate<String, Object> condition) {
+		return propertyUtilsBean.copyToMapOnCondition(source, target, condition);
+	}
+	public boolean copyToMapOnCondition(Object source, Object target, LambdaUtils.TiPredicate<String, Object, Object> condition) {
+		return propertyUtilsBean.copyToMapOnCondition(source, (Map) target, condition);
+	}
+
+	public boolean copyToBeanOnCondition(Object source, Object target, BiPredicate<PropertyDescriptor, Object> condition) {
+		return propertyUtilsBean.copyToBeanOnCondition(source, target, condition);
+	}
+
+	public boolean copyToBeanOnCondition(Object source, Object target, LambdaUtils.TiPredicate<String, Object, Object> condition) {
+		return propertyUtilsBean.copyToBeanOnCondition(source, target, condition);
 	}
 
 	/**

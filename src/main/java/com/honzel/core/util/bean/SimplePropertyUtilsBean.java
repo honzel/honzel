@@ -2,7 +2,7 @@ package com.honzel.core.util.bean;
 
 import com.honzel.core.constant.ArrayConstants;
 import com.honzel.core.util.ConcurrentReferenceHashMap;
-import com.honzel.core.util.converter.TypeConverter;
+import com.honzel.core.util.lambda.MethodHandleUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +46,7 @@ public class SimplePropertyUtilsBean extends BasePropertyUtilsBean<Method, Metho
 			return null;
 		}
 		try {
-			trySetAccessible(method);
+			MethodHandleUtils.trySetAccessible(method);
 		} catch (Exception e) {
 			log.warn("Failed to trySetAccessible[{}] getter method", descriptor.getName(), e);
 		}
@@ -60,7 +60,7 @@ public class SimplePropertyUtilsBean extends BasePropertyUtilsBean<Method, Metho
 			return null;
 		}
 		try {
-			trySetAccessible(method);
+			MethodHandleUtils.trySetAccessible(method);
 		} catch (Exception e) {
 			log.warn("Failed to trySetAccessible[{}] setter method", descriptor.getName(), e);
 		}
@@ -88,7 +88,7 @@ public class SimplePropertyUtilsBean extends BasePropertyUtilsBean<Method, Metho
 					// Supplier
 					try {
 						beanInfoArray[CONSTRUCTOR] = constructor = beanClass.getDeclaredConstructor(ArrayConstants.EMPTY_CLASS_ARRAY);
-						trySetAccessible(constructor);
+						MethodHandleUtils.trySetAccessible(constructor);
 					} catch (RuntimeException | NoSuchMethodException e) {
 						// direct throw out
 						throw e;
@@ -112,10 +112,8 @@ public class SimplePropertyUtilsBean extends BasePropertyUtilsBean<Method, Metho
 			return false;
 		}
 		try {
-			if (typeConverter != null) {
-				// 转换类型
-				value = typeConverter.convert(value, descriptor.getPropertyType());
-			}
+			// 转换类型
+			value = typeConverter.convert(value, descriptor.getPropertyType());
 			setter.invoke(bean, value);
 			return true;
 		} catch (Throwable e) {
@@ -129,7 +127,7 @@ public class SimplePropertyUtilsBean extends BasePropertyUtilsBean<Method, Metho
 	protected Object invokeReadMethod(Object bean, PropertyDescriptor descriptor) {
 		Method readMethod = descriptor.getReadMethod();
 		if (readMethod != null) {
-			trySetAccessible(readMethod);
+			MethodHandleUtils.trySetAccessible(readMethod);
 		}
 		return invokeReadMethod(bean, readMethod, descriptor);
 	}

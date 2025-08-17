@@ -5,10 +5,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.invoke.*;
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.util.Objects;
-import java.util.function.*;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 /**
  * This class consists exclusively of static methods that operate on or return method handles.
@@ -19,13 +21,41 @@ public class MethodHandleUtils {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SimplePropertyUtilsBean.class);
 
-
+    private static final Function<AccessibleObject, Boolean> TRY_SET_ACCESSIBLE_FUNCTION;
     private static final BiFunction<Class<?>, MethodHandles.Lookup, MethodHandles.Lookup> LOOKUP_FUNCTION;
     private static final Function<Class<?>, MethodHandles.Lookup> LOW_VERSION_LOOKUP_FUNCTION;
     static {
         // init functions
         MethodHandles.Lookup lookup = MethodHandles.lookup();
         LOW_VERSION_LOOKUP_FUNCTION = Objects.isNull(LOOKUP_FUNCTION = initCreateLookupFunction(lookup)) ? initJavaLowVersionCreateLookupFunction(lookup) : null;
+        TRY_SET_ACCESSIBLE_FUNCTION = initTrySetAccessibleFunction();
+    }
+
+    /**
+     * 获取java9+的trySetAccessible方法
+     * @return 返回trySetAccessible的function
+     */
+    @SuppressWarnings("unchecked")
+    private static Function<AccessibleObject, Boolean> initTrySetAccessibleFunction() {
+        try {
+            // 1. 获取 MethodHandles.Lookup 对象
+            MethodHandles.Lookup lookup = lookup(AccessibleObject.class);
+            // 获取 MethodHandles.trySetAccessible 的 MethodHandle
+            MethodHandle handle = lookup.findVirtual(AccessibleObject.class, "trySetAccessible", MethodType.methodType(boolean.class));
+            MethodType targetSignature = MethodType.methodType(Boolean.class, AccessibleObject.class);
+            // 3. 创建 CallSite
+            CallSite callSite = LambdaMetafactory.metafactory(lookup, "apply", // Function 的抽象方法名
+                    LambdaUtils.METHOD_TYPE_FUNCTION, // 工厂方法签名
+                    targetSignature.generic(), // 泛型擦除后的 Function.apply 签名 (Object)Object
+                    handle, // 目标方法句柄
+                    targetSignature // 实际方法签名 (AccessibleObject)boolean
+            );
+            // 4. 获取 Function 实例
+            return  (Function<AccessibleObject, Boolean>) callSite.getTarget().invokeExact();
+        } catch (Throwable e) {
+            LOGGER.info("JVM version(less than java9) - AccessibleObject#trySetAccessible method is not exits.");
+        }
+        return null;
     }
 
     /**
@@ -88,6 +118,7 @@ public class MethodHandleUtils {
     }
 
 
+
     /**
      * This lookup method is the alternate implementation of the lookup method with a leading caller class argument which is non-caller-sensitive.
      * This method is only invoked by reflection and method handle
@@ -125,5 +156,14 @@ public class MethodHandleUtils {
             LOGGER.warn("Failed to get private lookup", e);
         }
         return caller != null ? caller : MethodHandles.lookup();
+    }
+
+    public static boolean trySetAccessible(AccessibleObject accessible) {
+        if (TRY_SET_ACCESSIBLE_FUNCTION != null) {
+            return TRY_SET_ACCESSIBLE_FUNCTION.apply(accessible);
+        }
+        // java8
+        accessible.setAccessible(true);
+        return true;
     }
 }
