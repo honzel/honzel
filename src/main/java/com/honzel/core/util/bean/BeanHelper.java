@@ -111,7 +111,7 @@ public class BeanHelper {
 	 * @return the property descriptors
 	 */
 	public static Map<String, PropertyDescriptor> getPropertyDescriptorMap(Class beanClass) {
-		return NestedPropertyUtilsBean.getInstance().getPropertyDescriptorMap(beanClass);
+		return NestedPropertyUtilsBean.getInstance(beanClass).getPropertyDescriptorMap(beanClass);
 	}
 
 	/**
@@ -121,8 +121,8 @@ public class BeanHelper {
 	 * @param beanClass Bean class for which property descriptors are requested
 	 * @return the property descriptors
 	 */
-	public static  PropertyDescriptor[] getPropertyDescriptors(Class beanClass) {
-		return SimplePropertyUtilsBean.getInstance().getPropertyDescriptors(beanClass);
+	public static PropertyDescriptor[] getPropertyDescriptors(Class beanClass) {
+		return NestedPropertyUtilsBean.getInstance(beanClass).getPropertyDescriptors(beanClass);
 	}
 
 	/**

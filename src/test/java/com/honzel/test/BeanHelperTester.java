@@ -2,6 +2,7 @@ package com.honzel.test;
 
 import com.honzel.core.util.bean.BeanHelper;
 import com.honzel.core.util.bean.LambdaPropertyUtilsBean;
+import com.honzel.core.util.bean.NestedPropertyUtilsBean;
 import com.honzel.core.util.bean.SimplePropertyUtilsBean;
 import com.honzel.core.util.converter.DateConverter;
 import com.honzel.core.util.converter.StandardConverter;
@@ -71,6 +72,16 @@ public class BeanHelperTester {
 		System.out.println("getterHandle: " + stopWatch.getTime() + "毫秒");
 		stopWatch.reset();
 
+
+		NestedPropertyUtilsBean instance = NestedPropertyUtilsBean.getLambdaInstance();
+		stopWatch.start();
+		for (long i = 0; i < count; i++) {
+			Object key = instance.getSimpleProperty(bean, "key");
+		}
+		stopWatch.suspend();
+		System.out.println("getProperty: " + stopWatch.getTime() + "毫秒");
+		stopWatch.reset();
+
 		stopWatch.start();
 		for (long i = 0; i < count; i++) {
 			Object key = readMethod.invoke(bean);
@@ -79,13 +90,6 @@ public class BeanHelperTester {
 		System.out.println("readMethod: " + stopWatch.getTime() + "毫秒");
 		stopWatch.reset();
 
-		stopWatch.start();
-		for (long i = 0; i < count; i++) {
-			Object key = LambdaPropertyUtilsBean.getInstance().getProperty(bean, "key", false);
-		}
-		stopWatch.suspend();
-		System.out.println("getProperty: " + stopWatch.getTime() + "毫秒");
-		stopWatch.reset();
 
 		stopWatch.start();
 		for (long i = 0; i < count; i++) {
@@ -109,6 +113,14 @@ public class BeanHelperTester {
 		}
 		stopWatch.suspend();
 		System.out.println("setterHandle: " + stopWatch.getTime() + "毫秒");
+		stopWatch.reset();
+
+		stopWatch.start();
+		for (long i = 0; i < count; i++) {
+			instance.setSimpleProperty(bean, "key", i);
+		}
+		stopWatch.suspend();
+		System.out.println("setProperty: " + stopWatch.getTime() + "毫秒");
 		stopWatch.reset();
 
 		stopWatch.start();
