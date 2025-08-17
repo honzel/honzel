@@ -308,10 +308,7 @@ public class BeanHelper {
      * @return returns the destination bean whose properties are modified
      */
 	public static<T>  T copyProperties(Object source, T target) {
-		if (target != null && LambdaPropertyUtilsBean.getInstance().containsClass(target.getClass())) {
-			return LambdaPropertyUtilsBean.getInstance().copyProperties(source, target);
-		}
-		return SimplePropertyUtilsBean.getInstance().copyProperties(source, target);
+		return target != null ? NestedPropertyUtilsBean.getInstance(target.getClass()).copyProperties(source, target) : null;
 	}
 
 	/**
