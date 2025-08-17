@@ -76,6 +76,7 @@ public class LambdaUtils {
         }
         try {
             Method method = lambdaClass.getDeclaredMethod(WRITE_REPLACE_METHOD);
+            MethodHandleUtils.trySetAccessible(method);
             return method;
 //            MethodHandles.Lookup lookup = MethodHandleUtils.lookup(lambdaClass);
 //            // 获取writeReplace方法句柄
