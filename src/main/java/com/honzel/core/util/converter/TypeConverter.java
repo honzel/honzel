@@ -9,9 +9,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * The multi types converter
@@ -222,6 +220,8 @@ public class TypeConverter extends AbstractConverter {
 		register(LocalTime.class, dateTimeConverter);
 		register(LocalDateTime.class, dateTimeConverter);
 		register(Instant.class, dateTimeConverter);
+		register(Date.class, dateTimeConverter);
+		register(Calendar.class, dateTimeConverter);
 		register(Long.class, dateTimeConverter);
 		register(Long.TYPE, dateTimeConverter);
 		register(Integer.TYPE, dateTimeConverter);
