@@ -447,13 +447,13 @@ public class BeanHelper {
 	public static boolean copyOnCondition(Object origin, Object target, Predicate<Object> valueCondition) {
 		if (target instanceof Map) {
 			if (valueCondition == null) {
-				return copyToMapOnCondition(origin, (Map) target, (k, v) -> true);
+				return copyToMapOnCondition(origin, (Map) target, null);
 			} else {
 				return copyToMapOnCondition(origin, (Map) target, (k, v) -> valueCondition.test(v));
 			}
 		} else {
 			if (valueCondition == null) {
-				return copyOnCondition(origin, target, (d, v) -> true);
+				return copyOnCondition(origin, target, (BiPredicate<PropertyDescriptor, Object>) null);
 			} else {
 				return copyOnCondition(origin, target, (d, v) -> valueCondition.test(v));
 			}
