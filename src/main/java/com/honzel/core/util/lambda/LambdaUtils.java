@@ -36,23 +36,35 @@ public class LambdaUtils {
     private static final String LAMBADA_BLOCK_METHOD_PREFIX = "lambda$";
 
 
-    public static SerializedLambda resolveLambda(Serializable lambda) {
+    public static SerializedLambda resolveLambda(Serializable lambda, boolean onlyClassInfo) {
         Class<?> clazz = lambda.getClass();
         // 获取缓存数据
         Entry<Method, WeakReference<SerializedLambda>> entry = FUNC_CACHE.computeIfAbsent(clazz,
                 cls -> new Entry<>(createSerializedLambdaMethod(cls), null));
         SerializedLambda serializedLambda;
+        boolean hasLambdaValue;
         if (Objects.nonNull(entry.getValue()) && Objects.nonNull(serializedLambda = entry.getValue().get())) {
-            // 如果只能获取类型信息时
-            return serializedLambda;
+            if (onlyClassInfo || isStaticLambda(serializedLambda)) {
+                // 如果只能获取类型信息时
+                return serializedLambda;
+            }
+            hasLambdaValue = true;
+        } else {
+            hasLambdaValue = false;
         }
         // 如果缓存不存在或已gc回收, 重新获取序列化对象
         try {
-            entry.setNewValue(new WeakReference<>(serializedLambda = (SerializedLambda) entry.getKey().invoke(lambda)));
+            serializedLambda = (SerializedLambda) entry.getKey().invoke(lambda);
+            if (!hasLambdaValue) {
+                entry.setNewValue(new WeakReference<>(serializedLambda));
+            }
             return serializedLambda;
         } catch (Exception e) {
             throw new IllegalArgumentException("解析lambda对象失败: " + e.getMessage(), e);
         }
+    }
+    public static SerializedLambda resolveLambda(Serializable lambda) {
+        return resolveLambda(lambda, true);
     }
 
 
