@@ -158,6 +158,16 @@ public class MethodHandleUtils {
         return caller != null ? caller : MethodHandles.lookup();
     }
 
+    /**
+     * If this method is invoked by JNI code with no caller class on the stack, the accessible flag can only be set if the member and the declaring class are public, and the class is in a package that is exported unconditionally.
+     * If there is a security manager, its checkPermission method is first called with a ReflectPermission("suppressAccessChecks") permission.
+     * Returns:
+     * true if the accessible flag is set to true; false if access cannot be enabled.
+     * Throws:
+     * SecurityException – if the request is denied by the security manager
+     * @param accessible the accessible object
+     * @return true if the accessible flag is set to true; false if access cannot be enabled.
+     */
     public static boolean trySetAccessible(AccessibleObject accessible) {
         if (TRY_SET_ACCESSIBLE_FUNCTION != null) {
             return TRY_SET_ACCESSIBLE_FUNCTION.apply(accessible);
