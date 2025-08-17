@@ -169,7 +169,7 @@ public class LambdaUtils {
      * @param <R> 返回类型
      */
     @FunctionalInterface
-    public interface SerializeTiFunction<T, U, P, R>  extends TiFunction<T, U, P, R> {}
+    public interface SerializeTiFunction<T, U, P, R>  extends TiFunction<T, U, P, R>, Serializable {}
     /**
      * 三参数
      * @param <T> 参数1类型
@@ -177,7 +177,7 @@ public class LambdaUtils {
      * @param <P> 参数3类型
      */
     @FunctionalInterface
-    public interface SerializeTiConsumer<T, U, P>  extends TiConsumer<T, U, P> {}
+    public interface SerializeTiConsumer<T, U, P>  extends TiConsumer<T, U, P>, Serializable {}
     /**
      * 三参数
      * @param <T> 参数1类型
@@ -185,7 +185,7 @@ public class LambdaUtils {
      * @param <P> 参数3类型
      */
     @FunctionalInterface
-    public interface SerializeTiPredicate<T, U, P>  extends TiPredicate<T, U, P> {}
+    public interface SerializeTiPredicate<T, U, P>  extends TiPredicate<T, U, P>, Serializable {}
 
 
 }
