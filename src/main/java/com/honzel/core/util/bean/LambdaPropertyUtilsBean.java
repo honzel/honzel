@@ -218,9 +218,6 @@ public class LambdaPropertyUtilsBean extends BasePropertyUtilsBean<Function<Obje
 		return invokeWriteMethod(bean, getSetter(propertyArray), getDescriptor(propertyArray), value);
 	}
 
-	protected Object invokeReadMethod(Object bean, PropertyDescriptor descriptor) {
-		return invokeReadMethod(bean, INVALID_GETTER, descriptor);
-	}
 	protected Object invokeReadMethod(Object bean, Function<Object, Object> getter, PropertyDescriptor descriptor) {
 		if (getter == null) {
 			return null;

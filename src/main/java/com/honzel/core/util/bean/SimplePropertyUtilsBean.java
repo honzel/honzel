@@ -124,15 +124,6 @@ public class SimplePropertyUtilsBean extends BasePropertyUtilsBean<Method, Metho
 	}
 
 	@Override
-	protected Object invokeReadMethod(Object bean, PropertyDescriptor descriptor) {
-		Method readMethod = descriptor.getReadMethod();
-		if (readMethod != null) {
-			MethodHandleUtils.trySetAccessible(readMethod);
-		}
-		return invokeReadMethod(bean, readMethod, descriptor);
-	}
-
-	@Override
 	protected Object invokeReadMethod(Object bean, Method getter, PropertyDescriptor descriptor) {
 		if (getter == null) {
 			return null;

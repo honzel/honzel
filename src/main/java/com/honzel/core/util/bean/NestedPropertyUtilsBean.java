@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
  * @author honzel
  *
  */
-@SuppressWarnings({"rawtypes","unchecked"})
+//@SuppressWarnings({"rawtypes","unchecked"})
 public class NestedPropertyUtilsBean {
 
 	private static final NestedPropertyUtilsBean simpleNestedPropertyUtilsBean = new NestedPropertyUtilsBean(SimplePropertyUtilsBean.getInstance());
@@ -253,7 +253,7 @@ public class NestedPropertyUtilsBean {
 		}
 		name = name.trim();
 		int pos = nestedPos(name);
-		Class beanClass = classInstance ?  (Class) bean : bean.getClass();
+		Class<?> beanClass = classInstance ?  (Class<?>) bean : bean.getClass();
 		if(pos < 0) {
 			return propertyUtilsBean.getPropertyDescriptor(beanClass, name);
 		}
@@ -308,12 +308,12 @@ public class NestedPropertyUtilsBean {
     * @param classIntance whether it is  class instance or not.
     * @return
     */
-	Class getPropertyType(Object bean, String name, boolean classIntance) {
+	Class<?> getPropertyType(Object bean, String name, boolean classIntance) {
 		if(bean == null)
 			return null;
-		Class beanClass;
+		Class<?> beanClass;
 		if(classIntance) {
-			beanClass = (Class) bean;
+			beanClass = (Class<?>) bean;
 		} else {
 			beanClass = bean.getClass();
 		}
@@ -326,7 +326,7 @@ public class NestedPropertyUtilsBean {
 				return propertyUtilsBean.getPropertyType(beanClass, name);
 			}
 			Object root = bean;
-			Class parentClass = null;
+			Class<?> parentClass = null;
 			Object pKey = null;
 			if(pos > 0) {
 				String key = name.substring(0, pos).trim();
@@ -373,7 +373,7 @@ public class NestedPropertyUtilsBean {
 					}
 				}
 				PropertyDescriptor descriptor = null;
-				Class propClass = null;
+				Class<?> propClass;
 				if(beanClass.isArray()) { // array type
 					int ind = propertyUtilsBean.findIndex(key);
 					if(ind < 0) return null;
@@ -424,7 +424,7 @@ public class NestedPropertyUtilsBean {
 		return null;
 	}
 
-	private Class getItemClass(Class beanClass, Object property) {
+	private Class<?> getItemClass(Class<?> beanClass, Object property) {
 		if (beanClass == null || property == null) {
 			return Object.class;
 		} else {
@@ -517,7 +517,7 @@ public class NestedPropertyUtilsBean {
 		return propertyUtilsBean.copyToMapOnCondition(source, (Map) target, condition);
 	}
 
-	public boolean copyToBeanOnCondition(Object source, Object target, BiPredicate<PropertyDescriptor, Object> condition) {
+	public boolean copyToBeanOnCondition(Object source, Object target, BiPredicate<String, Object> condition) {
 		return propertyUtilsBean.copyToBeanOnCondition(source, target, condition);
 	}
 

@@ -360,10 +360,9 @@ abstract class BasePropertyUtilsBean<G, S, F> {
 	 *
 	 * @param source Origin bean whose properties are retrieved
 	 * @param target Destination bean whose properties are modified
-	 * @param <T> the destination bean type
 	 * @return returns the destination bean whose properties are modified
 	 */
-	public<T> T copyProperties(Object source, T target) {
+	public Object copyProperties(Object source, Object target) {
 		if (source == null || target == null || source == target) {
 			return target;
 		}
@@ -520,7 +519,7 @@ abstract class BasePropertyUtilsBean<G, S, F> {
 
 
 	//	@SuppressWarnings("unchecked")
-	public boolean copyToBeanOnCondition(Object source, Object target, BiPredicate<PropertyDescriptor, Object> condition) {
+	public boolean copyToBeanOnCondition(Object source, Object target, BiPredicate<String, Object> condition) {
 		if (source == null || target == null) {
 			return false;
 		}
@@ -529,11 +528,11 @@ abstract class BasePropertyUtilsBean<G, S, F> {
 		if (source instanceof Map) {
 			// 原类型为map
 			for (Map.Entry<Object, Object> entry : ((Map<Object, Object>) source).entrySet()) {
-				Object name = entry.getKey();
-				if (!(name instanceof String)) {
+				Object key = entry.getKey();
+				if (!(key instanceof String)) {
 					continue;
 				}
-				Object[] propertyArray = dstPropertyMap.get(name);
+				Object[] propertyArray = dstPropertyMap.get(key);
 				S setter = getSetter(propertyArray);
 				if (setter == null) {
 					// 没有目标setter
@@ -543,7 +542,7 @@ abstract class BasePropertyUtilsBean<G, S, F> {
 				// 获取原属性值
 				Object value = entry.getValue();
 				// 条件校验
-				if (condition != null && !condition.test(targetDescriptor, value)) {
+				if (condition != null && !condition.test((String) key, value)) {
 					continue;
 				}
 				if (invokeWriteMethod(target, setter, targetDescriptor, value)) {
@@ -569,7 +568,7 @@ abstract class BasePropertyUtilsBean<G, S, F> {
 				// 获取原属性值
 				Object value = invokeReadMethod(source, getter, getDescriptor(srcPropertyArray));
 				// 条件校验
-				if (condition != null && !condition.test(targetDescriptor, value)) {
+				if (condition != null && !condition.test(entry.getKey(), value)) {
 					continue;
 				}
 				if (invokeWriteMethod(target, setter, targetDescriptor, value)) {
@@ -589,23 +588,23 @@ abstract class BasePropertyUtilsBean<G, S, F> {
 		if (source instanceof Map) {
 			// 原类型为map
 			for (Map.Entry<Object, Object> entry : ((Map<Object, Object>) source).entrySet()) {
-				if (!(entry.getKey() instanceof String)) {
+				Object key = entry.getKey();
+				if (!(key instanceof String)) {
 					continue;
 				}
-				String name = (String) entry.getKey();
-				Object[] propertyArray = dstPropertyMap.get(name);
+				Object[] propertyArray = dstPropertyMap.get(key);
 				S setter = getSetter(propertyArray);
 				if (setter == null) {
 					// 没有目标setter
 					continue;
 				}
 				PropertyDescriptor targetDescriptor = getDescriptor(propertyArray);
-				// 获取原属性值
-				Object value = entry.getValue();
 				//
 				Object preValue = invokeReadMethod(target, getGetter(propertyArray), targetDescriptor);
+				// 获取原属性值
+				Object value = entry.getValue();
 				// 条件校验
-				if (condition != null && !condition.test(name, preValue, value)) {
+				if (condition != null && !condition.test((String) key, preValue, value)) {
 					continue;
 				}
 				if (invokeWriteMethod(target, setter, targetDescriptor, value)) {
@@ -650,8 +649,6 @@ abstract class BasePropertyUtilsBean<G, S, F> {
 	boolean invokeWriteMethod(Object bean, Object[] propertyArray, Object value) {
 		return invokeWriteMethod(bean, getSetter(propertyArray), getDescriptor(propertyArray), value);
 	}
-
-	protected abstract Object invokeReadMethod(Object bean, PropertyDescriptor descriptor);
 
 	protected abstract  Object invokeReadMethod(Object bean, G getter, PropertyDescriptor descriptor);
 

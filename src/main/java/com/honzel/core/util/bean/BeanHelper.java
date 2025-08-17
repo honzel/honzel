@@ -381,7 +381,11 @@ public class BeanHelper {
 	 * @param condition the condition
 	 * @return returns false when none property is copied, otherwise returns true
 	 */
-	public static boolean copyOnCondition(Object source, Object target, BiPredicate<PropertyDescriptor, Object> condition) {
+	@SuppressWarnings("unchecked")
+	public static boolean copyOnCondition(Object source, Object target, BiPredicate<String, Object> condition) {
+		if (target instanceof Map) {
+			return source != null && NestedPropertyUtilsBean.getInstance(source.getClass()).copyToMapOnCondition(source, (Map<String, Object>) target, condition);
+		}
 		return target != null && NestedPropertyUtilsBean.getInstance(target.getClass()).copyToBeanOnCondition(source, target, condition);
 	}
 
@@ -445,18 +449,10 @@ public class BeanHelper {
 	 */
 	@SuppressWarnings("unchecked")
 	public static boolean copyOnCondition(Object origin, Object target, Predicate<Object> valueCondition) {
-		if (target instanceof Map) {
-			if (valueCondition == null) {
-				return copyToMapOnCondition(origin, (Map) target, null);
-			} else {
-				return copyToMapOnCondition(origin, (Map) target, (k, v) -> valueCondition.test(v));
-			}
+		if (valueCondition == null) {
+			return copyOnCondition(origin, target, (BiPredicate<String, Object>) null);
 		} else {
-			if (valueCondition == null) {
-				return copyOnCondition(origin, target, (BiPredicate<PropertyDescriptor, Object>) null);
-			} else {
-				return copyOnCondition(origin, target, (d, v) -> valueCondition.test(v));
-			}
+			return copyOnCondition(origin, target, (k, v) -> valueCondition.test(v));
 		}
 	}
 
@@ -482,9 +478,9 @@ public class BeanHelper {
 		String[] names = parseGetterOrSetterNames(ignoreProperties);
 		if (names.length == 0 && valueCondition == null) {
 			// 没有条件
-			return copyOnCondition(origin, target, (BiPredicate<PropertyDescriptor, Object>) null);
+			return copyOnCondition(origin, target, (BiPredicate<String, Object>) null);
 		}
-		return copyOnCondition(origin, target, (d, v) -> !matchTargetProperty(names, d.getName()) && (valueCondition == null || valueCondition.test(v)));
+		return copyOnCondition(origin, target, (k, v) -> !matchTargetProperty(names, k) && (valueCondition == null || valueCondition.test(v)));
 	}
 
 
@@ -511,8 +507,8 @@ public class BeanHelper {
 			return false;
 		}
 		String[] names = parseGetterOrSetterNames(ignoreProperties);
-		if (preValueCondition == null) {
-			return NestedPropertyUtilsBean.getInstance(target.getClass()).copyToBeanOnCondition(origin, target, (d, value) -> !matchTargetProperty(names, d.getName()));
+		if (names.length == 0) {
+			return NestedPropertyUtilsBean.getInstance(target.getClass()).copyToBeanOnCondition(origin, target, (BiPredicate<String, Object>) null);
 		}
 		return NestedPropertyUtilsBean.getInstance(target.getClass()).copyToBeanOnCondition(origin, target, (k, pv, v) -> !matchTargetProperty(names, k) && preValueCondition.test(pv));
 	}
@@ -536,7 +532,7 @@ public class BeanHelper {
 	public static boolean copyOnPreValueCondition(Object origin, Object target, Predicate<Object> preValueCondition) {
 		if (preValueCondition == null) {
 			// 没有条件
-			return copyOnCondition(origin, target, (Predicate<Object>) null);
+			return copyOnCondition(origin, target, (BiPredicate<String, Object>) null);
 		}
 		return copyOnCondition(origin, target, (k, pv, v) -> preValueCondition.test(pv));
 	}
@@ -558,11 +554,14 @@ public class BeanHelper {
 	 */
 	@SafeVarargs
 	public static <T> boolean copyToMapOnCondition(T origin, Map<String, Object> target, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
+		if (origin == null) {
+			return false;
+		}
 		String[] names = parseGetterOrSetterNames(ignoreProperties);
 		if (names.length == 0 && valueCondition == null) {
-			return copyToMapOnCondition(origin, target, null);
+			return NestedPropertyUtilsBean.getInstance(origin.getClass()).copyToMapOnCondition(origin, target, (BiPredicate<String, Object>) null);
 		}
-		return copyToMapOnCondition(origin, target, (k, v) -> !matchTargetProperty(names, k) && (valueCondition == null || valueCondition.test(v)));
+		return NestedPropertyUtilsBean.getInstance(origin.getClass()).copyToMapOnCondition(origin, target, (k, v) -> !matchTargetProperty(names, k) && (valueCondition == null || valueCondition.test(v)));
 	}
 
 	/**
