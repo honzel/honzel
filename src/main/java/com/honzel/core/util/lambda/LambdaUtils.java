@@ -36,7 +36,7 @@ public class LambdaUtils {
     private static final String LAMBADA_BLOCK_METHOD_PREFIX = "lambda$";
 
 
-    public static SerializedLambda resolveLambda(Serializable lambda, boolean isMetaMethodInfo) {
+    public static SerializedLambda resolveLambda(Serializable lambda, boolean ignoreCapturedArgs) {
         Class<?> clazz = lambda.getClass();
         // 获取缓存数据
         Entry<Method, WeakReference<SerializedLambda>> entry = FUNC_CACHE.computeIfAbsent(clazz,
@@ -44,7 +44,7 @@ public class LambdaUtils {
         SerializedLambda serializedLambda;
         boolean hasLambdaValue;
         if (Objects.nonNull(entry.getValue()) && Objects.nonNull(serializedLambda = entry.getValue().get())) {
-            if (isMetaMethodInfo || isStaticLambda(serializedLambda)) {
+            if (ignoreCapturedArgs || isStaticLambda(serializedLambda)) {
                 // 如果只能获取类型信息时
                 return serializedLambda;
             }
