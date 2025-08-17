@@ -25,8 +25,8 @@ public class LambdaUtils {
     public static final MethodType METHOD_TYPE_CONSUMER = MethodType.methodType(Consumer.class);
     public static final MethodType METHOD_TYPE_BI_FUNCTION = MethodType.methodType(BiFunction.class);
     public static final MethodType METHOD_TYPE_BI_CONSUMER = MethodType.methodType(BiConsumer.class);
-    public static final MethodType METHOD_TYPE_TI_FUNCTION = MethodType.methodType(SerializeTiFunction.class);
-    public static final MethodType METHOD_TYPE_TI_CONSUMER = MethodType.methodType(SerializeTiConsumer.class);
+    public static final MethodType METHOD_TYPE_TI_FUNCTION = MethodType.methodType(TiFunction.class);
+    public static final MethodType METHOD_TYPE_TI_CONSUMER = MethodType.methodType(TiConsumer.class);
 
     protected LambdaUtils() {
     }
