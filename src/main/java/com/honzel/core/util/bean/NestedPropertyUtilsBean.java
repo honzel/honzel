@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
  * @author honzel
  *
  */
-//@SuppressWarnings({"rawtypes","unchecked"})
+@SuppressWarnings({"rawtypes","unchecked"})
 public class NestedPropertyUtilsBean {
 
 	private static final NestedPropertyUtilsBean simpleNestedPropertyUtilsBean = new NestedPropertyUtilsBean(SimplePropertyUtilsBean.getInstance());
