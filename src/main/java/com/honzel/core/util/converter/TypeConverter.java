@@ -11,6 +11,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+
 /**
  * The multi types converter
  * @author honzel
@@ -129,8 +131,8 @@ public class TypeConverter extends AbstractConverter {
 		if (targetType.isArray()) {
 			return getArrayConverter();
 		}
-		if (targetType.isEnum()) {
-			return (Converter) converters.get(Enum.class);
+		if (targetType.isEnum() && Objects.nonNull(converter = (Converter) converters.get(Enum.class))) {
+			return converter;
 		}
 		return (Converter) converters.get(Object.class);
 	}
