@@ -25,7 +25,7 @@ public class ConverterTester {
 	}
 
 	private void registerConverters() {
-		DateConverter converter = new DateConverter(BeanHelper.lookupConverter(String.class));
+		DateConverter converter = new DateConverter(BeanHelper.lookup(String.class));
 		converter.setPatterns(
 				new Class[] {
 						Timestamp.class,
@@ -50,7 +50,7 @@ public class ConverterTester {
 	}
 	
 	public void testDateConverter() {
-		DateConverter converter = new DateConverter(BeanHelper.lookupConverter(String.class));
+		DateConverter converter = new DateConverter(BeanHelper.lookup(String.class));
 		converter.setPatterns(new String[] {"yyyy-MM-dd HH:mm","yyyy-MM-dd", "yyyyMMddHHmm"});
 		Calendar calendar = (Calendar) converter.convert("201411201744", Calendar.class);
 		System.out.println(converter.convert(calendar, String.class));

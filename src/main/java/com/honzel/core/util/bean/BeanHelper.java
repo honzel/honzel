@@ -85,7 +85,7 @@ public class BeanHelper {
 	 * @param toType Class for which to return a registered Converter
 	 * @return the registered <code>Converter</code> for the specified type
 	 */
-	public static Converter lookupConverter(Class toType) {
+	public static Converter lookup(Class toType) {
 		return NestedPropertyUtilsBean.getInstance().lookup(toType);
 	}
 
