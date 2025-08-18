@@ -23,7 +23,7 @@ public class MethodHandleUtils {
 
     private static final Function<AccessibleObject, Boolean> TRY_SET_ACCESSIBLE_FUNCTION;
     private static final BiFunction<Class<?>, MethodHandles.Lookup, MethodHandles.Lookup> LOOKUP_FUNCTION;
-    private static final Function<Class<?>, MethodHandles.Lookup> LOW_VERSION_LOOKUP_FUNCTION;
+    private static final BiFunction<Class<?>, Integer, MethodHandles.Lookup> LOW_VERSION_LOOKUP_FUNCTION;
     static {
         // init functions
         MethodHandles.Lookup lookup = MethodHandles.lookup();
@@ -53,7 +53,7 @@ public class MethodHandleUtils {
             // 4. 获取 Function 实例
             return  (Function<AccessibleObject, Boolean>) callSite.getTarget().invokeExact();
         } catch (Throwable e) {
-            LOGGER.info("JVM version(less than java9) - AccessibleObject#trySetAccessible method is not exits.");
+            LOGGER.info("JVM version(less than java9) - AccessibleObject#trySetAccessible method is not exits");
         }
         return null;
     }
@@ -64,26 +64,26 @@ public class MethodHandleUtils {
      * @return Lookup生成函数
      */
     @SuppressWarnings("unchecked")
-    private static Function<Class<?>, MethodHandles.Lookup> initJavaLowVersionCreateLookupFunction(MethodHandles.Lookup lookup) {
+    private static BiFunction<Class<?>, Integer, MethodHandles.Lookup> initJavaLowVersionCreateLookupFunction(MethodHandles.Lookup lookup) {
         try {
             // 1. 获取构造方法的 MethodHandle（实际签名是 (Class,int)Lookup，但通过绑定固定权限值）,只有java8有
             Constructor<MethodHandles.Lookup> constructor = MethodHandles.Lookup.class.getDeclaredConstructor(Class.class, int.class);
             constructor.setAccessible(true);
             MethodHandle handle = lookup.unreflectConstructor(constructor);
             // 2.绑定全权限标志位（15）
-            MethodHandle boundHandle = MethodHandles.insertArguments(handle, 1, Modifier.PUBLIC | Modifier.PRIVATE | Modifier.PROTECTED | Modifier.STATIC);
+//            MethodHandle boundHandle = MethodHandles.insertArguments(handle, 1, Modifier.PUBLIC | Modifier.PRIVATE | Modifier.PROTECTED | Modifier.STATIC);
             // 3. 定义函数式接口类型 (Function<Class<?>, Lookup>)
-            MethodType funcType = MethodType.methodType(MethodHandles.Lookup.class, Class.class);
+            MethodType funcType = MethodType.methodType(MethodHandles.Lookup.class, Class.class, Integer.class);
             // 4. 创建 CallSite（模拟方法引用 Lookup::new）
             CallSite callSite = LambdaMetafactory.metafactory(
                     lookup,
                     "apply",
-                    LambdaUtils.METHOD_TYPE_FUNCTION,
+                    LambdaUtils.METHOD_TYPE_BI_FUNCTION,
                     funcType.generic(),
-                    boundHandle,
+                    handle,
                     funcType
             );
-            return (Function<Class<?>, MethodHandles.Lookup>) callSite.getTarget().invokeExact();
+            return (BiFunction<Class<?>, Integer, MethodHandles.Lookup>) callSite.getTarget().invokeExact();
         } catch (Throwable e) {
             LOGGER.error("Unsupported JVM version - no private lookup mechanism available", e);
         }
@@ -112,7 +112,7 @@ public class MethodHandleUtils {
             // 4. 获取 BiFunction 实例
             return  (BiFunction<Class<?>, MethodHandles.Lookup, MethodHandles.Lookup>) callSite.getTarget().invokeExact();
         } catch (Throwable e) {
-            LOGGER.info("JVM version(less than java9) - privateLookupIn static method is not exits.");
+            LOGGER.info("JVM version(less than java9) - privateLookupIn static method is not exits");
         }
         return null;
     }
@@ -150,7 +150,7 @@ public class MethodHandleUtils {
             }
             if (LOW_VERSION_LOOKUP_FUNCTION != null) {
                 // java 8
-                return LOW_VERSION_LOOKUP_FUNCTION.apply(targetClass);
+                return LOW_VERSION_LOOKUP_FUNCTION.apply(targetClass, Modifier.PUBLIC | Modifier.PRIVATE | Modifier.PROTECTED | Modifier.STATIC);
             }
         } catch (Exception e) {
             LOGGER.warn("Failed to get private lookup", e);
