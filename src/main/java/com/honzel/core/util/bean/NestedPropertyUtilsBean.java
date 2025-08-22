@@ -470,9 +470,12 @@ public class NestedPropertyUtilsBean {
 		}
 		Object root = bean;
 		if(pos > 0) {
+			if (bean instanceof Map && ((Map<?, ?>) bean).containsKey(name)) {
+				// 如果是map
+				return ((Map) bean).get(name);
+			}
 			String key = name.substring(0, pos).trim();
-			bean = propertyUtilsBean.getProperty(bean, key, false);
-			if (bean == null) {
+			if ((bean = propertyUtilsBean.getProperty(bean, key, false)) == null) {
 				return null;
 			}
 		}

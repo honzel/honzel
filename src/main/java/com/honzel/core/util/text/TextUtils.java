@@ -1307,6 +1307,98 @@ public class TextUtils {
 		}
 	}
 
+//	/**
+//	 * 替换值列表中对应位置的值, 如果不存在, 则不变
+//	 * @param valueList 字符串值集合(用项分隔符隔开各值)
+//	 * @param valueIndex 位置
+//	 * @param value 新值
+//	 * @param separator 项分隔符
+//	 * @return 返回替换后的值列表, 如果不变, 则返回原列表串对象
+//	 */
+//	private static String resetValue0(String valueList, int valueIndex, String value, boolean insert, String separator) {
+//		if (valueList == null || insert && value == null) {
+//			return valueList;
+//		}
+//		if (isEmpty(separator)) {
+//			return resetString(valueList, valueIndex, value, insert);
+//		}
+//		int startIndex;
+//		int endIndex;
+//		if (valueIndex >= 0) {
+//			// 从左到右算
+//			startIndex = 0;
+//			while ((endIndex = valueList.indexOf(separator, startIndex)) >= 0) {
+//				if (valueIndex == 0) {
+//					// 获取到位置
+//					break;
+//				}
+//				// 继续下一个
+//				startIndex = endIndex + separator.length();
+//				--valueIndex;
+//			}
+//			if (startIndex >= 0) {
+//				startIndex -= separator.length();
+//			}
+//		} else {
+//			endIndex = valueList.length();
+//			++valueIndex;
+//			while ((startIndex = valueList.lastIndexOf(separator, endIndex - 1)) >= 0) {
+//				if (valueIndex == 0) {
+//					break;
+//				}
+//				endIndex = startIndex;
+//				++valueIndex;
+//			}
+//		}
+//		if (valueIndex != 0 && (!insert || value.isEmpty())) {
+//			return valueList;
+//		}
+//		if (valueList.isEmpty()) {
+//			return isNotEmpty(value) ? value : valueList;
+//		}
+//		// 获取前缀
+//		String prefix = startIndex > 0 ? valueList.substring(0, startIndex) : EMPTY;
+//		//
+//		if (endIndex >= 0) {
+//			// 有前缀时
+//			if (value == null) {
+//				if (startIndex < 0) {
+//					return endIndex == valueList.length() ? EMPTY : valueList.substring(endIndex + separator.length());
+//				} else {
+//					return endIndex < valueList.length() ? prefix + valueList.substring(endIndex) : prefix;
+//				}
+//			}
+//		} else {
+//			// 没有后缀
+//			return prefix;
+//		}
+//	}
+
+	private static String resetString(String valueList, int valueIndex, String value, boolean insert) {
+		if (valueIndex < 0) {
+			valueIndex += valueList.length();
+		}
+		if (insert) {
+			// 插入
+			if (valueIndex >= 0 && valueIndex <= valueList.length()) {
+				return valueList.substring(0, valueIndex) + value + valueList.substring(valueIndex);
+			} else {
+				return valueList;
+			}
+		}
+		if (valueIndex >= 0 && valueIndex < valueList.length()) {
+			if (value == null) {
+				// 删除
+				return valueList.substring(0, valueIndex) + valueList.substring(valueIndex + 1);
+			}
+			// 替换
+			return valueList.substring(0, valueIndex) + value + valueList.substring(valueIndex + 1);
+		} else {
+			// 保存不变
+			return valueList;
+		}
+	}
+
 	/**
 	 * 移除值列表中对应位置的值, 如果不存在, 则不变
 	 * @param valueList 字符串值集合(用项分隔符隔开各值)

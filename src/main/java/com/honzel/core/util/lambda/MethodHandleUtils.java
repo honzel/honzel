@@ -23,11 +23,11 @@ public class MethodHandleUtils {
 
     private static final Function<AccessibleObject, Boolean> TRY_SET_ACCESSIBLE_FUNCTION;
     private static final BiFunction<Class<?>, MethodHandles.Lookup, MethodHandles.Lookup> LOOKUP_FUNCTION;
-    private static final BiFunction<Class<?>, Integer, MethodHandles.Lookup> LOW_VERSION_LOOKUP_FUNCTION;
+    private static final Constructor<MethodHandles.Lookup> LOW_VERSION_LOOKUP_CONSTRUCTOR;
     static {
         // init functions
         MethodHandles.Lookup lookup = MethodHandles.lookup();
-        LOW_VERSION_LOOKUP_FUNCTION = Objects.isNull(LOOKUP_FUNCTION = initCreateLookupFunction(lookup)) ? initJavaLowVersionCreateLookupFunction(lookup) : null;
+        LOW_VERSION_LOOKUP_CONSTRUCTOR = Objects.isNull(LOOKUP_FUNCTION = initCreateLookupFunction(lookup)) ? initJavaLowVersionCreateLookupFunction(lookup) : null;
         TRY_SET_ACCESSIBLE_FUNCTION = initTrySetAccessibleFunction();
     }
 
@@ -64,26 +64,27 @@ public class MethodHandleUtils {
      * @return Lookup生成函数
      */
     @SuppressWarnings("unchecked")
-    private static BiFunction<Class<?>, Integer, MethodHandles.Lookup> initJavaLowVersionCreateLookupFunction(MethodHandles.Lookup lookup) {
+    private static Constructor<MethodHandles.Lookup> initJavaLowVersionCreateLookupFunction(MethodHandles.Lookup lookup) {
         try {
             // 1. 获取构造方法的 MethodHandle（实际签名是 (Class,int)Lookup，但通过绑定固定权限值）,只有java8有
             Constructor<MethodHandles.Lookup> constructor = MethodHandles.Lookup.class.getDeclaredConstructor(Class.class, int.class);
             constructor.setAccessible(true);
-            MethodHandle handle = lookup.unreflectConstructor(constructor);
-            // 2.绑定全权限标志位（15）
-//            MethodHandle boundHandle = MethodHandles.insertArguments(handle, 1, Modifier.PUBLIC | Modifier.PRIVATE | Modifier.PROTECTED | Modifier.STATIC);
-            // 3. 定义函数式接口类型 (Function<Class<?>, Lookup>)
-            MethodType funcType = MethodType.methodType(MethodHandles.Lookup.class, Class.class, Integer.class);
-            // 4. 创建 CallSite（模拟方法引用 Lookup::new）
-            CallSite callSite = LambdaMetafactory.metafactory(
-                    lookup,
-                    "apply",
-                    LambdaUtils.METHOD_TYPE_BI_FUNCTION,
-                    funcType.generic(),
-                    handle,
-                    funcType
-            );
-            return (BiFunction<Class<?>, Integer, MethodHandles.Lookup>) callSite.getTarget().invokeExact();
+            return constructor;
+//            MethodHandle handle = lookup.findConstructor(MethodHandles.Lookup.class, MethodType.methodType(void.class, Class.class, int.class));
+//            // 2.绑定全权限标志位（15）
+////            MethodHandle boundHandle = MethodHandles.insertArguments(handle, 1, Modifier.PUBLIC | Modifier.PRIVATE | Modifier.PROTECTED | Modifier.STATIC);
+//            // 3. 定义函数式接口类型 (Function<Class<?>, Lookup>)
+//            MethodType funcType = MethodType.methodType(MethodHandles.Lookup.class, Class.class, Integer.class);
+//            // 4. 创建 CallSite（模拟方法引用 Lookup::new）
+//            CallSite callSite = LambdaMetafactory.metafactory(
+//                    lookup,
+//                    "apply",
+//                    LambdaUtils.METHOD_TYPE_BI_FUNCTION,
+//                    funcType.generic(),
+//                    handle,
+//                    funcType
+//            );
+//            return (BiFunction<Class<?>, Integer, MethodHandles.Lookup>) callSite.getTarget().invokeExact();
         } catch (Throwable e) {
             LOGGER.error("Unsupported JVM version - no private lookup mechanism available", e);
         }
@@ -148,9 +149,9 @@ public class MethodHandleUtils {
                 // java 9+
                 return LOOKUP_FUNCTION.apply(targetClass, caller != null ? caller : MethodHandles.lookup());
             }
-            if (LOW_VERSION_LOOKUP_FUNCTION != null) {
+            if (LOW_VERSION_LOOKUP_CONSTRUCTOR != null) {
                 // java 8
-                return LOW_VERSION_LOOKUP_FUNCTION.apply(targetClass, Modifier.PUBLIC | Modifier.PRIVATE | Modifier.PROTECTED | Modifier.STATIC);
+                return LOW_VERSION_LOOKUP_CONSTRUCTOR.newInstance(targetClass, Modifier.PRIVATE);
             }
         } catch (Exception e) {
             LOGGER.warn("Failed to get private lookup", e);
