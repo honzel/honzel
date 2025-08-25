@@ -1073,9 +1073,6 @@ public class TextUtils {
 			return index < ((List<?>) params).size() ? ((List<?>) params).get(index) : null;
 		}
 		if (params instanceof Map) {
-			if (((Map<?, ?>) params).containsKey(index)) {
-				return ((Map<?, ?>) params).get(index);
-			}
 			String indexStr = Integer.toString(index);
 			if (((Map<?, ?>) params).containsKey(indexStr)) {
 				return ((Map<?, ?>) params).get(indexStr);
