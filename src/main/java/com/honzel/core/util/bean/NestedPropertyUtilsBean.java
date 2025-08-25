@@ -588,6 +588,10 @@ public class NestedPropertyUtilsBean {
 						propClass = propertyUtilsBean.getDescriptor(propertyArray).getPropertyType();
 					}
 					if (propClass == null) {
+						if (resolver.isFirst() && bean instanceof Map) {
+							((Map<Object, Object>) bean).put(name,  value);
+							return true;
+						}
 						throw new IllegalArgumentException("Can not be introspected the property type of  the property '"
 								+ key + "' for the specified bean of the type '" + getTypeName(bean) + "'.");
 					}
