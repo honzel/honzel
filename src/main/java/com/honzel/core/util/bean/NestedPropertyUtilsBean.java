@@ -43,16 +43,17 @@ public class NestedPropertyUtilsBean {
 	public static NestedPropertyUtilsBean getInstance() {
 		return simpleNestedPropertyUtilsBean;
 	}
+
 	public static NestedPropertyUtilsBean getLambdaInstance() {
 		return lambdaNestedPropertyUtilsBean;
 	}
+
 	public static NestedPropertyUtilsBean getInstance(Class<?> beanClass) {
 		if (lambdaNestedPropertyUtilsBean.propertyUtilsBean.containsClass(beanClass)) {
 			return lambdaNestedPropertyUtilsBean;
 		}
 		return simpleNestedPropertyUtilsBean;
 	}
-
 
 
 	/**
@@ -290,6 +291,7 @@ public class NestedPropertyUtilsBean {
 		}
 		return null;
 	}
+
 	public <T> T newInstance(Class<T> beanClass) throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
 		return (T) propertyUtilsBean.newInstance(beanClass);
 	}
@@ -328,11 +330,11 @@ public class NestedPropertyUtilsBean {
 			Object root = bean;
 			Class<?> parentClass = null;
 			Object pKey = null;
-			if(pos > 0) {
+			if (pos > 0) {
 				String key = name.substring(0, pos).trim();
 				pKey = key;
 				parentClass = beanClass;
-				if(!classIntance) {
+				if (!classIntance) {
 					Object prop = propertyUtilsBean.getProperty(bean, key, false);
 					if(prop != null) {
 						bean = prop;
@@ -341,10 +343,14 @@ public class NestedPropertyUtilsBean {
 						classIntance = true;
 					}
 				}
-				if(classIntance) {
-					beanClass = propertyUtilsBean.getPropertyType(beanClass, key);
-					if(beanClass == null) {
+				if (classIntance) {
+					if ((beanClass = propertyUtilsBean.getPropertyType(beanClass, key)) == null) {
+						// 属性不存在
 						return null;
+					}
+					if (Object.class.equals(beanClass) && Map.class.isAssignableFrom(parentClass)) {
+						// 父类是Map
+						return Object.class;
 					}
 				}
 			}
@@ -516,6 +522,7 @@ public class NestedPropertyUtilsBean {
 	public boolean copyToMapOnCondition(Object source, Map<String, Object> target, BiPredicate<String, Object> condition) {
 		return propertyUtilsBean.copyToMapOnCondition(source, target, condition);
 	}
+
 	public boolean copyToMapOnCondition(Object source, Object target, LambdaUtils.TiPredicate<String, Object, Object> condition) {
 		return propertyUtilsBean.copyToMapOnCondition(source, (Map) target, condition);
 	}
@@ -588,7 +595,7 @@ public class NestedPropertyUtilsBean {
 						propClass = propertyUtilsBean.getDescriptor(propertyArray).getPropertyType();
 					}
 					if (propClass == null) {
-						if (resolver.isFirst() && bean instanceof Map) {
+						if (bean instanceof Map && resolver.isFirst()) {
 							((Map<Object, Object>) bean).put(name,  value);
 							return true;
 						}

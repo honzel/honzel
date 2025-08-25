@@ -321,7 +321,7 @@ public class TextUtils {
 					}
 				}
 				//判断是否前置常量串
-				if (resolver.isInTokens() && resolver.getInput().charAt(resolver.getStart()) != EXPR_FLAG) {
+				if (resolver.isInTokens() && pattern.charAt(resolver.getStart()) != EXPR_FLAG) {
 					// 解析下一部分
 					resolver.hasNext();
 				}
@@ -1056,8 +1056,7 @@ public class TextUtils {
 			if (propValue == params && !isEmpty(name)) {
 				// 如果不是列表或数组
 				propValue = BeanHelper.getProperty(params, name);
-				if (propValue == null && (offset == 0 && index < 0 || index == 0)
-						&& Modifier.isFinal(params.getClass().getModifiers()) && BeanHelper.getPropertyType(params, name) == null) {
+				if (propValue == null && (offset == 0 && index < 0 || index == 0) && BeanHelper.getPropertyType(params, name) == null) {
 					propValue = params;
 				}
 			}
@@ -1072,6 +1071,18 @@ public class TextUtils {
 		}
 		if (params instanceof List) {
 			return index < ((List<?>) params).size() ? ((List<?>) params).get(index) : null;
+		}
+		if (params instanceof Map) {
+			if (((Map<?, ?>) params).containsKey(EMPTY)) {
+				return ((Map<?, ?>) params).get(EMPTY);
+			}
+			if (((Map<?, ?>) params).containsKey(index)) {
+				return ((Map<?, ?>) params).get(index);
+			}
+			String indexStr = Integer.toString(index);
+			if (((Map<?, ?>) params).containsKey(indexStr)) {
+				return ((Map<?, ?>) params).get(indexStr);
+			}
 		}
 		return params;
 	}
