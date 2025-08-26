@@ -209,7 +209,7 @@ public class TextUtils {
 	 * @return 每个参数占位符对应的值
 	 */
 	public static Map<String, Object> parseParamMap(String pattern, Object params) {
-		return parseParamMap0(new HashMap<>(), false, pattern, params, false);
+		return parseParamMap0(new LinkedHashMap<>(), false, pattern, params, false);
 	}
 
 	/**
@@ -230,7 +230,7 @@ public class TextUtils {
 	 * @return 每个参数占位符对应的值
 	 */
 	public static Map<String, Object> parseAlternateParamMap(String pattern, Object params) {
-		return parseParamMap0(new HashMap<>(), true, pattern, params, false);
+		return parseParamMap0(new LinkedHashMap<>(), true, pattern, params, false);
 	}
 
 
@@ -252,7 +252,7 @@ public class TextUtils {
 	 * @return 每个参数占位符对应的值
 	 */
 	public static Map<String, Object> parseSimplifiedParamMap(String pattern, Object params) {
-		return parseParamMap0(new HashMap<>(), false, pattern, params, true);
+		return parseParamMap0(new LinkedHashMap<>(), false, pattern, params, true);
 	}
 
 	/**
@@ -262,7 +262,7 @@ public class TextUtils {
 	 * @return 每个参数占位符对应的值
 	 */
 	public static Map<String, Object> parseAlternateSimplifiedParamMap(String pattern, Object params) {
-		return parseParamMap0(new HashMap<>(), true, pattern, params, true);
+		return parseParamMap0(new LinkedHashMap<>(), true, pattern, params, true);
 	}
 
 	/**
