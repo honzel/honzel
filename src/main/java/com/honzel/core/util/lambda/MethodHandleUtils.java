@@ -174,7 +174,9 @@ public class MethodHandleUtils {
             return TRY_SET_ACCESSIBLE_FUNCTION.apply(accessible);
         }
         // java8
-        accessible.setAccessible(true);
+        if (!accessible.isAccessible()) {
+            accessible.setAccessible(true);
+        }
         return true;
     }
 }
