@@ -1056,7 +1056,7 @@ public class TextUtils {
 			if (propValue == params && !isEmpty(name)) {
 				// 如果不是列表或数组
 				propValue = BeanHelper.getProperty(params, name);
-				if (propValue == null && (offset == 0 && index < 0 || index == 0) && BeanHelper.getPropertyType(params, name) == null) {
+				if (propValue == null && (offset == 0 && index < 0 || index == 0) && Modifier.isFinal(params.getClass().getModifiers()) && BeanHelper.getPropertyType(params, name) == null) {
 					propValue = params;
 				}
 			}
