@@ -1,6 +1,5 @@
 package com.honzel.core.util.text;
 
-import com.honzel.core.constant.NumberConstants;
 import com.honzel.core.util.time.LocalDateTimeUtils;
 import com.honzel.core.util.web.WebUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -12,13 +11,14 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.temporal.TemporalAccessor;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Objects;
+import java.util.*;
 
 import static com.honzel.core.util.text.TextUtils.*;
 
@@ -397,44 +397,49 @@ public enum FormatTypeEnum implements TextFormatType {
             return StringUtils.isNotEmpty(pattern) && value instanceof Number ? new DecimalFormat(pattern).format(value) : TextUtils.toString(value);
         }
     },
-//    /**
-//     * URL编码格式化类型
-//     */
-//    RADIX("radix") {
-//        /**
-//         * 格式化值
-//         * @param value 值
-//         * @param parameters 参数 (进制：长度)
-//         * @return 格式化后的值
-//         */
-//        public String formatValue(Object value, String... parameters) {
-//            if (isNotEmpty(value) && parameters.length > 0 && !EMPTY.equals(parameters[0])) {
-//                // 获取进制
-//                int toRadix = Integer.parseInt(parameters[0]);
-//                if (toRadix < Character.MIN_RADIX || toRadix > Character.MAX_RADIX) {
-//                    toRadix = 10;
-//                }
-//                int oriRadix = parameters.length > 1 && !EMPTY.equals(parameters[0]) ? Integer.parseInt(parameters[1]) : 10;
-//                if (oriRadix < Character.MIN_RADIX || oriRadix > Character.MAX_RADIX) {
-//                    oriRadix = 10;
-//                }
-//                Number number;
-//                if (value instanceof Integer || value instanceof Long || value instanceof Short || value instanceof Byte) {
-//                    return Long.toString(((Number) value).longValue(), toRadix);
-//                }
-//                if (value instanceof BigInteger) {
-//                    return ((BigInteger) value).toString(toRadix);
-//                }
-//                if (value instanceof BigDecimal) {
-//                    value = ((BigDecimal) value).unscaledValue();
-//                } else {
-//                    value = value.toString();
-//                }
-//
-//            }
-//            return toString(value);
-//        }
-//    },
+    /**
+     * 摘要计算
+     */
+    DIGEST("digest") {
+        /**
+         * 格式化值
+         * @param value 值
+         * @param parameters 参数 (进制：长度)
+         * @return 格式化后的值
+         */
+        public String formatValue(Object value, String... parameters) {
+            String valueStr = TextUtils.toString(value);
+            if (isNotEmpty(valueStr) && parameters.length > 0) {
+                // 获取进制
+                String algorithm = parameters[0];
+                String encodeAlgorithm = parameters.length > 2 ? parameters[2] : null;
+                if (isEmpty(encodeAlgorithm)) {
+                    if ("hex".equalsIgnoreCase(algorithm) || "base64".equalsIgnoreCase(algorithm)) {
+                        encodeAlgorithm = algorithm;
+                        algorithm = EMPTY;
+                    } else {
+                        encodeAlgorithm = "hex";
+                    }
+                }
+                Charset charset = parameters.length > 1 && !EMPTY.equals(parameters[1]) ? Charset.forName(parameters[1]) : StandardCharsets.UTF_8;
+                byte[] dataBytes = valueStr.getBytes(charset);
+                if (!algorithm.isEmpty()) {
+                    try {
+                        dataBytes = MessageDigest.getInstance(algorithm).digest(dataBytes);
+                    } catch (NoSuchAlgorithmException e) {
+                        throw new IllegalArgumentException(e.getMessage(), e);
+                    }
+                }
+                if ("base64".equalsIgnoreCase(encodeAlgorithm)) {
+                    // Base64
+                    return Base64.getEncoder().encodeToString(dataBytes);
+                }
+                // Hex
+                return HexFormat.of().formatHex(dataBytes);
+            }
+            return valueStr;
+        }
+    },
     ;
 
     private static final Logger log = LoggerFactory.getLogger(FormatTypeEnum.class);

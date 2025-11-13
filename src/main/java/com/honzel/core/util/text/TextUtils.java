@@ -125,6 +125,7 @@ public class TextUtils {
 		registerFormatType(FormatTypeEnum.SUB_STR);
 		registerFormatType(FormatTypeEnum.PAD);
 		registerFormatType(FormatTypeEnum.CALC);
+		registerFormatType(FormatTypeEnum.DIGEST);
 	}
 
 	protected TextUtils() {
