@@ -23,6 +23,14 @@ public interface Converter {
 	 */
 	Object convert(Object value, Class toType);
 
+	/**
+	 * Convert the specified input object into an output object of the
+	 * specified type.
+	 *
+	 * @param value The input value to be converted
+	 * @param toType Data type to which this value should be converted
+	 * @return The converted  value.
+	 */
 	default Object convert(Object value, Type toType) {
 		return convert(value, GenericTypeUtils.erase(toType));
 	}

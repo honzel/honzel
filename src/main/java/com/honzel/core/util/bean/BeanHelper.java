@@ -28,6 +28,9 @@ import java.util.function.Predicate;
 @SuppressWarnings({"rawtypes" })
 public class BeanHelper {
 
+	/**
+	 * <p>Utility methods for using Java Reflection APIs to facilitate generic
+	 */
     protected BeanHelper() {
     }
 
@@ -40,6 +43,10 @@ public class BeanHelper {
 		NestedPropertyUtilsBean.getInstance().setDisableException(disableException);
 	}
 
+	/**
+	 * Returns whether or not exception is disabled.
+	 * @return whether or not exception is disabled.
+	 */
 	public static boolean isDisableException() {
 		return NestedPropertyUtilsBean.getInstance().isDisableException();
 	}
@@ -158,6 +165,8 @@ public class BeanHelper {
 	 * @param beanClass bean class
 	 * @param name property name
 	 * @return getter
+	 * @param <T> the bean type
+	 * @param <P> the property type
 	 */
 	public static<T, P> Function<T, P> getPropertyGetter(Class<T> beanClass, String name) {
 		return LambdaPropertyUtilsBean.getInstance().getPropertyGetter(beanClass, name);
@@ -169,6 +178,8 @@ public class BeanHelper {
 	 * @param beanClass bean class
 	 * @param name property name
 	 * @return setter
+	 * @param <T> the bean type
+	 * @param <P>  the property type
 	 */
 	public static<T, P> BiConsumer<T, P> getPropertySetter(Class<T> beanClass, String name) {
 		return LambdaPropertyUtilsBean.getInstance().getPropertySetter(beanClass, name);
@@ -360,6 +371,7 @@ public class BeanHelper {
 	 *         or if the name is "&lt;init&gt;"or "&lt;clinit&gt;".
 	 * @throws  IllegalAccessException  if the class or its nullary
 	 *          constructor is not accessible.
+	 * @param <T> the class type
 	 */
 	public static<T> T newInstance(Class<T> clazz) throws InvocationTargetException, NoSuchMethodException, IllegalAccessException {
 		return NestedPropertyUtilsBean.getInstance(clazz).newInstance(clazz);
@@ -472,6 +484,7 @@ public class BeanHelper {
 	 * @param valueCondition the origin value condition
 	 * @param ignoreProperties the ignore properties
 	 * @return returns false when none property is copied, otherwise returns true
+	 * @param <T> the destination bean type
 	 */
 	@SafeVarargs
 	public static <T> boolean copyOnCondition(Object origin, T target, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
@@ -500,6 +513,7 @@ public class BeanHelper {
 	 * @param preValueCondition the target previous value condition
 	 * @param ignoreProperties the ignore properties
 	 * @return returns false when none property is copied, otherwise returns true
+	 * @param <T> the destination bean type
 	 */
 	@SafeVarargs
 	public static <T> boolean copyOnPreValueCondition(Object origin, T target, Predicate<Object> preValueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
@@ -551,6 +565,7 @@ public class BeanHelper {
 	 * @param valueCondition the origin value condition
 	 * @param ignoreProperties the ignore properties
 	 * @return returns false when none property is copied, otherwise returns true
+	 * @param <T> the origin bean type
 	 */
 	@SafeVarargs
 	public static <T> boolean copyToMapOnCondition(T origin, Map<String, Object> target, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
@@ -578,6 +593,7 @@ public class BeanHelper {
 	 * @param valueCondition the origin value condition
 	 * @param ignoreProperties the ignore properties
 	 * @return returns false when none property is copied, otherwise returns true
+	 * @param <T> the origin bean type
 	 */
 	@SafeVarargs
 	public static <T> boolean copyChangeOnCondition(Object origin, T target, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
@@ -607,6 +623,7 @@ public class BeanHelper {
 	 * @param valueCondition the origin value condition
 	 * @param ignoreProperties the ignore properties
 	 * @return returns false when none property is copied, otherwise returns true
+	 * @param <T> the origin bean type
 	 */
 	@SafeVarargs
 	public static <T> boolean copyChangeToMapOnCondition(T origin, Map<String, Object> target, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {

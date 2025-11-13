@@ -11,11 +11,18 @@ import java.util.Map;
  */
 @SuppressWarnings({"rawtypes","unchecked"})
 public class ComplexConverter extends TypeConverter {
-	
+
+	/**
+	 * 构造函数
+	 */
 	public ComplexConverter() {
 		super();
 	}
 
+	/**
+     * 构造函数
+     * @param disableException 是否禁用异常
+	 */
 	public ComplexConverter(boolean disableException) {
 		super(disableException);
 	}

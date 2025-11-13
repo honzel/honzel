@@ -208,6 +208,8 @@ public abstract  class AbstractConverter implements Converter {
 	 * <br>
 	* @param value The specified value to be converted to the specified type.
 	 * @param toType Data type to which this value should be converted
+	 * @param asClass whether to convert to a class
+	 *
 	 * @return the converted default value
 	 */
     public Object getDefault(Object value, Type toType, boolean asClass) {

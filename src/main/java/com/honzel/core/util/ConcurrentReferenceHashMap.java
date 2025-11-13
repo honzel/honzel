@@ -164,6 +164,10 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V> implemen
     }
 
 
+    /**
+     * Return the load factor.
+     * @return the load factor
+     */
     protected final float getLoadFactor() {
         return this.loadFactor;
     }
@@ -454,6 +458,10 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V> implemen
          */
         private int resizeThreshold;
 
+        /**
+         * Create a new segment.
+         * @param initialCapacity the initial capacity of the segment
+         */
         public Segment(int initialCapacity) {
             this.referenceManager = createReferenceManager();
             this.initialSize = 1 << calculateShift(initialCapacity, MAXIMUM_SEGMENT_SIZE);
@@ -483,6 +491,7 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V> implemen
          * @param key the key
          * @param task the update operation
          * @return the result of the operation
+         * @param <T> the result type
          */
         public <T> T doTask(final int hash,  final Object key, final Task<T> task) {
             boolean resize = task.hasOption(TaskOption.RESIZE);
@@ -641,6 +650,7 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V> implemen
 
         /**
          * Return the total number of references in this segment.
+         * @return the count
          */
         public final int getCount() {
             return this.count;
@@ -658,17 +668,20 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V> implemen
 
         /**
          * Return the referenced entry, or {@code null} if the entry is no longer available.
+         * @return the entry
          */
         
         Entry<K, V> get();
 
         /**
          * Return the hash for the reference.
+         * @return the hash
          */
         int getHash();
 
         /**
          * Return the next reference in the chain, or {@code null} if none.
+         * @return the next reference
          */
         
         Reference<K, V> getNext();
@@ -687,27 +700,48 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V> implemen
      * @param <V> 值
      */
     protected static final class MapEntry<K, V> implements Map.Entry<K, V> {
+        /**
+         * The key
+         */
         private final K key;
 
+        /**
+         * The value
+         */
         private volatile V val;
 
+        /**
+         * Create a new entry.
+         * @param key the key
+         * @param val the value
+         */
         public MapEntry(K key, V val) {
             this.key = key;
             this.val = val;
         }
 
+        /**
+         * Return the key.
+         * @return the key
+         */
         public K getKey() {
             return this.key;
         }
 
+        /**
+         * Return the value.
+         * @return the value
+         */
         public V getValue() {
             return this.val;
         }
 
+        @Override
         public int hashCode() {
             return this.key.hashCode() ^ this.val.hashCode();
         }
 
+        @Override
         public String toString() {
             String k;
             String v;
@@ -720,6 +754,7 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V> implemen
             return new String(chars);
         }
 
+        @Override
         public boolean equals(Object o) {
             Object k;
             Object v;
@@ -727,6 +762,7 @@ public class ConcurrentReferenceHashMap<K, V> extends AbstractMap<K, V> implemen
             return o instanceof Map.Entry && (k = (e = (Map.Entry)o).getKey()) != null && (v = e.getValue()) != null && (k == this.key || k.equals(this.key)) && (v == this.val || v.equals(this.val));
         }
 
+        @Override
         public V setValue(V value) {
             V previous = this.val;
             this.val = value;

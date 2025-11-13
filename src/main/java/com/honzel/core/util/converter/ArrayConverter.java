@@ -31,11 +31,20 @@ public class ArrayConverter extends AbstractConverter {
 	public void setDelimiter(char delimiter) {
 		this.delimiter = delimiter;
 	}
+
+	/**
+	 * Get the delimiter to be used for parsing a delimited String.
+	 * @return the delimiter.
+	 */
 	public char getDelimiter() {
 		return delimiter;
 	}
 
 
+	/**
+	 * Get the converter used to convert individual array elements.
+	 * @return the element converter.
+	 */
 	public Converter getElementConverter() {
 		return elementConverter;
 	}
@@ -73,6 +82,12 @@ public class ArrayConverter extends AbstractConverter {
 		this(elementConverter, null);
 	}
 
+	/**
+	 * Convert the specified value.
+	 * @param value The input value to be converted.
+	 * @return the converted value.
+	 * @throws ConversionException if conversion cannot be performed successfully.
+	 */
 	protected String convertToString(Object value) throws ConversionException {
 		if (value.getClass().isArray()) {
 			int length = Array.getLength(value);
@@ -92,6 +107,13 @@ public class ArrayConverter extends AbstractConverter {
         return super.convertToString(value);
     }
 
+	/**
+	 * Convert the specified value into a array.
+	 * @param value The input value to be converted.
+	 * @param toType Data type to which this value should be converted.
+	 * @return the converted value.
+	 * @throws ConversionException if conversion cannot be performed successfully.
+	 */
 	protected Object convertToType(Object value, Class toType) throws ConversionException {
 		if (toType.isArray()) {
 			Class<?> sourceType = value.getClass();
@@ -111,6 +133,13 @@ public class ArrayConverter extends AbstractConverter {
 	}
 
 
+	/**
+	 * Convert the specified value into an array.
+	 * @param value The input value to be converted.
+	 * @param toType Data type to which this value should be converted.
+	 * @return the converted value.
+	 * @throws ConversionException if conversion cannot be performed successfully.
+	 */
 	protected Object stringToArray(Object value, Class<?> toType) throws ConversionException {
 		String text = (String) value;
 		int index = -1;

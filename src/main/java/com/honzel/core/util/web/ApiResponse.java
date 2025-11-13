@@ -109,8 +109,9 @@ public interface ApiResponse<C, T, THIS extends ApiResponse<C, T, THIS>> extends
     /**
      * 映射非null结果
      * @param mapper 映射函数
-     * @param <R> 返回结果
+     * @param defaultValue 默认值
      * @return 映射结果
+     * @param <R> 映射结果类型
      */
     default <R> R mapData(Function<T, R> mapper, R defaultValue) {
         T data = getData();

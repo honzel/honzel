@@ -302,7 +302,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 	}
 
 	/**
-	 *
+	 * 执行业务处理
 	 * @param param 参数
 	 * @param initData 初始化数据
 	 * @param initHandler 初始化处理器
@@ -430,6 +430,15 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 	}
 
 
+	/**
+	 * 执行校验处理(包括业务链预处理及处理器校验处理)
+	 * @param param 参数
+	 * @param initData 初始化数据
+	 * @param initHandler 初始化处理器
+	 * @param chainType 业务链类型
+	 * @return 返回结果对象
+	 * @param <Q> 初始化数据类型
+	 */
 	public<Q> R doCheck(P param, Q initData, BiConsumer<R, Q> initHandler, int chainType) {
 		// 主链
 		ChainMethodList main = lookupMain(chainType = convertToActualChainType(param, chainType));

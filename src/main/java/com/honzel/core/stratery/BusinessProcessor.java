@@ -19,20 +19,24 @@ public @interface BusinessProcessor {
 
 
     /**
-     * 指定目标处理链类
+     * 指定目标处理类
+     * @return 目标处理类
      */
     Class<? extends AbstractBusinessChain>[] processFor() default AbstractBusinessChain.class;
     /**
      * 指定目标处理类型，默认为校验
+     * @return 目标处理类型
      */
     ProcessType processType() default ProcessType.CHECK;
     /**
      * 指定目标链类型
+     * @return 目标链类型
      */
     int[] chainType() default ChainConstants.CHAIN_TYPE_DEFAULT;
 
     /**
      * 是否掩码低位值
+     * @return 是否掩码低位值
      */
     boolean maskLow() default false;
 

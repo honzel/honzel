@@ -26,18 +26,13 @@
 package com.honzel.core.util.text;
 
 import com.honzel.core.constant.ArrayConstants;
-import jdk.internal.access.JavaLangAccess;
-import jdk.internal.access.SharedSecrets;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.CharBuffer;
-import java.nio.charset.CharacterCodingException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
-import java.util.function.BiFunction;
 
 /**
  * {@code HexFormat} converts between bytes and chars and hex-encoded strings which may include
@@ -83,7 +78,6 @@ import java.util.function.BiFunction;
  * Each byte value is parsed from the prefix, two case insensitive hexadecimal characters,
  * and the suffix. A delimiter follows each formatted value, except the last.
  *
- * @apiNote
  * For example, an individual byte is converted to a string of hexadecimal digits using
  * {@link HexFormat#toHexDigits(int) toHexDigits(int)} and converted from a string to a
  * primitive value using {@link HexFormat#fromHexDigits(CharSequence) fromHexDigits(string)}.
@@ -141,9 +135,6 @@ import java.util.function.BiFunction;
 
 
 public final class HexFormat {
-
-    // Access to create strings from a byte array.
-    private static final JavaLangAccess jla = SharedSecrets.getJavaLangAccess();
 
     private static final byte[] UPPERCASE_DIGITS = {
             '0', '1', '2', '3', '4', '5', '6', '7',
@@ -382,11 +373,16 @@ public final class HexFormat {
         return formatHex(out, bytes, 0, bytes.length);
     }
 
-    public static int checkFromToIndex(int fromIndex, int toIndex, int length) {
+    /**
+     * Returns a hexadecimal string formatted from a byte array range.
+     * @param fromIndex the initial index of the range, inclusive
+     * @param toIndex the final index of the range, exclusive
+     * @param length the length of the array
+     */
+    private static void checkFromToIndex(int fromIndex, int toIndex, int length) {
         if (fromIndex < 0 || fromIndex > toIndex || toIndex > length) {
             throw new IndexOutOfBoundsException(String.format("Range [%s, %s) out of bounds for length %s", fromIndex, toIndex, length));
         }
-        return fromIndex;
     }
     /**
      * Appends formatted hexadecimal strings from a byte array range to the {@link Appendable}.
@@ -906,7 +902,6 @@ public final class HexFormat {
      * using {@link #fromHexDigit(int)} to form an unsigned value.
      * The value is zero extended to 32 bits and is returned as an {@code int}.
      *
-     * @apiNote
      * {@link Integer#parseInt(String, int) Integer.parseInt(s, 16)} and
      * {@link Integer#parseUnsignedInt(String, int) Integer.parseUnsignedInt(s, 16)}
      * are similar but allow all Unicode hexadecimal digits defined by
@@ -932,7 +927,6 @@ public final class HexFormat {
      * using {@link #fromHexDigit(int)} to form an unsigned value.
      * The value is zero extended to 32 bits and is returned as an {@code int}.
      *
-     * @apiNote
      * {@link Integer#parseInt(String, int) Integer.parseInt(s, 16)} and
      * {@link Integer#parseUnsignedInt(String, int) Integer.parseUnsignedInt(s, 16)}
      * are similar but allow all Unicode hexadecimal digits defined by
@@ -967,7 +961,6 @@ public final class HexFormat {
      * using {@link #fromHexDigit(int)} to form an unsigned value.
      * The value is zero extended to 64 bits and is returned as a {@code long}.
      *
-     * @apiNote
      * {@link Long#parseLong(String, int) Long.parseLong(s, 16)} and
      * {@link Long#parseUnsignedLong(String, int) Long.parseUnsignedLong(s, 16)}
      * are similar but allow all Unicode hexadecimal digits defined by
@@ -993,7 +986,6 @@ public final class HexFormat {
      * using {@link #fromHexDigit(int)} to form an unsigned value.
      * The value is zero extended to 64 bits and is returned as a {@code long}.
      *
-     * @apiNote
      * {@link Long#parseLong(String, int) Long.parseLong(s, 16)} and
      * {@link Long#parseUnsignedLong(String, int) Long.parseUnsignedLong(s, 16)}
      * are similar but allow all Unicode hexadecimal digits defined by
