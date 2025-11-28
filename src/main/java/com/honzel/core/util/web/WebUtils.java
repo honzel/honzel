@@ -346,14 +346,15 @@ public class WebUtils {
                 ((HttpURLConnection)conn).setRequestMethod(METHOD_GET);
             }
         }
-        if (!isHttpConnected || ((HttpURLConnection)conn).getResponseCode() < 400) {
+        if (!isHttpConnected || ((HttpURLConnection)conn).getResponseCode() < 300) {
             // 正常返回数据
             return applyResponseInputStream(conn.getInputStream(), conn.getContentEncoding());
         } else {
             // 异常返回数据
-            InputStream input = applyResponseInputStream(((HttpURLConnection)conn).getErrorStream(), conn.getContentEncoding());
-            String msg = readAsString(input, getResponseCharset(conn.getContentType(), charset));
             int responseCode = ((HttpURLConnection) conn).getResponseCode();
+            InputStream originInput = responseCode < 400 ? conn.getInputStream() : ((HttpURLConnection)conn).getErrorStream();
+            InputStream input = applyResponseInputStream(originInput, conn.getContentEncoding());
+            String msg = readAsString(input, getResponseCharset(conn.getContentType(), charset));
             if (TextUtils.isEmpty(msg)) {
                 throw new HttpResponseMessageException(responseCode, ((HttpURLConnection)conn).getResponseMessage());
             } else {
