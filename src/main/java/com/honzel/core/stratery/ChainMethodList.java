@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.concurrent.Future;
 
 /**
  * 业务类型方法列表对象
@@ -602,18 +603,25 @@ class ChainMethodList {
             if (Boolean.TYPE.equals(processMethod.getReturnType())) {
                 //校验时返回是否继续下一步的处理
                 return (Boolean) result;
+            } else if (result instanceof Future) {
+                // 等待结果
+                ((Future<?>) result).get();
             }
         } catch (InvocationTargetException e) {
-            if (e.getTargetException() instanceof RuntimeException) {
+            Throwable t = e.getTargetException();
+            if (t instanceof RuntimeException) {
                 // 如果是运行时异常则直接抛出
-                throw (RuntimeException) e.getTargetException();
-            } else {
+                throw (RuntimeException) t;
+            } else if (t != null) {
                 // 非运行时异常值包装成运行时异常抛出
-                throw new RuntimeException(e.getTargetException());
+                throw new RuntimeException(t.getMessage(), t);
+            } else {
+                // 其他异常
+                throw new RuntimeException(e.getMessage(), e);
             }
         } catch (Exception e) {
             // 其他异常
-            throw new RuntimeException(e);
+            throw new RuntimeException(e.getMessage(), e);
         }
         return true;
     }
