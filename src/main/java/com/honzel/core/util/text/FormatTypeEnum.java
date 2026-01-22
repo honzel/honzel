@@ -7,10 +7,12 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -408,8 +410,7 @@ public enum FormatTypeEnum implements TextFormatType {
          * @return 格式化后的值
          */
         public String formatValue(Object value, String... parameters) {
-            String valueStr = TextUtils.toString(value);
-            if (isNotEmpty(valueStr) && parameters.length > 0) {
+            if (isNotEmpty(value) && parameters.length > 0) {
                 // 获取进制
                 String algorithm = parameters[0];
                 String encodeAlgorithm = parameters.length > 2 ? parameters[2] : null;
@@ -422,7 +423,17 @@ public enum FormatTypeEnum implements TextFormatType {
                     }
                 }
                 Charset charset = parameters.length > 1 && !EMPTY.equals(parameters[1]) ? Charset.forName(parameters[1]) : StandardCharsets.UTF_8;
-                byte[] dataBytes = valueStr.getBytes(charset);
+
+                byte[] dataBytes;
+                if (value instanceof byte[]) {
+                    dataBytes = (byte[]) value;
+                } else if (value instanceof ByteBuffer) {
+                    dataBytes = ((ByteBuffer) value).array();
+                } else if (value instanceof ByteArrayOutputStream) {
+                    dataBytes = ((ByteArrayOutputStream) value).toByteArray();
+                } else {
+                    dataBytes = TextUtils.toString(value).getBytes(charset);
+                }
                 if (!algorithm.isEmpty()) {
                     try {
                         dataBytes = MessageDigest.getInstance(algorithm).digest(dataBytes);
@@ -437,7 +448,7 @@ public enum FormatTypeEnum implements TextFormatType {
                 // Hex
                 return HexFormat.of().formatHex(dataBytes);
             }
-            return valueStr;
+            return TextUtils.toString(value);
         }
     },
     ;
