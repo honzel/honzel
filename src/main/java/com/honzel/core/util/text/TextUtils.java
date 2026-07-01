@@ -14,74 +14,194 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+
 /**
- * 字符文本工具类<br>
- * 一. 格式化时某些字符有特殊功能，需要转义后才能输出(转义字符为'\'):
- *  <br>1. 在占位符外的文本需要转义的字符:<ul>
- *    <li>
- *        format,alternateFormat方法: '$', 如AAA\$BBB${ccc[XXX]}, 第一个$需要转义
- *    </li>
- *    <li>
- *        simplifiedFormat方法: '{', 如AAA\{BBB{ccc[XXX]}, 第一个'{'需要转义
- *    </li>
- *   <li>
- *       alternateSimplifiedFormat方法: '(', 如AAA\(BBB(ccc[XXX]), 第一个'('需要转义
+ * 字符串文本格式化工具类
+ * <p>
+ * 提供强大的模板化字符串格式化功能，支持多种占位符语法、转义字符处理、数据格式标识、
+ * 条件匹配表达式、父子格式嵌套等高级特性。
+ * </p>
+ *
+ * <h2>一、占位符语法</h2>
+ * <p>支持四种占位符格式：</p>
+ * <ul>
+ *   <li><b>format</b>: 使用 {@code ${xxx}} 作为占位符</li>
+ *   <li><b>alternateFormat</b>: 使用 {@code $(xxx)} 作为占位符</li>
+ *   <li><b>simplifiedFormat</b>: 使用 {@code {xxx}} 作为占位符</li>
+ *   <li><b>alternateSimplifiedFormat</b>: 使用 {@code (xxx)} 作为占位符</li>
+ * </ul>
+ *
+ * <h3>基本用法示例：</h3>
+ * <pre>{@code
+ * // format 方法
+ * TextUtils.format("Hello, ${name}!", map);  // map: {"name": "World"} -> "Hello, World!"
+ *
+ * // simplifiedFormat 方法
+ * TextUtils.simplifiedFormat("Hello, {name}!", map);  // -> "Hello, World!"
+ *
+ * // alternateFormat 方法
+ * TextUtils.alternateFormat("Hello, $(name)!", map);  // -> "Hello, World!"
+ * }</pre>
+ *
+ * <h2>二、转义字符规则</h2>
+ * <p>特殊字符需要使用反斜杠 {@code \} 进行转义：</p>
+ *
+ * <h3>1. 占位符外的转义</h3>
+ * <ul>
+ *   <li><b>format/alternateFormat</b>: {@code $} 需要转义
+ *     <pre>{@code
+ *     TextUtils.format("Price: \$${price}", map);  // map: {"price": 100} -> "Price: $100"
+ *     }</pre>
  *   </li>
- *  </ul>
- *  <br>2. 在占位符内并在[]之外的字符串需要转义的字符:<ul>
- *    <li>
- *        format,simplifiedFormat方法: '}[;', 如AAA${bbb\;ccc[XXX]}, 分号';'需要转义
- *    </li>
- *    <li>
- *        alternateFormat,alternateSimplifiedFormat方法: ')[;', 如AAA$(bbb\)ccc[XXX]), 第一个')'需要转义
- *    </li>
- *  </ul>
- *  <br>3. 在占位符内并在[]内的字符串需要转义的字符:<ul>
- *    <li>
- *        format,simplifiedFormat方法: '}]=;', 如AAA${bbb[ccc\]XXX]}, 第一个']'需要转义
- *    </li>
- *    <li>
- *        alternateFormat,alternateSimplifiedFormat 方法: ')]=;', 如AAA$(bbb[ccc\)XXX]), 第一个')'需要转义
- *    </li>
- *  </ul>
- *  二. 数据格式的文本标识(textFormatType:json,xml,url,txt): json-Json值;xml-XML标签内容或属性内容;url-url参数;txt-普通文本
- *  <br>格式化时某些字符作为开头字符的意义:<ul>
- *    <li>
- *        textFormatType+';'放占位符最前面: 如AAABBB${json;ccc[XXX]},
- *        表示ccc占位符按json转码再输出; 如果textFormatType为空当成普通文本输出;
- *        如果占位符没有该标识时使用默认数据格式进行转码,如${ccc}的ccc使用参数传入的默认数据格式
- *    </li>
- *    <li>
- *        ‘#'放在紧接占位符变量后面的[]中最前面: 如AAABBB${ccc[#1=FFF;2-GGG;*]},
- *        表示FFF,GGG为内层子格式文本,匹配逻辑是当ccc=1时输出FFF,ccc=2时输出GGG,
- *        *代表其他值原值输出, 不加*的话其他值都输出空值, 按占位符数据格式进行转码
- *    </li>
- *    <li>
- *        '#'+textFormatType+';'放在紧接占位符变量后面的[]中最前面: 如AAABBB${ccc[#json;1=FFF;2-GGG]},
- *        表示FFF,GGG为内层子格式文本,匹配逻辑是当ccc=1时输出FFF,ccc=2时输出GGG, 因为没加*其他值都输出空值,
- *        其中FFF,GGG子格式文本使用json作为默认转码格式进行格式化后得到最后结果, 再按占位符数据格式进行转码
- *    </li>
- *    <li>
- *        ‘^'放在[]中的最前面: 表示当占位符变量为空时输出,最前面不加'^'的表示占位符变量非空时与变量值一同输出，
- *        如AAABBB${[XXX]ccc[^YYY][ZZZ]}, 当ccc为空时输出YYY,当ccc非空时输出XXXcccZZZ,
- *        其中XXX,YYY,ZZZ都为常量串,直接输出不会进行转码; 需要转码时请使用上两条规则处理
- *    </li>
- *  </ul>
- *  <br>格式化文本与子格式化文本的占位符:<ul>
- *    <li>
- *        format(占位符:${})与alternateFormat(占位符:$())互为父子格式,
- *        当外层格式为format内层格式会使用alternateFormat,两者反过来也一样。
- *        如AAA${bbb[#1=CCC$(ddd);2=XXX$(yyy)ZZZ]}, 其中bbb为外层父格式变量,ddd,yyy为内层子格式变量
- *    </li>
- *    <li>
- *        simplifiedFormat(占位符:{})与alternateSimplifiedFormat(占位符:())互为父子格式,
- *        当外层格式为simplifiedFormat内层格式会使用alternateSimplifiedFormat,两者反过来也一样。
- *        如AAA{bbb[#1=CCC(ddd);2=XXX(yyy)ZZZ]}, 其中bbb为外层父格式变量,ddd,yyy为内层子格式变量
- *    </li>
- *  </ul>
+ *   <li><b>simplifiedFormat</b>: {@code {} 需要转义
+ *     <pre>{@code
+ *     TextUtils.simplifiedFormat("Set\\{item}", map);  // -> "Set{item}"
+ *     }</pre>
+ *   </li>
+ *   <li><b>alternateSimplifiedFormat</b>: {@code (} 需要转义
+ *     <pre>{@code
+ *     TextUtils.alternateSimplifiedFormat("Call\\(func)", map);  // -> "Call(func)"
+ *     }</pre>
+ *   </li>
+ * </ul>
+ *
+ * <h3>2. 占位符内（[]外）的转义</h3>
+ * <ul>
+ *   <li><b>format/simplifiedFormat</b>: {@code }[;] 需要转义
+ *     <pre>{@code
+ *     TextUtils.format("${key\\;value}", map);  // 分号需要转义
+ *     }</pre>
+ *   </li>
+ *   <li><b>alternateFormat/alternateSimplifiedFormat</b>: {@code )[;] 需要转义
+ *     <pre>{@code
+ *     TextUtils.alternateFormat("$(key\\)value)", map);  // )需要转义
+ *     }</pre>
+ *   </li>
+ * </ul>
+ *
+ * <h3>3. 占位符内（[]内）的转义</h3>
+ * <ul>
+ *   <li><b>format/simplifiedFormat</b>: {@code }]=;] 需要转义
+ *     <pre>{@code
+ *     TextUtils.format("${key[value\\]]}", map);  // ]需要转义
+ *     }</pre>
+ *   </li>
+ *   <li><b>alternateFormat/alternateSimplifiedFormat</b>: {@code )]=;] 需要转义
+ *     <pre>{@code
+ *     TextUtils.alternateFormat("$(key[value\\)])", map);  // )需要转义
+ *     }</pre>
+ *   </li>
+ * </ul>
+ *
+ * <h2>三、数据格式类型标识</h2>
+ * <p>在占位符前添加格式类型标识，自动对值进行编码转换：</p>
+ * <ul>
+ *   <li><b>json</b>: JSON 格式编码</li>
+ *   <li><b>xml</b>: XML 格式编码</li>
+ *   <li><b>url</b>: URL 编码</li>
+ *   <li><b>txt</b>: 普通文本（默认）</li>
+ * </ul>
+ *
+ * <h3>使用示例：</h3>
+ * <pre>{@code
+ * // JSON 格式
+ * TextUtils.format("${json;data}", map);  // map: {"data": "<tag>"} -> "\"<tag>\""
+ *
+ * // XML 格式
+ * TextUtils.format("${xml;content}", map);  // 自动转义XML特殊字符
+ *
+ * // URL 编码
+ * TextUtils.format("${url;param}", map);  // 自动URL编码
+ * }</pre>
+ *
+ * <h2>四、条件匹配表达式</h2>
+ * <p>使用 {@code #} 标志实现条件判断，语法：{@code ${var[#value1=result1;value2=result2;*]}}</p>
+ *
+ * <h3>基本用法：</h3>
+ * <pre>{@code
+ * // 简单条件匹配
+ * TextUtils.format("${status[#1=成功;2=失败;*]}", map);
+ * // status=1 -> "成功"
+ * // status=2 -> "失败"
+ * // status=3 -> "3" (*表示其他值原样输出)
+ *
+ * // 不带*的其他值输出空串
+ * TextUtils.format("${type[#A=苹果;B=香蕉]}", map);
+ * // type=A -> "苹果"
+ * // type=C -> ""
+ * }</pre>
+ *
+ * <h3>带格式类型的条件匹配：</h3>
+ * <pre>{@code
+ * // 子格式使用特定编码
+ * TextUtils.format("${level[#json;1={\"msg\":\"高\"};2={\"msg\":\"低\"}]}", map);
+ * }</pre>
+ *
+ * <h2>五、空值处理</h2>
+ * <p>使用 {@code ^} 标志处理空值情况：</p>
+ *
+ * <h3>示例：</h3>
+ * <pre>{@code
+ * // 空值时显示替代文本
+ * TextUtils.format("${name[^未填写]}", map);
+ * // name=null 或 "" -> "未填写"
+ * // name="张三" -> "张三"
+ *
+ * // 前后缀配合
+ * TextUtils.format("姓名：${[先生/]name[^未知][女士]}", map);
+ * // name=null -> "姓名：未知"
+ * // name="张" -> "姓名：张女士"
+ * }</pre>
+ *
+ * <h2>六、父子格式嵌套</h2>
+ * <p>外层和内层使用不同的占位符语法，避免冲突：</p>
+ *
+ * <h3>嵌套规则：</h3>
+ * <ul>
+ *   <li><b>format</b> 与 <b>alternateFormat</b> 互为父子格式</li>
+ *   <li><b>simplifiedFormat</b> 与 <b>alternateSimplifiedFormat</b> 互为父子格式</li>
+ * </ul>
+ *
+ * <h3>示例：</h3>
+ * <pre>{@code
+ * // format 嵌套 alternateFormat
+ * String template = "${user[#1=用户$(name);2=访客$(id)]}";
+ * TextUtils.format(template, configMap);
+ * // user=1, name="张三" -> "用户张三"
+ * // user=2, id="007" -> "访客007"
+ *
+ * // simplifiedFormat 嵌套 alternateSimplifiedFormat
+ * String template = "{type[#A=类别(alpha);B=类别(beta)]}";
+ * TextUtils.simplifiedFormat(template, dataMap);
+ * // type=A -> "类别alpha"
+ * }</pre>
+ *
+ * <h2>七、值列表操作</h2>
+ * <p>支持逗号分隔的值列表操作：</p>
+ *
+ * <h3>常用方法：</h3>
+ * <pre>{@code
+ * // 检查是否包含值
+ * TextUtils.containsValue("apple,banana,orange", "banana");  // -> true
+ *
+ * // 查找值的索引
+ * TextUtils.indexOfValue("apple,banana,orange", "banana");  // -> 1
+ *
+ * // 添加值
+ * TextUtils.addValue("apple,banana", "orange");  // -> "apple,banana,orange"
+ *
+ * // 移除值
+ * TextUtils.removeValue("apple,banana,orange", "banana");  // -> "apple,orange"
+ *
+ * // 获取交集
+ * TextUtils.retainAll("apple,banana,orange", "banana,grape");  // -> "banana"
+ *
+ * // 获取大小
+ * TextUtils.getSize("apple,banana,orange");  // -> 3
+ * }</pre>
  *
  * @author honzel
- * date 2021/2/27
+ * @date 2021/2/27
  */
 //@SuppressWarnings("unused")
 public class TextUtils {
@@ -152,9 +272,16 @@ public class TextUtils {
 	}
 
 	/**
-	 * 注册格式类型, 如果已经存在同名则返回false
-	 * @param textFormatType 格式类型
-	 * @return 返回是否注册成功
+	 * 注册格式类型
+	 * <p>
+	 * 向系统注册新的文本格式类型，如果已存在同名格式则替换旧格式。
+	 * 支持自动匹配的格式会被加入自动匹配队列。
+	 * </p>
+	 *
+	 * @param textFormatType 要注册的格式类型对象
+	 * @return 始终返回 false（保留方法签名兼容性）
+	 * @see TextFormatType
+	 * @see FormatTypeEnum
 	 */
 	public static boolean registerFormatType(TextFormatType textFormatType) {
 		TextFormatType oldFormatType = FORMAT_TYPE_MAP.put(textFormatType.getUniqueId(), textFormatType);
@@ -163,18 +290,37 @@ public class TextUtils {
 				AUTO_MATCH_FORMAT_TYPE_QUEUE.remove(oldFormatType);
 			}
 			AUTO_MATCH_FORMAT_TYPE_QUEUE.add(textFormatType);
+			return true;
 		}
 		return false;
 	}
 
+	/**
+	 * 根据标签获取已注册的格式类型
+	 *
+	 * @param tag 格式类型的唯一标识（如 "json", "xml", "url" 等）
+	 * @return 对应的格式类型对象，未找到返回 null
+	 * @see TextFormatType
+	 */
 	public static TextFormatType getFormatType(String tag) {
 		return FORMAT_TYPE_MAP.get(tag);
 	}
 
 	/**
-	 * 查找格式类型
-	 * @param content 内容
-	 * @return 格式类型
+	 * 根据内容自动匹配格式类型
+	 * <p>
+	 * 遍历所有支持自动匹配的格式类型，找到第一个初步匹配的类型。
+	 * 如果没有匹配到，返回默认的 SIMPLE 格式。
+	 * </p>
+	 *
+	 * @param content 待检测的内容字符串
+	 * @return 匹配的格式类型，未匹配返回 {@link FormatTypeEnum#SIMPLE}
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.lookupFormatType("{\"name\":\"test\"}");  // -> JSON格式
+	 * TextUtils.lookupFormatType("<xml>data</xml>");      // -> XML格式
+	 * TextUtils.lookupFormatType("plain text");           // -> SIMPLE格式
+	 * }</pre>
 	 */
 	public static TextFormatType lookupFormatType(String content) {
 		if (Objects.nonNull(content) && !EMPTY.equals(content = content.trim())) {
@@ -193,42 +339,80 @@ public class TextUtils {
 
 
 	/**
-	 * 获取格式中的参数占位符map, 使用${xxx}作为第一层占位符
-	 * @param result 结果
-	 * @param pattern 格式模板
-	 * @param params 占位符参数
-	 * @return 每个参数占位符对应的值
+	 * 解析模板中的参数占位符映射（使用 ${xxx} 语法）
+	 * <p>
+	 * 提取模板中所有 ${xxx} 格式的占位符及其对应的参数值，返回 Map 结构。
+	 * 支持属性访问、数组索引、配置参数等多种参数形式。
+	 * </p>
+	 *
+	 * @param result 用于存储结果的 Map，如果为 null 会创建新的 LinkedHashMap
+	 * @param pattern 包含占位符的模板字符串
+	 * @param params 参数对象（可以是 Map、List、数组或普通对象）
+	 * @return 参数名到参数值的映射 Map
+	 * @example
+	 * <pre>{@code
+	 * Map<String, Object> params = new HashMap<>();
+	 * params.put("name", "张三");
+	 * params.put("age", 25);
+	 * params.put("gender", "男");
+	 *
+	 * Map<String, Object> paramMap = TextUtils.parseParamMap(
+	 *     "姓名：${name}, 年龄：${age}", params);
+	 * // paramMap: {"name": "张三", "age": 25}
+	 * }</pre>
 	 */
 	public static Map<String, Object> parseParamMap(Map<String, Object> result, String pattern, Object params) {
 		return parseParamMap0(result, false, pattern, params, false);
 	}
 
 	/**
-	 * 获取格式中的参数占位符map, 使用${xxx}作为第一层占位符
-	 * @param pattern 格式模板
-	 * @param params 占位符参数
-	 * @return 每个参数占位符对应的值
+	 * 解析模板中的参数占位符映射（使用 ${xxx} 语法）
+	 * <p>
+	 * 便捷方法，自动创建结果 Map。
+	 * </p>
+	 *
+	 * @param pattern 包含占位符的模板字符串
+	 * @param params 参数对象
+	 * @return 参数名到参数值的映射 Map
+	 * @see #parseParamMap(Map, String, Object)
 	 */
 	public static Map<String, Object> parseParamMap(String pattern, Object params) {
 		return parseParamMap0(new LinkedHashMap<>(), false, pattern, params, false);
 	}
 
 	/**
-	 * 获取格式中的参数占位符map, 使用$(xxx)作为第一层占位符
-	 * @param result 结果
-	 * @param pattern 格式模板
-	 * @param params 占位符参数
-	 * @return 每个参数占位符对应的值
+	 * 解析模板中的参数占位符映射（使用 $(xxx) 语法）
+	 * <p>
+	 * 与 {@link #parseParamMap} 类似，但使用 $(xxx) 作为占位符语法。
+	 * 适用于需要嵌套格式的场景。
+	 * </p>
+	 *
+	 * @param result 用于存储结果的 Map
+	 * @param pattern 包含占位符的模板字符串
+	 * @param params 参数对象
+	 * @return 参数名到参数值的映射 Map
+	 * @example
+	 * <pre>{@code
+	 * Map<String, Object> params = Map.of("name", "李四","gender", "男");
+	 * Map<String, Object> paramMap = TextUtils.parseAlternateParamMap(
+	 *     "姓名：$(name)", params);
+	 * // paramMap: {"name": "李四"}
+	 * }</pre>
 	 */
 	public static Map<String, Object> parseAlternateParamMap(Map<String, Object> result, String pattern, Object params) {
 		return parseParamMap0(result, true, pattern, params, false);
 	}
 
 	/**
-	 * 获取格式中的参数占位符map, 使用$(xxx)作为第一层占位符
-	 * @param pattern 格式模板
-	 * @param params 占位符参数
-	 * @return 每个参数占位符对应的值
+	 * 解析模板中的参数占位符映射（使用 $(xxx) 语法）
+	 * <p>
+	 * 便捷方法，自动创建结果 Map。
+	 * </p>
+	 *
+	 * @param pattern 包含占位符的模板字符串
+	 * @param params 参数对象
+	 * @return 参数名到参数值的映射 Map
+	 * @see #parseAlternateParamMap(Map, String, Object)
 	 */
 	public static Map<String, Object> parseAlternateParamMap(String pattern, Object params) {
 		return parseParamMap0(new LinkedHashMap<>(), true, pattern, params, false);
@@ -236,42 +420,74 @@ public class TextUtils {
 
 
 	/**
-	 * 获取格式中的参数占位符map, 使用{xxx}作为第一层占位符
-	 * @param result 结果
-	 * @param pattern 格式模板
-	 * @param params 占位符参数
-	 * @return 每个参数占位符对应的值
+	 * 解析模板中的参数占位符映射（使用 {xxx} 语法）
+	 * <p>
+	 * 简化版占位符语法，不使用 $ 符号。
+	 * </p>
+	 *
+	 * @param result 用于存储结果的 Map
+	 * @param pattern 包含占位符的模板字符串
+	 * @param params 参数对象
+	 * @return 参数名到参数值的映射 Map
+	 * @example
+	 * <pre>{@code
+	 * Map<String, Object> params = Map.of("city", "北京","gender", "男");
+	 * Map<String, Object> paramMap = TextUtils.parseSimplifiedParamMap(
+	 *     "城市：{city}", params);
+	 * // paramMap: {"city": "北京"}
+	 * }</pre>
 	 */
 	public static Map<String, Object> parseSimplifiedParamMap(Map<String, Object> result, String pattern, Object params) {
 		return parseParamMap0(result, false, pattern, params, true);
 	}
 
 	/**
-	 * 获取格式中的参数占位符map, 使用{xxx}作为第一层占位符
-	 * @param pattern 格式模板
-	 * @param params 占位符参数
-	 * @return 每个参数占位符对应的值
+	 * 解析模板中的参数占位符映射（使用 {xxx} 语法）
+	 * <p>
+	 * 便捷方法，自动创建结果 Map。
+	 * </p>
+	 *
+	 * @param pattern 包含占位符的模板字符串
+	 * @param params 参数对象
+	 * @return 参数名到参数值的映射 Map
+	 * @see #parseSimplifiedParamMap(Map, String, Object)
 	 */
 	public static Map<String, Object> parseSimplifiedParamMap(String pattern, Object params) {
 		return parseParamMap0(new LinkedHashMap<>(), false, pattern, params, true);
 	}
 
 	/**
-	 * 获取格式中的参数占位符map, 使用(xxx)作为第一层占位符
-	 * @param pattern 格式模板
-	 * @param params 占位符参数
-	 * @return 每个参数占位符对应的值
+	 * 解析模板中的参数占位符映射（使用 (xxx) 语法）
+	 * <p>
+	 * 简化版备选占位符语法，不使用 $ 符号，使用圆括号。
+	 * </p>
+	 *
+	 * @param pattern 包含占位符的模板字符串
+	 * @param params 参数对象
+	 * @return 参数名到参数值的映射 Map
+	 * @example
+	 * <pre>{@code
+	 * Map<String, Object> params = Map.of("color", "红色","city", "北京");
+	 * Map<String, Object> paramMap = TextUtils.parseAlternateSimplifiedParamMap(
+	 *     "颜色：(color)", params);
+	 * // paramMap: {"color": "红色"}
+	 * }</pre>
 	 */
 	public static Map<String, Object> parseAlternateSimplifiedParamMap(String pattern, Object params) {
 		return parseParamMap0(new LinkedHashMap<>(), true, pattern, params, true);
 	}
 
 	/**
-	 * 获取格式中的参数占位符map, 使用(xxx)作为第一层占位符
-	 * @param result 结果
-	 * @param pattern 格式模板
-	 * @param params 占位符参数
-	 * @return 每个参数占位符对应的值
+	 * 解析模板中的参数占位符映射（使用 (xxx) 语法）
+	 * <p>
+	 * 便捷方法，允许传入自定义结果 Map。
+	 * </p>
+	 *
+	 * @param result 用于存储结果的 Map
+	 * @param pattern 包含占位符的模板字符串
+	 * @param params 参数对象
+	 * @return 参数名到参数值的映射 Map
+	 * @see #parseAlternateSimplifiedParamMap(String, Object)
 	 */
 	public static Map<String, Object> parseAlternateSimplifiedParamMap(Map<String, Object> result, String pattern, Object params) {
 		return parseParamMap0(result, true, pattern, params, true);
@@ -371,172 +587,310 @@ public class TextUtils {
 	}
 
 	/**
-	 * 格式化字符串文本, 使用${xxx}作为第一层占位符
-	 * @param textFormatType 数据类型
-	 * @param pattern 待格式化内容
-	 * @param configParams 配置
-	 * @param params 参数
-	 * @return 返回格式化后内容
+	 * 格式化字符串（使用 ${xxx} 占位符）
+	 * <p>
+	 * 将模板中的 ${xxx} 占位符替换为实际参数值，支持指定数据格式类型和配置参数。
+	 * </p>
+	 *
+	 * @param textFormatType 数据格式类型（如 JSON、XML、URL 编码等），可为 null
+	 * @param pattern 模板字符串，包含 ${xxx} 格式的占位符
+	 * @param configParams 配置参数对象，用于访问配置属性
+	 * @param params 占位符参数（可以是 Map、List、数组或普通对象）
+	 * @return 格式化后的字符串
+	 * @example
+	 * <pre>{@code
+	 * // 基本用法
+	 * Map<String, Object> params = Map.of("name", "王五", "age", 30);
+	 * String result = TextUtils.format(null, "姓名：${name}, 年龄：${age}", null, params);
+	 * // result: "姓名：王五, 年龄：30"
+	 *
+	 * // 使用 JSON 格式
+	 * Map<String, Object> data = Map.of("content", "<html>");
+	 * String jsonResult = TextUtils.format(FormatTypeEnum.JSON, "${json;content}", null, data);
+	 * // jsonResult: "\"<html>\""
+	 * }</pre>
 	 */
 	public static String format(TextFormatType textFormatType, String pattern, Object configParams, Object params) {
 		return format0(false, textFormatType, pattern, configParams, params, null, null, false);
 	}
 
 	/**
-	 * 格式化字符串文本, 使用${xxx}作为第一层占位符
-	 * @param pattern 待格式化内容
-	 * @param param 参数
-	 * @return 返回格式化后内容
+	 * 格式化字符串（使用 ${xxx} 占位符）
+	 * <p>
+	 * 便捷方法，自动检测数据格式类型。
+	 * </p>
+	 *
+	 * @param pattern 模板字符串
+	 * @param param 单个参数对象
+	 * @return 格式化后的字符串
+	 * @example
+	 * <pre>{@code
+	 * User user = new User("赵六", 28);
+	 * String result = TextUtils.format("用户：${name}, 年龄：${age}", user);
+	 * // result: "用户：赵六, 年龄：28"
+	 * }</pre>
 	 */
 	public static String format(String pattern, Object param) {
 		return format0(false, lookupFormatType(pattern), pattern, null, param, null, null, false);
 	}
 
 	/**
-	 * 格式化字符串文本, 使用${xxx}作为第一层占位符
-	 * @param textFormatType 数据类型
-	 * @param pattern 待格式化内容
-	 * @param param 参数
-	 * @return 返回格式化后内容
+	 * 格式化字符串（使用 ${xxx} 占位符）
+	 * <p>
+	 * 指定数据格式类型的便捷方法。
+	 * </p>
+	 *
+	 * @param textFormatType 数据格式类型
+	 * @param pattern 模板字符串
+	 * @param param 单个参数对象
+	 * @return 格式化后的字符串
+	 * @see #format(TextFormatType, String, Object, Object)
 	 */
 	public static String format(TextFormatType textFormatType, String pattern, Object param) {
 		return format0(false, textFormatType, pattern, null, param, null, null, false);
 	}
 
 	/**
-	 * 格式化字符串文本, 使用${xxx}作为第一层占位符
-	 * @param pattern 待格式化内容
-	 * @param params 参数
-	 * @return 返回格式化后内容
+	 * 格式化字符串（使用 ${xxx} 占位符，数组参数）
+	 * <p>
+	 * 支持使用索引访问数组或列表元素：${0}, ${1}, ${2}...
+	 * </p>
+	 *
+	 * @param pattern 模板字符串
+	 * @param params 可变参数数组
+	 * @return 格式化后的字符串
+	 * @example
+	 * <pre>{@code
+	 * String result = TextUtils.format("姓名：${0}, 年龄：${1}, 城市：${2}",
+	 *     "孙七", 35, "上海");
+	 * // result: "姓名：孙七, 年龄：35, 城市：上海"
+	 *
+	 * // 访问对象属性
+	 * String result2 = TextUtils.format("全名：${0.name}", userObj);
+	 * // result2: "全名：孙七"
+	 * }</pre>
 	 */
 	public static String format(String pattern, Object... params) {
 		return format0(false, lookupFormatType(pattern), pattern, null, params, null, null, false);
 	}
 
 	/**
-	 * 格式化字符串文本, 使用{xxx}作为第一层占位符
-	 * @param textFormatType 数据类型
-	 * @param pattern 待格式化内容
-	 * @param configParams 配置
-	 * @param params 参数
-	 * @return 返回格式化后内容
+	 * 格式化字符串（使用 {xxx} 占位符）
+	 * <p>
+	 * 简化版格式化方法，使用 {xxx} 作为占位符语法。
+	 * </p>
+	 *
+	 * @param textFormatType 数据格式类型
+	 * @param pattern 模板字符串，包含 {xxx} 格式的占位符
+	 * @param configParams 配置参数对象
+	 * @param params 占位符参数
+	 * @return 格式化后的字符串
+	 * @example
+	 * <pre>{@code
+	 * Map<String, Object> data = Map.of("product", "手机", "price", 2999);
+	 * String result = TextUtils.simplifiedFormat(null,
+	 *     "商品：{product}, 价格：{price}元", null, data);
+	 * // result: "商品：手机, 价格：2999元"
+	 * }</pre>
 	 */
 	public static String simplifiedFormat(TextFormatType textFormatType, String pattern, Object configParams, Object params) {
 		return format0(false, textFormatType, pattern, configParams, params, null, null, true);
 	}
 
 	/**
-	 * 格式化字符串文本, 使用{xxx}作为第一层占位符
-	 * @param pattern 待格式化内容
-	 * @param param 参数
-	 * @return 返回格式化后内容
+	 * 格式化字符串（使用 {xxx} 占位符）
+	 * <p>
+	 * 便捷方法，自动检测数据格式类型。
+	 * </p>
+	 *
+	 * @param pattern 模板字符串
+	 * @param param 单个参数对象
+	 * @return 格式化后的字符串
+	 * @see #simplifiedFormat(TextFormatType, String, Object, Object)
 	 */
 	public static String simplifiedFormat(String pattern, Object param) {
 		return format0(false, lookupFormatType(pattern), pattern, null, param, null, null, true);
 	}
 
 	/**
-	 * 格式化字符串文本, 使用{xxx}作为第一层占位符
-	 * @param textFormatType 数据类型
-	 * @param pattern 待格式化内容
-	 * @param param 参数
-	 * @return 返回格式化后内容
+	 * 格式化字符串（使用 {xxx} 占位符）
+	 * <p>
+	 * 指定数据格式类型的便捷方法。
+	 * </p>
+	 *
+	 * @param textFormatType 数据格式类型
+	 * @param pattern 模板字符串
+	 * @param param 单个参数对象
+	 * @return 格式化后的字符串
 	 */
 	public static String simplifiedFormat(TextFormatType textFormatType, String pattern, Object param) {
 		return format0(false, textFormatType, pattern, null, param, null, null, true);
 	}
 
 	/**
-	 * 格式化字符串文本, 使用{xxx}作为第一层占位符
-	 * @param pattern 待格式化内容
-	 * @param params 参数
-	 * @return 返回格式化后内容
+	 * 格式化字符串（使用 {xxx} 占位符，数组参数）
+	 * <p>
+	 * 支持使用索引访问数组或列表元素。
+	 * </p>
+	 *
+	 * @param pattern 模板字符串
+	 * @param params 可变参数数组
+	 * @return 格式化后的字符串
+	 * @example
+	 * <pre>{@code
+	 * String result = TextUtils.simplifiedFormat(
+	 *     "坐标：({0}, {1}, {2})", 100, 200, 300);
+	 * // result: "坐标：(100, 200, 300)"
+	 * }</pre>
 	 */
 	public static String simplifiedFormat(String pattern, Object... params) {
 		return format0(false, lookupFormatType(pattern), pattern, null, params, null, null, true);
 	}
 
 	/**
-	 * 格式化字符串文本, 使用(xxx)作为第一层占位符
-	 * @param textFormatType 数据类型
-	 * @param pattern 待格式化内容
-	 * @param configParams 配置
-	 * @param params 参数
-	 * @return 返回格式化后内容
+	 * 格式化字符串（使用 (xxx) 占位符）
+	 * <p>
+	 * 简化版备选格式化方法，使用 (xxx) 作为占位符语法。
+	 * 常用于嵌套格式的内层。
+	 * </p>
+	 *
+	 * @param textFormatType 数据格式类型
+	 * @param pattern 模板字符串，包含 (xxx) 格式的占位符
+	 * @param configParams 配置参数对象
+	 * @param params 占位符参数
+	 * @return 格式化后的字符串
+	 * @example
+	 * <pre>{@code
+	 * Map<String, Object> data = Map.of("x", 10, "y", 20);
+	 * String result = TextUtils.alternateSimplifiedFormat(null,
+	 *     "点：(x, y)", null, data);
+	 * // result: "点：(10, 20)"
+	 * }</pre>
 	 */
 	public static String alternateSimplifiedFormat(TextFormatType textFormatType, String pattern, Object configParams, Object params) {
 		return format0(true, textFormatType, pattern, configParams, params, null, null, true);
 	}
 
 	/**
-	 * 格式化字符串文本, 使用(xxx)作为第一层占位符
-	 * @param pattern 待格式化内容
-	 * @param param 参数
-	 * @return 返回格式化后内容
+	 * 格式化字符串（使用 (xxx) 占位符）
+	 * <p>
+	 * 便捷方法，自动检测数据格式类型。
+	 * </p>
+	 *
+	 * @param pattern 模板字符串
+	 * @param param 单个参数对象
+	 * @return 格式化后的字符串
+	 * @see #alternateSimplifiedFormat(TextFormatType, String, Object, Object)
 	 */
 	public static String alternateSimplifiedFormat(String pattern, Object param) {
 		return format0(true, lookupFormatType(pattern), pattern, null, param, null, null, true);
 	}
 
 	/**
-	 * 格式化字符串文本, 使用(xxx)作为第一层占位符
-	 * @param textFormatType 数据类型
-	 * @param pattern 待格式化内容
-	 * @param param 参数
-	 * @return 返回格式化后内容
+	 * 格式化字符串（使用 (xxx) 占位符）
+	 * <p>
+	 * 指定数据格式类型的便捷方法。
+	 * </p>
+	 *
+	 * @param textFormatType 数据格式类型
+	 * @param pattern 模板字符串
+	 * @param param 单个参数对象
+	 * @return 格式化后的字符串
 	 */
 	public static String alternateSimplifiedFormat(TextFormatType textFormatType, String pattern, Object param) {
 		return format0(true, textFormatType, pattern, null, param, null, null, true);
 	}
 
 	/**
-	 * 格式化字符串文本, 使用(xxx)作为第一层占位符
-	 * @param pattern 待格式化内容
-	 * @param params 参数
-	 * @return 返回格式化后内容
+	 * 格式化字符串（使用 (xxx) 占位符，数组参数）
+	 * <p>
+	 * 支持使用索引访问数组或列表元素。
+	 * </p>
+	 *
+	 * @param pattern 模板字符串
+	 * @param params 可变参数数组
+	 * @return 格式化后的字符串
+	 * @example
+	 * <pre>{@code
+	 * String result = TextUtils.alternateSimplifiedFormat(
+	 *     "RGB：(r, g, b)", 255, 128, 64);
+	 * // result: "RGB：(255, 128, 64)"
+	 * }</pre>
 	 */
 	public static String alternateSimplifiedFormat(String pattern, Object... params) {
 		return format0(true, lookupFormatType(pattern), pattern, null, params, null, null, true);
 	}
 
 	/**
-	 * 格式化字符串文本, 使用$(xxx)作为第一层占位符
-	 * @param textFormatType 数据类型
-	 * @param pattern 待格式化内容
-	 * @param configParams 配置
-	 * @param params 参数
-	 * @return 返回格式化后内容
+	 * 格式化字符串（使用 $(xxx) 占位符）
+	 * <p>
+	 * 备选格式化方法，使用 $(xxx) 作为占位符语法。
+	 * 常用于嵌套格式的外层，与 format 方法互为父子格式。
+	 * </p>
+	 *
+	 * @param textFormatType 数据格式类型
+	 * @param pattern 模板字符串，包含 $(xxx) 格式的占位符
+	 * @param configParams 配置参数对象
+	 * @param params 占位符参数
+	 * @return 格式化后的字符串
+	 * @example
+	 * <pre>{@code
+	 * Map<String, Object> data = Map.of("host", "localhost", "port", 8080);
+	 * String result = TextUtils.alternateFormat(null,
+	 *     "地址：$(host):$(port)", null, data);
+	 * // result: "地址：localhost:8080"
+	 * }</pre>
 	 */
 	public static String alternateFormat(TextFormatType textFormatType, String pattern, Object configParams, Object params) {
 		return format0(true, textFormatType, pattern, configParams, params, null, null, false);
 	}
 
 	/**
-	 * 格式化字符串文本, 使用$(xxx)作为第一层占位符
-	 * @param textFormatType 数据类型
-	 * @param pattern 待格式化内容
-	 * @param params 参数
-	 * @return 返回格式化后内容
+	 * 格式化字符串（使用 $(xxx) 占位符）
+	 * <p>
+	 * 指定数据格式类型的便捷方法。
+	 * </p>
+	 *
+	 * @param textFormatType 数据格式类型
+	 * @param pattern 模板字符串
+	 * @param params 参数对象
+	 * @return 格式化后的字符串
+	 * @see #alternateFormat(TextFormatType, String, Object, Object)
 	 */
 	public static String alternateFormat(TextFormatType textFormatType, String pattern, Object params) {
 		return format0(true, textFormatType, pattern, null, params, null, null, false);
 	}
 
 	/**
-	 * 格式化字符串文本, 使用$(xxx)作为第一层占位符
-	 * @param pattern 待格式化内容
-	 * @param param 参数
-	 * @return 返回格式化后内容
+	 * 格式化字符串（使用 $(xxx) 占位符）
+	 * <p>
+	 * 便捷方法，自动检测数据格式类型。
+	 * </p>
+	 *
+	 * @param pattern 模板字符串
+	 * @param param 单个参数对象
+	 * @return 格式化后的字符串
+	 * @see #alternateFormat(TextFormatType, String, Object, Object)
 	 */
 	public static String alternateFormat(String pattern, Object param) {
 		return format0(true, lookupFormatType(pattern), pattern, null, param, null, null, false);
 	}
 
 	/**
-	 * 格式化字符串文本, 使用$(xxx)作为第一层占位符
-	 * @param pattern 待格式化内容
-	 * @param params 参数
-	 * @return 返回格式化后内容
+	 * 格式化字符串（使用 $(xxx) 占位符，数组参数）
+	 * <p>
+	 * 支持使用索引访问数组或列表元素。
+	 * </p>
+	 *
+	 * @param pattern 模板字符串
+	 * @param params 可变参数数组
+	 * @return 格式化后的字符串
+	 * @example
+	 * <pre>{@code
+	 * String result = TextUtils.alternateFormat(
+	 *     "路径：$(0)/$(1)/$(2)", "home", "user", "docs");
+	 * // result: "路径：home/user/docs"
+	 * }</pre>
 	 */
 	public static String alternateFormat(String pattern, Object... params) {
 		return format0(true, lookupFormatType(pattern), pattern, null, params, null, null, false);
@@ -1087,10 +1441,16 @@ public class TextUtils {
 
 
 	/**
-	 * 字符串值列表中是否包含该值
-	 * @param valueList 字符串值集合(用','隔开各值)
-	 * @param value 搜索的字符串值
-	 * @return true-字符串值列表中包含该值,否则为false
+	 * 检查值列表中是否包含指定值（使用逗号分隔）
+	 *
+	 * @param valueList 字符串值列表，用逗号分隔各值
+	 * @param value 要搜索的值
+	 * @return 如果包含该值返回 true，否则返回 false
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.containsValue("apple,banana,orange", "banana");  // -> true
+	 * TextUtils.containsValue("apple,banana,orange", "grape");   // -> false
+	 * }</pre>
 	 */
 	public static boolean containsValue(String valueList, Object value) {
 		return containsValue(valueList, value, SEPARATOR);
@@ -1098,10 +1458,19 @@ public class TextUtils {
 
 
 	/**
-	 * 查询指定值在对应列表的位置， 第一个值的位置为0，第二个值为1...
-	 * @param valueList 字符串值集合(用','隔开各值)
-	 * @param value 搜索的字符串值
-	 * @return int
+	 * 查询指定值在值列表中的位置（使用逗号分隔）
+	 * <p>
+	 * 第一个值的位置为 0，第二个值为 1，依此类推。
+	 * </p>
+	 *
+	 * @param valueList 字符串值列表，用逗号分隔各值
+	 * @param value 要搜索的值
+	 * @return 值的位置索引，未找到返回 -1
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.indexOfValue("apple,banana,orange", "banana");  // -> 1
+	 * TextUtils.indexOfValue("apple,banana,orange", "grape");   // -> -1
+	 * }</pre>
 	 */
 	public static int indexOfValue(String valueList, Object value) {
 		return indexOfValue(valueList, value, true, SEPARATOR);
@@ -1109,11 +1478,17 @@ public class TextUtils {
 
 
 	/**
-	 * 字符串值列表中是否包含该值
-	 * @param valueList 字符串值集合(用项分隔符隔开各值)
-	 * @param value 搜索的字符串值
+	 * 检查值列表中是否包含指定值（使用自定义分隔符）
+	 *
+	 * @param valueList 字符串值列表，用指定分隔符分隔各值
+	 * @param value 要搜索的值
 	 * @param separator 项分隔符
-	 * @return true-字符串值列表中包含该值,否则为false
+	 * @return 如果包含该值返回 true，否则返回 false
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.containsValue("apple;banana;orange", "banana", ";");  // -> true
+	 * TextUtils.containsValue("apple|banana|orange", "banana", "|");  // -> true
+	 * }</pre>
 	 */
 	public static boolean containsValue(String valueList, Object value, String separator) {
 		return indexOfValue(valueList, value, separator) >= 0;
@@ -1121,23 +1496,34 @@ public class TextUtils {
 
 
 	/**
-	 * 查询指定值在对应列表的位置， 第一个值的位置为0，第二个值为1...
-	 * @param valueList 字符串值集合(用项分隔符隔开各值)
-	 * @param value 搜索的字符串值
+	 * 查询指定值在值列表中的位置（使用自定义分隔符）
+	 *
+	 * @param valueList 字符串值列表，用指定分隔符分隔各值
+	 * @param value 要搜索的值
 	 * @param separator 项分隔符
-	 * @return int
+	 * @return 值的位置索引，未找到返回 -1
+	 * @see #indexOfValue(String, Object)
 	 */
 	public static int indexOfValue(String valueList, Object value, String separator) {
 		return indexOfValue(valueList, value, true, separator);
 	}
 
 	/**
-	 * 查询指定值在对应列表的位置， 第一个值的位置为0，第二个值为1...
-	 * @param valueList 字符串值集合(用项分隔符隔开各值)
-	 * @param value 搜索的字符串值
-	 * @param valueIndexOfList true-返回值在列表中的值索引，false-返回值在列表中的字符索引
+	 * 查询指定值在值列表中的位置
+	 *
+	 * @param valueList 字符串值列表
+	 * @param value 要搜索的值
+	 * @param valueIndexOfList true-返回值在列表中的值索引，false-返回值在字符串中的字符索引
 	 * @param separator 项分隔符
-	 * @return int
+	 * @return 位置索引，未找到返回 -1
+	 * @example
+	 * <pre>{@code
+	 * // 返回值索引
+	 * TextUtils.indexOfValue("apple,banana,orange", "banana", true, ",");   // -> 1
+	 *
+	 * // 返回字符索引
+	 * TextUtils.indexOfValue("apple,banana,orange", "banana", false, ",");  // -> 6
+	 * }</pre>
 	 */
 	public static int indexOfValue(String valueList, Object value, boolean valueIndexOfList, String separator) {
 		return indexOf(valueList, value, valueIndexOfList, false, separator);
@@ -1221,10 +1607,16 @@ public class TextUtils {
 
 
 	/**
-	 * 移除值列表中对应的第一个值, 如果不存在, 则不变
-	 * @param valueList 字符串值集合(用','隔开各值)
-	 * @param value 移除的字符串值
-	 * @return 返回移除后的值列表, 如果不变, 则返回原列表串对象
+	 * 从值列表中移除第一个匹配的值
+	 *
+	 * @param valueList 字符串值列表，用逗号分隔
+	 * @param value 要移除的值
+	 * @return 移除后的值列表，如果值不存在则返回原列表
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.removeValue("apple,banana,orange", "banana");  // -> "apple,orange"
+	 * TextUtils.removeValue("apple,banana,orange", "grape");   // -> "apple,banana,orange"
+	 * }</pre>
 	 */
 	public static String removeValue(String valueList, Object value) {
 		return removeValue(valueList, value, SEPARATOR);
@@ -1232,11 +1624,13 @@ public class TextUtils {
 
 
 	/**
-	 * 移除值列表中对应的第一个值, 如果不存在, 则不变
-	 * @param valueList 字符串值集合(用项分隔符隔开各值)
-	 * @param value 移除的字符串值
+	 * 从值列表中移除第一个匹配的值（使用自定义分隔符）
+	 *
+	 * @param valueList 字符串值列表
+	 * @param value 要移除的值
 	 * @param separator 项分隔符
-	 * @return 返回移除后的值列表, 如果不变, 则返回原列表串对象
+	 * @return 移除后的值列表，如果值不存在则返回原列表
+	 * @see #removeValue(String, Object)
 	 */
 	public static String removeValue(String valueList, Object value, String separator) {
 		String item = toString(value);
@@ -1255,11 +1649,18 @@ public class TextUtils {
 	}
 
 	/**
-	 * 移除值列表中对应位置的值, 如果不存在, 则不变
-	 * @param valueList 字符串值集合(用项分隔符隔开各值)
-	 * @param valueIndex 位置
+	 * 从值列表中移除指定位置的值
+	 *
+	 * @param valueList 字符串值列表
+	 * @param valueIndex 值的位置索引（负数表示从后往前数）
 	 * @param separator 项分隔符
-	 * @return 返回移除后的值列表, 如果不变, 则返回原列表串对象
+	 * @return 移除后的值列表，如果索引超出范围则返回原列表
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.remove("apple,banana,orange", 1, ",");    // -> "apple,orange"
+	 * TextUtils.remove("apple,banana,orange", -1, ",");   // -> "apple,banana"
+	 * TextUtils.remove("apple,banana,orange", 5, ",");    // -> "apple,banana,orange"
+	 * }</pre>
 	 */
 	public static String remove(String valueList, int valueIndex, String separator) {
 		if (valueList == null) {
@@ -1409,31 +1810,41 @@ public class TextUtils {
 	}
 
 	/**
-	 * 移除值列表中对应位置的值, 如果不存在, 则不变
-	 * @param valueList 字符串值集合(用项分隔符隔开各值)
-	 * @param valueIndex 位置
-	 * @return 返回移除后的值列表, 如果不变, 则返回原列表串对象
+	 * 从值列表中移除指定位置的值（使用逗号分隔）
+	 *
+	 * @param valueList 字符串值列表
+	 * @param valueIndex 值的位置索引
+	 * @return 移除后的值列表
+	 * @see #remove(String, int, String)
 	 */
 	public static String remove(String valueList, int valueIndex) {
 		return remove(valueList, valueIndex, SEPARATOR);
 	}
 
 	/**
-	 * 字符串值集合中添加值, 如果已存在则不变
-	 * @param valueList 字符串值集合(用','隔开各值)
-	 * @param value 字符串值
-	 * @return 返回添加后的值列表, 如果不变, 则返回原列表串对象
+	 * 向值列表中添加新值（如果已存在则不添加）
+	 *
+	 * @param valueList 字符串值列表，用逗号分隔
+	 * @param value 要添加的值
+	 * @return 添加后的值列表，如果值已存在则返回原列表
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.addValue("apple,banana", "orange");  // -> "apple,banana,orange"
+	 * TextUtils.addValue("apple,banana", "apple");   // -> "apple,banana"
+	 * }</pre>
 	 */
 	public static String addValue(String valueList, Object value) {
 		return addValue(valueList, value, SEPARATOR);
 	}
 
 	/**
-	 * 字符串值集合中添加值, 如果已存在则不变
-	 * @param valueList 字符串值集合(用项分隔符隔开各值)
-	 * @param value 字符串值
+	 * 向值列表中添加新值（使用自定义分隔符）
+	 *
+	 * @param valueList 字符串值列表
+	 * @param value 要添加的值
 	 * @param separator 项分隔符
-	 * @return 返回添加后的值列表, 如果不变, 则返回原列表串对象
+	 * @return 添加后的值列表，如果值已存在则返回原列表
+	 * @see #addValue(String, Object)
 	 */
 	public static String addValue(String valueList, Object value, String separator) {
 		String item = toString(value);
@@ -1463,21 +1874,29 @@ public class TextUtils {
 
 
 	/**
-	 * 字符串值列表中是否包含指定所有值
-	 * @param valueList 字符串值集合(用','隔开各值)
-	 * @param values 搜索的多个值(用','隔开各值)
-	 * @return true-字符串值列表中包含该值,否则为false
+	 * 检查值列表是否包含所有指定的值（使用逗号分隔）
+	 *
+	 * @param valueList 字符串值列表
+	 * @param values 要检查的多个值，用逗号分隔
+	 * @return 如果包含所有值返回 true，否则返回 false
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.containsAll("apple,banana,orange", "apple,banana");  // -> true
+	 * TextUtils.containsAll("apple,banana,orange", "apple,grape");   // -> false
+	 * }</pre>
 	 */
 	public static boolean containsAll(String valueList, String values) {
 		return containsAll(valueList, values, SEPARATOR);
 	}
 
 	/**
-	 * 字符串值列表中是否包含指定所有值
-	 * @param valueList 字符串值集合(用项分隔符隔开各值)
-	 * @param values 搜索的多个值(用项分隔符隔开各值)
+	 * 检查值列表是否包含所有指定的值（使用自定义分隔符）
+	 *
+	 * @param valueList 字符串值列表
+	 * @param values 要检查的多个值
 	 * @param separator 项分隔符
-	 * @return true-字符串值列表中包含该值,否则为false
+	 * @return 如果包含所有值返回 true，否则返回 false
+	 * @see #containsAll(String, String)
 	 */
 	public static boolean containsAll(String valueList, String values, String separator) {
 		if (valueList == null || values == null) {
@@ -1507,21 +1926,29 @@ public class TextUtils {
 	}
 
 	/**
-	 * 移除值集合中对应的多个值
-	 * @param valueList 字符串值集合(用','隔开各值)
-	 * @param values 多个值(用','隔开各值)
-	 * @return 返回移除后的值列表, 如果不变, 则返回原列表串对象
+	 * 从值列表中批量移除多个值（使用逗号分隔）
+	 *
+	 * @param valueList 字符串值列表
+	 * @param values 要移除的多个值，用逗号分隔
+	 * @return 移除后的值列表
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.removeAll("apple,banana,orange,grape", "banana,grape");
+	 * // -> "apple,orange"
+	 * }</pre>
 	 */
 	public static String removeAll(String valueList, String values) {
 		return removeAll(valueList, values, SEPARATOR);
 	}
 
 	/**
-	 * 移除值集合中对应的多个值
-	 * @param valueList 字符串值集合(用项分隔符隔开各值)
-	 * @param values 多个值(用项分隔符隔开各值)
+	 * 从值列表中批量移除多个值（使用自定义分隔符）
+	 *
+	 * @param valueList 字符串值列表
+	 * @param values 要移除的多个值
 	 * @param separator 项分隔符
-	 * @return 返回移除后的值列表, 如果不变, 则返回原列表串对象
+	 * @return 移除后的值列表
+	 * @see #removeAll(String, String)
 	 */
 	public static String removeAll(String valueList, String values, String separator) {
 		if (valueList == null || valueList.isEmpty() || values == null) {
@@ -1551,21 +1978,29 @@ public class TextUtils {
 	}
 
 	/**
-	 * 值集合中添加多个值，对于已存在的值忽略添加
-	 * @param valueList 字符串值集合(用','隔开各值)
-	 * @param values 多个值(用','隔开各值)
-	 * @return 返回添加后的值列表, 如果不变, 则返回原列表串对象
+	 * 向值列表中添加多个值（对于已存在的值忽略添加）
+	 *
+	 * @param valueList 字符串值列表，用逗号分隔
+	 * @param values 要添加的多个值，用逗号分隔
+	 * @return 添加后的值列表
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.addAll("apple,banana", "banana,orange,grape");
+	 * // -> "apple,banana,orange,grape"
+	 * }</pre>
 	 */
 	public static String addAll(String valueList, String values) {
 		return addAll(valueList, values, SEPARATOR);
 	}
 
 	/**
-	 * 值集合中添加多个值，对于已存在的值忽略添加
-	 * @param valueList 字符串值集合(用项分隔符隔开各值)
-	 * @param values 多个值(用项分隔符隔开各值)
+	 * 向值列表中添加多个值（使用自定义分隔符）
+	 *
+	 * @param valueList 字符串值列表
+	 * @param values 要添加的多个值
 	 * @param separator 项分隔符
-	 * @return 返回添加后的值列表, 如果不变, 则返回原列表串对象
+	 * @return 添加后的值列表
+	 * @see #addAll(String, String)
 	 */
 	public static String addAll(String valueList, String values, String separator) {
 		if (isEmpty(values) || indexOf(valueList, values, 0, values.length(), false, false, separator) != -1) {
@@ -1596,10 +2031,19 @@ public class TextUtils {
 	}
 
 	/**
-	 * 获取两个集合的交集, 如果没有交集则返回空串
-	 * @param firstList 字符串值集合(用','隔开各值)
-	 * @param secondList 多个值(用','隔开各值)
-	 * @return 返回添加后的值集合,并按第一个字符串集合的顺序返回
+	 * 获取两个值列表的交集
+	 * <p>
+	 * 如果没有交集则返回空串，结果按第一个列表的顺序返回。
+	 * </p>
+	 *
+	 * @param firstList 第一个字符串值列表，用逗号分隔
+	 * @param secondList 第二个字符串值列表，用逗号分隔
+	 * @return 交集结果，如果没有交集返回空串
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.retainAll("apple,banana,orange", "banana,grape");
+	 * // -> "banana"
+	 * }</pre>
 	 */
 	public static String retainAll(String firstList, String secondList) {
 		return retainAll(firstList, secondList, SEPARATOR);
@@ -1607,11 +2051,16 @@ public class TextUtils {
 
 
 	/**
-	 * 获取两个集合的交集, 如果没有交集则返回空串
-	 * @param firstList 字符串值集合(用项分隔符隔开各值)
-	 * @param secondList 多个值(用项分隔符隔开各值)
+	 * 获取两个值列表的交集（使用自定义分隔符）
+	 * <p>
+	 * 如果没有交集则返回空串，结果按第一个列表的顺序返回。
+	 * </p>
+	 *
+	 * @param firstList 第一个字符串值列表
+	 * @param secondList 第二个字符串值列表
 	 * @param separator 项分隔符
-	 * @return 返回添加后的值集合,并按第一个字符串集合的顺序返回
+	 * @return 交集结果，如果没有交集返回空串
+	 * @see #retainAll(String, String)
 	 */
 	public static String retainAll(String firstList, String secondList, String separator) {
 		if (firstList == null || secondList == null) {
@@ -1651,19 +2100,27 @@ public class TextUtils {
 
 
 	/**
-	 * 获取值列表元素个数
-	 * @param valueList　字符串值集合(用','隔开各值)
+	 * 获取值列表元素个数（使用逗号分隔）
+	 *
+	 * @param valueList 字符串值列表，用逗号分隔
 	 * @return 值列表元素个数
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.getSize("apple,banana,orange");  // -> 3
+	 * TextUtils.getSize("");                      // -> 0
+	 * }</pre>
 	 */
 	public static int getSize(String valueList) {
 		return getSize(valueList, SEPARATOR);
 	}
 
 	/**
-	 * 获取值列表元素个数
-	 * @param valueList　字符串值集合(用项分隔符隔开各值)
+	 * 获取值列表元素个数（使用自定义分隔符）
+	 *
+	 * @param valueList 字符串值列表
 	 * @param separator 项分隔符
 	 * @return 值列表元素个数
+	 * @see #getSize(String)
 	 */
 	public static int getSize(String valueList, String separator) {
 		if (isEmpty(valueList)) {
@@ -1690,10 +2147,20 @@ public class TextUtils {
 	}
 
 	/**
-	 * 获取指定位置的值, 如果列表是null或值索引超出列表元素边界时返回null
-	 * @param valueList 字符串值集合(用','隔开各值)
-	 * @param valueIndex 值在列表中的值索引，负值代表从后面开始算
-	 * @return 返回对应索引的项字符串值
+	 * 获取指定位置的值（使用逗号分隔）
+	 * <p>
+	 * 如果列表是 null 或值索引超出列表元素边界时返回 null。
+	 * </p>
+	 *
+	 * @param valueList 字符串值列表，用逗号分隔
+	 * @param valueIndex 值在列表中的索引，负值代表从后面开始算
+	 * @return 对应索引的项字符串值，未找到返回 null
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.getValue("apple,banana,orange", 0);   // -> "apple"
+	 * TextUtils.getValue("apple,banana,orange", 1);   // -> "banana"
+	 * TextUtils.getValue("apple,banana,orange", -1);  // -> "orange"
+	 * }</pre>
 	 */
 	public static String getValue(String valueList, int valueIndex) {
 		return getValue(valueList, valueIndex, SEPARATOR);
@@ -1701,34 +2168,53 @@ public class TextUtils {
 
 
 	/**
-	 * 获取指定位置的值, 如果列表是null或值索引超出列表元素边界时返回null
-	 * @param valueList 字符串值集合(用项分隔符隔开各值)
-	 * @param valueIndex 值在列表中的值索引，负值代表从后面开始算
+	 * 获取指定位置的值（使用自定义分隔符）
+	 * <p>
+	 * 如果列表是 null 或值索引超出列表元素边界时返回 null。
+	 * </p>
+	 *
+	 * @param valueList 字符串值列表
+	 * @param valueIndex 值在列表中的索引，负值代表从后面开始算
 	 * @param separator 项分隔符
-	 * @return 返回对应索引的项字符串值
+	 * @return 对应索引的项字符串值，未找到返回 null
+	 * @see #getValue(String, int)
 	 */
 	public static String getValue(String valueList, int valueIndex, String separator) {
 		return getValues(valueList, valueIndex, 1, separator);
 	}
 
 	/**
-	 * 获取指定位置的值, 如果列表是null或值索引超出列表元素边界时返回null
-	 * @param valueList 字符串值集合(用项分隔符隔开各值)
-	 * @param offset 值在列表中的值起始索引，负值代表从后面开始算
-	 * @param len 子列表长度, 负值代表向后算
-	 * @return 返回对应索引的项字符串值
+	 * 获取指定位置的多个值（使用逗号分隔）
+	 * <p>
+	 * 如果列表是 null 或值索引超出列表元素边界时返回 null。
+	 * </p>
+	 *
+	 * @param valueList 字符串值列表，用逗号分隔
+	 * @param offset 起始索引，负值代表从后面开始算
+	 * @param len 子列表长度，负值代表向后算
+	 * @return 对应范围的项字符串值
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.getValues("apple,banana,orange,grape", 1, 2);
+	 * // -> "banana,orange"
+	 * }</pre>
 	 */
 	public static String getValues(String valueList, int offset, int len) {
 		return getValues(valueList, offset, len, SEPARATOR);
 	}
 
 	/**
-	 * 获取指定位置的值, 如果列表是null或值索引超出列表元素边界时返回null
-	 * @param valueList 字符串值集合(用项分隔符隔开各值)
-	 * @param offset 值在列表中的值起始索引，负值代表从后面开始算
-	 * @param len 子列表长度, 负值代表向后算
+	 * 获取指定位置的多个值（使用自定义分隔符）
+	 * <p>
+	 * 如果列表是 null 或值索引超出列表元素边界时返回 null。
+	 * </p>
+	 *
+	 * @param valueList 字符串值列表
+	 * @param offset 起始索引，负值代表从后面开始算
+	 * @param len 子列表长度，负值代表向后算
 	 * @param separator 项分隔符
-	 * @return 返回对应索引的项字符串值
+	 * @return 对应范围的项字符串值
+	 * @see #getValues(String, int, int)
 	 */
 	public static String getValues(String valueList, int offset, int len, String separator) {
 		if (isEmpty(separator)) {
@@ -1827,10 +2313,20 @@ public class TextUtils {
 
 	/**
 	 * 获取子字符串
-	 * @param value 字符串值
+	 * <p>
+	 * 支持负数索引，负值代表从字符串末尾开始计算。
+	 * </p>
+	 *
+	 * @param value 原始字符串
 	 * @param offset 起始位置，负值代表从后面开始算
 	 * @param len 长度，负值代表向后算
-	 * @return 子字符串
+	 * @return 子字符串，超出范围返回 null
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.substr("Hello World", 0, 5);     // -> "Hello"
+	 * TextUtils.substr("Hello World", -5, 5);    // -> "World"
+	 * TextUtils.substr("Hello World", 6, -1);    // -> "W"
+	 * }</pre>
 	 */
 	public static String substr(String value, int offset, int len) {
 		if (value == null) {
@@ -1854,19 +2350,27 @@ public class TextUtils {
 	}
 
 	/**
-	 * 转化成字符串列表
-	 * @param valueList 字符串值集合(用','隔开各值)
+	 * 将值列表转换为字符串列表（使用逗号分隔）
+	 *
+	 * @param valueList 字符串值列表，用逗号分隔
 	 * @return 字符串列表
+	 * @example
+	 * <pre>{@code
+	 * List<String> list = TextUtils.asList("apple,banana,orange");
+	 * // list: ["apple", "banana", "orange"]
+	 * }</pre>
 	 */
 	public static List<String> asList(String valueList) {
 		return asList(valueList, SEPARATOR);
 	}
 
 	/**
-	 * 转化成list
-	 * @param valueList 字符串值集合(用项分隔符隔开各值)
+	 * 将值列表转换为字符串列表（使用自定义分隔符）
+	 *
+	 * @param valueList 字符串值列表
 	 * @param separator 项分隔符
 	 * @return 字符串列表
+	 * @see #asList(String)
 	 */
 	public static List<String> asList(String valueList, String separator) {
 		if (isEmpty(valueList)) {
@@ -1892,31 +2396,46 @@ public class TextUtils {
 
 
 	/**
-	 * 存在项的前缀为指定串时返回true, 否则返回false
-	 * @param valueList 字符串值集合(用项分隔符隔开各值)
-	 * @param prefix 前缀
+	 * 检查值列表中是否存在以指定前缀开头的项（使用自定义分隔符）
+	 *
+	 * @param valueList 字符串值列表
+	 * @param prefix 要匹配的前缀
 	 * @param separator 项分隔符
-	 * @return 是否匹配
+	 * @return 如果存在匹配的项返回 true，否则返回 false
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.anyStartsWith("apple,banana,orange", "app", ",");  // -> true
+	 * TextUtils.anyStartsWith("apple,banana,orange", "xyz", ",");  // -> false
+	 * }</pre>
 	 */
 	public static boolean anyStartsWith(String valueList, String prefix, String separator) {
 		return prefix != null && indexOf(valueList, prefix, 0, prefix.length(), false, true, separator) != -1;
 	}
 
 	/**
-	 * 存在项的前缀为指定串时返回true, 否则返回false
-	 * @param valueList 字符串值集合(用项分隔符隔开各值)
-	 * @param prefix 前缀
-	 * @return 是否匹配
+	 * 检查值列表中是否存在以指定前缀开头的项（使用逗号分隔）
+	 *
+	 * @param valueList 字符串值列表，用逗号分隔
+	 * @param prefix 要匹配的前缀
+	 * @return 如果存在匹配的项返回 true，否则返回 false
+	 * @see #anyStartsWith(String, String, String)
 	 */
 	public static boolean anyStartsWith(String valueList, String prefix) {
 		return anyStartsWith(valueList, prefix, SEPARATOR);
 	}
 
 	/**
-	 * 转化成字符串
-	 * @param values 字符串值集合
+	 * 将集合转换为字符串（使用自定义分隔符）
+	 *
+	 * @param values 可迭代集合
 	 * @param separator 项分隔符
-	 * @return 字符串
+	 * @return 连接后的字符串
+	 * @example
+	 * <pre>{@code
+	 * List<String> list = Arrays.asList("apple", "banana", "orange");
+	 * String result = TextUtils.toString(list, ", ");
+	 * // result: "apple, banana, orange"
+	 * }</pre>
 	 */
 	public static String toString(Iterable<?> values, String separator) {
 		if (values == null) {
@@ -1938,10 +2457,17 @@ public class TextUtils {
 	}
 
 	/**
-	 * 转化成字符串
-	 * @param values 数组
+	 * 将数组转换为字符串（使用自定义分隔符）
+	 *
+	 * @param values 对象数组
 	 * @param separator 项分隔符
-	 * @return 字符串
+	 * @return 连接后的字符串
+	 * @example
+	 * <pre>{@code
+	 * String[] arr = {"apple", "banana", "orange"};
+	 * String result = TextUtils.toString(arr, " - ");
+	 * // result: "apple - banana - orange"
+	 * }</pre>
 	 */
 	public static<T> String toString(T[] values, String separator) {
 		if (values == null || values.length == 0) {
@@ -1964,9 +2490,11 @@ public class TextUtils {
 	}
 
 	/**
-	 * 转化成字符串
-	 * @param values 数组
-	 * @return 字符串
+	 * 将数组转换为字符串（使用逗号分隔）
+	 *
+	 * @param values 对象数组
+	 * @return 连接后的字符串
+	 * @see #toString(Object[], String)
 	 */
 	@SafeVarargs
 	public static<T> String toString(T... values) {
@@ -1974,9 +2502,19 @@ public class TextUtils {
 	}
 
 	/**
-	 * 转化成字符串, null为转化为空串
-	 * @param value 值
-	 * @return 字符串
+	 * 将对象转换为字符串
+	 * <p>
+	 * null 值转换为 null，Iterable 和数组会递归处理。
+	 * </p>
+	 *
+	 * @param value 要转换的值
+	 * @return 字符串表示，null 返回 null
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.toString("hello");        // -> "hello"
+	 * TextUtils.toString(null);           // -> null
+	 * TextUtils.toString(123);            // -> "123"
+	 * }</pre>
 	 */
 	public static<T> String toString(T value) {
 		if (value instanceof Iterable) {
@@ -1993,19 +2531,28 @@ public class TextUtils {
 	}
 
 	/**
-	 * 转化成字符串
-	 * @param values 集合
-	 * @return 字符串
+	 * 将集合转换为字符串（使用逗号分隔）
+	 *
+	 * @param values 可迭代集合
+	 * @return 连接后的字符串
+	 * @see #toString(Iterable, String)
 	 */
 	public static String toString(Iterable<?> values) {
 		return toString(values, SEPARATOR);
 	}
 
 	/**
-	 * 移除后缀
-	 * @param value 值
-	 * @param suffix 后缀
-	 * @return 返回移除后缀后的结果
+	 * 移除字符串后缀
+	 *
+	 * @param value 原始字符串
+	 * @param suffix 要移除的后缀
+	 * @return 移除后缀后的结果，如果不匹配则返回原字符串
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.removeSuffix("hello.txt", ".txt");   // -> "hello"
+	 * TextUtils.removeSuffix("hello.txt", ".jpg");   // -> "hello.txt"
+	 * TextUtils.removeSuffix("test", "test");         // -> ""
+	 * }</pre>
 	 */
 	public static String removeSuffix(String value, String suffix) {
 		if (!isEmpty(value) && !isEmpty(suffix) && value.endsWith(suffix)) {
@@ -2018,10 +2565,17 @@ public class TextUtils {
 	}
 
 	/**
-	 * 移除前缀
-	 * @param value 值
-	 * @param prefix 前缀
-	 * @return 返回移除前缀后的结果
+	 * 移除字符串前缀
+	 *
+	 * @param value 原始字符串
+	 * @param prefix 要移除的前缀
+	 * @return 移除前缀后的结果，如果不匹配则返回原字符串
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.removePrefix("hello.txt", "hello.");  // -> "txt"
+	 * TextUtils.removePrefix("hello.txt", "world.");  // -> "hello.txt"
+	 * TextUtils.removePrefix("test", "test");          // -> ""
+	 * }</pre>
 	 */
 	public static String removePrefix(String value, String prefix) {
 		if (!isEmpty(value) && !isEmpty(prefix) && value.startsWith(prefix)) {
