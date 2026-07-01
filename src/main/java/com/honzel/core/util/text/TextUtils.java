@@ -53,7 +53,7 @@ import java.util.stream.Stream;
  *     TextUtils.format("Price: \$${price}", map);  // map: {"price": 100} -> "Price: $100"
  *     }</pre>
  *   </li>
- *   <li><b>simplifiedFormat</b>: {@code {} 需要转义
+ *   <li><b>simplifiedFormat</b>: { 需要转义
  *     <pre>{@code
  *     TextUtils.simplifiedFormat("Set\\{item}", map);  // -> "Set{item}"
  *     }</pre>
@@ -67,12 +67,12 @@ import java.util.stream.Stream;
  *
  * <h3>2. 占位符内（[]外）的转义</h3>
  * <ul>
- *   <li><b>format/simplifiedFormat</b>: {@code }[;] 需要转义
+ *   <li><b>format/simplifiedFormat</b>: {@code }[;]} 需要转义
  *     <pre>{@code
  *     TextUtils.format("${key\\;value}", map);  // 分号需要转义
  *     }</pre>
  *   </li>
- *   <li><b>alternateFormat/alternateSimplifiedFormat</b>: {@code )[;] 需要转义
+ *   <li><b>alternateFormat/alternateSimplifiedFormat</b>: {@code )[;]} 需要转义
  *     <pre>{@code
  *     TextUtils.alternateFormat("$(key\\)value)", map);  // )需要转义
  *     }</pre>
@@ -81,12 +81,12 @@ import java.util.stream.Stream;
  *
  * <h3>3. 占位符内（[]内）的转义</h3>
  * <ul>
- *   <li><b>format/simplifiedFormat</b>: {@code }]=;] 需要转义
+ *   <li><b>format/simplifiedFormat</b>: {@code }]=;} 需要转义
  *     <pre>{@code
  *     TextUtils.format("${key[value\\]]}", map);  // ]需要转义
  *     }</pre>
  *   </li>
- *   <li><b>alternateFormat/alternateSimplifiedFormat</b>: {@code )]=;] 需要转义
+ *   <li><b>alternateFormat/alternateSimplifiedFormat</b>: {@code )]=;]} 需要转义
  *     <pre>{@code
  *     TextUtils.alternateFormat("$(key[value\\)])", map);  // )需要转义
  *     }</pre>
@@ -201,7 +201,7 @@ import java.util.stream.Stream;
  * }</pre>
  *
  * @author honzel
- * @date 2021/2/27
+ * @date 2021-02-27
  */
 //@SuppressWarnings("unused")
 public class TextUtils {
