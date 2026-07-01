@@ -86,7 +86,7 @@ import java.util.stream.Stream;
  *     TextUtils.format("${key[value\\]]}", map);  // ]需要转义
  *     }</pre>
  *   </li>
- *   <li><b>alternateFormat/alternateSimplifiedFormat</b>: {@code )]=;]} 需要转义
+ *   <li><b>alternateFormat/alternateSimplifiedFormat</b>: {@code )=;]} 需要转义
  *     <pre>{@code
  *     TextUtils.alternateFormat("$(key[value\\)])", map);  // )需要转义
  *     }</pre>
