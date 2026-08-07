@@ -222,8 +222,6 @@ public class TextUtils {
 	public static final String EQUAL = "=";
 	public static final String SEMICOLON = ";";
 
-	public static final String COLON = ":";
-
 	public static final char EXPR_FLAG = '#';
 
 	public static final char JOIN_FLAG = '+';
@@ -2660,7 +2658,7 @@ public class TextUtils {
 
 	// ======================== Map 格式字符串工具方法 ========================
 	// 格式: key1,key2:value1,value2,value3;key3:value4
-	// 默认分隔符: entrySeparator=";", kvSeparator=":", itemSeparator=","
+	// 默认分隔符: entrySeparator=";", kvSeparator="=", itemSeparator=","
 
 	/**
 	 * 在 entry 区域 [entryStart, entryEnd) 内查找 kvSeparator 的位置
@@ -2759,14 +2757,14 @@ public class TextUtils {
 	 * @return key 在原字符串中的起始字符索引，未找到返回 -1
 	 * @example
 	 * <pre>{@code
-	 * TextUtils.keyIndexOf("k1,k2:v1,v2;k3:v3", "k1");   // -> 0
-	 * TextUtils.keyIndexOf("k1,k2:v1,v2;k3:v3", "k2");   // -> 3
-	 * TextUtils.keyIndexOf("k1,k2:v1,v2;k3:v3", "k3");   // -> 14
-	 * TextUtils.keyIndexOf("k1,k2:v1,v2;k3:v3", "k4");   // -> -1
+	 * TextUtils.keyIndexOf("k1,k2=v1,v2;k3=v3", "k1");   // -> 0
+	 * TextUtils.keyIndexOf("k1,k2=v1,v2;k3=v3", "k2");   // -> 3
+	 * TextUtils.keyIndexOf("k1,k2=v1,v2;k3=v3", "k3");   // -> 14
+	 * TextUtils.keyIndexOf("k1,k2=v1,v2;k3=v3", "k4");   // -> -1
 	 * }</pre>
 	 */
 	public static int keyIndexOf(String valueMap, Object key) {
-		return keyIndexOf(valueMap, key, COLON, SEMICOLON, SEPARATOR);
+		return keyIndexOf(valueMap, key, EQUAL, SEMICOLON, SEPARATOR);
 	}
 
 	/**
@@ -2780,8 +2778,8 @@ public class TextUtils {
 	 *
 	 * @param valueMap       map 格式字符串
 	 * @param key            要查找的 key
-	 * @param kvSeparator    key-value 分隔符（默认 {@code ":"}）
-	 * @param entrySeparator entry 分隔符（默认 {@code ";"}）
+	 * @param kvSeparator    key-value 分隔符
+	 * @param entrySeparator entry 分隔符
 	 * @return key 在原字符串中的起始字符索引，未找到返回 -1
 	 */
 	public static int keyIndexOf(String valueMap, Object key, String kvSeparator, String entrySeparator) {
@@ -2798,9 +2796,9 @@ public class TextUtils {
 	 *
 	 * @param valueMap       map 格式字符串
 	 * @param key            要查找的 key
-	 * @param kvSeparator    key-value 分隔符（默认 {@code ":"}）
-	 * @param entrySeparator entry 分隔符（默认 {@code ";"}）
-	 * @param itemSeparator  项分隔符（默认 {@code ","}）
+	 * @param kvSeparator    key-value 分隔符
+	 * @param entrySeparator entry 分隔符
+	 * @param itemSeparator  项分隔符
 	 * @return key 在原字符串中的起始字符索引，未找到返回 -1
 	 */
 	public static int keyIndexOf(String valueMap, Object key, String kvSeparator, String entrySeparator, String itemSeparator) {
@@ -2866,12 +2864,12 @@ public class TextUtils {
 	 * @return 如果包含该 key 返回 true，否则返回 false
 	 * @example
 	 * <pre>{@code
-	 * TextUtils.containsMapKey("k1,k2:v1,v2;k3:v3", "k1");   // -> true
-	 * TextUtils.containsMapKey("k1,k2:v1,v2;k3:v3", "k4");   // -> false
+	 * TextUtils.containsMapKey("k1,k2=v1,v2;k3=v3", "k1");   // -> true
+	 * TextUtils.containsMapKey("k1,k2=v1,v2;k3=v3", "k4");   // -> false
 	 * }</pre>
 	 */
 	public static boolean containsMapKey(String valueMap, Object key) {
-		return containsMapKey(valueMap, key, COLON, SEMICOLON, SEPARATOR);
+		return containsMapKey(valueMap, key, EQUAL, SEMICOLON, SEPARATOR);
 	}
 
 	/**
@@ -2923,12 +2921,12 @@ public class TextUtils {
 	 * @return 如果包含该 value 返回 true，否则返回 false
 	 * @example
 	 * <pre>{@code
-	 * TextUtils.containsMapValue("k1,k2:v1,v2;k3:v3", "v1");   // -> true
-	 * TextUtils.containsMapValue("k1,k2:v1,v2;k3:v3", "v4");   // -> false
+	 * TextUtils.containsMapValue("k1,k2=v1,v2;k3=v3", "v1");   // -> true
+	 * TextUtils.containsMapValue("k1,k2=v1,v2;k3=v3", "v4");   // -> false
 	 * }</pre>
 	 */
 	public static boolean containsMapValue(String valueMap, Object value) {
-		return containsMapValue(valueMap, value, COLON, SEMICOLON, SEPARATOR);
+		return containsMapValue(valueMap, value, EQUAL, SEMICOLON, SEPARATOR);
 	}
 
 	/**
@@ -3003,13 +3001,13 @@ public class TextUtils {
 	 * @return 如果该 key 对应的值中包含指定 value 返回 true，否则返回 false
 	 * @example
 	 * <pre>{@code
-	 * TextUtils.containsMapKeyValue("k1,k2:v1,v2;k3:v3", "k1", "v1");   // -> true
-	 * TextUtils.containsMapKeyValue("k1,k2:v1,v2;k3:v3", "k1", "v3");   // -> false
-	 * TextUtils.containsMapKeyValue("k1,k2:v1,v2;k3:v3", "k3", "v3");   // -> true
+	 * TextUtils.containsMapKeyValue("k1,k2=v1,v2;k3=v3", "k1", "v1");   // -> true
+	 * TextUtils.containsMapKeyValue("k1,k2=v1,v2;k3=v3", "k1", "v3");   // -> false
+	 * TextUtils.containsMapKeyValue("k1,k2=v1,v2;k3=v3", "k3", "v3");   // -> true
 	 * }</pre>
 	 */
 	public static boolean containsMapKeyValue(String valueMap, Object key, Object value) {
-		return containsMapKeyValue(valueMap, key, value, COLON, SEMICOLON, SEPARATOR);
+		return containsMapKeyValue(valueMap, key, value, EQUAL, SEMICOLON, SEPARATOR);
 	}
 
 	/**
@@ -3095,13 +3093,13 @@ public class TextUtils {
 	 * @return 对应的 value 字符串，未找到返回 null
 	 * @example
 	 * <pre>{@code
-	 * TextUtils.getMapValue("k1,k2:v1,v2;k3:v3", "k1");   // -> "v1,v2"
-	 * TextUtils.getMapValue("k1,k2:v1,v2;k3:v3", "k3");   // -> "v3"
-	 * TextUtils.getMapValue("k1,k2:v1,v2;k3:v3", "k4");   // -> null
+	 * TextUtils.getMapValue("k1,k2=v1,v2;k3=v3", "k1");   // -> "v1,v2"
+	 * TextUtils.getMapValue("k1,k2=v1,v2;k3=v3", "k3");   // -> "v3"
+	 * TextUtils.getMapValue("k1,k2=v1,v2;k3=v3", "k4");   // -> null
 	 * }</pre>
 	 */
 	public static String getMapValue(String valueMap, Object key) {
-		return getMapValue(valueMap, key, COLON, SEMICOLON, SEPARATOR);
+		return getMapValue(valueMap, key, EQUAL, SEMICOLON, SEPARATOR);
 	}
 
 	/**
@@ -3181,13 +3179,13 @@ public class TextUtils {
 	 * @return 对应的 key 字符串，未找到返回 null
 	 * @example
 	 * <pre>{@code
-	 * TextUtils.getMapKey("k1,k2:v1,v2;k3:v3", "v1");   // -> "k1,k2"
-	 * TextUtils.getMapKey("k1,k2:v1,v2;k3:v3", "v3");   // -> "k3"
-	 * TextUtils.getMapKey("k1,k2:v1,v2;k3:v3", "v4");   // -> null
+	 * TextUtils.getMapKey("k1,k2=v1,v2;k3=v3", "v1");   // -> "k1,k2"
+	 * TextUtils.getMapKey("k1,k2=v1,v2;k3=v3", "v3");   // -> "k3"
+	 * TextUtils.getMapKey("k1,k2=v1,v2;k3=v3", "v4");   // -> null
 	 * }</pre>
 	 */
 	public static String getMapKey(String valueMap, Object value) {
-		return getMapKey(valueMap, value, COLON, SEMICOLON, SEPARATOR);
+		return getMapKey(valueMap, value, EQUAL, SEMICOLON, SEPARATOR);
 	}
 
 	/**
@@ -3260,11 +3258,11 @@ public class TextUtils {
 	 * @return 所有 key 用 itemSeparator 拼接的字符串
 	 * @example
 	 * <pre>{@code
-	 * TextUtils.mapKeys("k1,k2:v1,v2;k3:v3");   // -> "k1,k2,k3"
+	 * TextUtils.mapKeys("k1,k2=v1,v2;k3=v3");   // -> "k1,k2,k3"
 	 * }</pre>
 	 */
 	public static String mapKeys(String valueMap) {
-		return mapKeys(valueMap, COLON, SEMICOLON, SEPARATOR);
+		return mapKeys(valueMap, EQUAL, SEMICOLON, SEPARATOR);
 	}
 
 	/**
@@ -3327,11 +3325,11 @@ public class TextUtils {
 	 * @return 所有 value 用 itemSeparator 拼接的字符串
 	 * @example
 	 * <pre>{@code
-	 * TextUtils.mapValues("k1,k2:v1,v2;k3:v3");   // -> "v1,v2,v3"
+	 * TextUtils.mapValues("k1,k2=v1,v2;k3=v3");   // -> "v1,v2,v3"
 	 * }</pre>
 	 */
 	public static String mapValues(String valueMap) {
-		return mapValues(valueMap, COLON, SEMICOLON, SEPARATOR);
+		return mapValues(valueMap, EQUAL, SEMICOLON, SEPARATOR);
 	}
 
 	/**
