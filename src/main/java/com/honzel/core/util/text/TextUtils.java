@@ -222,6 +222,8 @@ public class TextUtils {
 	public static final String EQUAL = "=";
 	public static final String SEMICOLON = ";";
 
+	public static final String COLON = ":";
+
 	public static final char EXPR_FLAG = '#';
 
 	public static final char JOIN_FLAG = '+';
@@ -1717,72 +1719,141 @@ public class TextUtils {
 		}
 	}
 
-//	/**
-//	 * 替换值列表中对应位置的值, 如果不存在, 则不变
-//	 * @param valueList 字符串值集合(用项分隔符隔开各值)
-//	 * @param valueIndex 位置
-//	 * @param value 新值
-//	 * @param separator 项分隔符
-//	 * @return 返回替换后的值列表, 如果不变, 则返回原列表串对象
-//	 */
-//	private static String resetValue0(String valueList, int valueIndex, String value, boolean insert, String separator) {
-//		if (valueList == null || insert && value == null) {
-//			return valueList;
-//		}
-//		if (isEmpty(separator)) {
-//			return resetString(valueList, valueIndex, value, insert);
-//		}
-//		int startIndex;
-//		int endIndex;
-//		if (valueIndex >= 0) {
-//			// 从左到右算
-//			startIndex = 0;
-//			while ((endIndex = valueList.indexOf(separator, startIndex)) >= 0) {
-//				if (valueIndex == 0) {
-//					// 获取到位置
-//					break;
-//				}
-//				// 继续下一个
-//				startIndex = endIndex + separator.length();
-//				--valueIndex;
-//			}
-//			if (startIndex >= 0) {
-//				startIndex -= separator.length();
-//			}
-//		} else {
-//			endIndex = valueList.length();
-//			++valueIndex;
-//			while ((startIndex = valueList.lastIndexOf(separator, endIndex - 1)) >= 0) {
-//				if (valueIndex == 0) {
-//					break;
-//				}
-//				endIndex = startIndex;
-//				++valueIndex;
-//			}
-//		}
-//		if (valueIndex != 0 && (!insert || value.isEmpty())) {
-//			return valueList;
-//		}
-//		if (valueList.isEmpty()) {
-//			return isNotEmpty(value) ? value : valueList;
-//		}
-//		// 获取前缀
-//		String prefix = startIndex > 0 ? valueList.substring(0, startIndex) : EMPTY;
-//		//
-//		if (endIndex >= 0) {
-//			// 有前缀时
-//			if (value == null) {
-//				if (startIndex < 0) {
-//					return endIndex == valueList.length() ? EMPTY : valueList.substring(endIndex + separator.length());
-//				} else {
-//					return endIndex < valueList.length() ? prefix + valueList.substring(endIndex) : prefix;
-//				}
-//			}
-//		} else {
-//			// 没有后缀
-//			return prefix;
-//		}
-//	}
+
+	/**
+	 * 插入值列表中对应位置的值
+	 * @param valueList 字符串值集合(用项分隔符隔开各值)
+	 * @param valueIndex 位置
+	 * @param value 新值, 如果为null, 则忽略
+	 * @param separator 项分隔符
+	 * @return 返回替换后的值列表, 如果不变, 则返回原列表串对象
+	 */
+	public static String insertValue(String valueList, int valueIndex, Object value, String separator) {
+		return resetValue0(valueList, valueIndex, value, true, separator);
+	}
+	/**
+	 * 插入值列表中对应位置的值
+	 * @param valueList 字符串值集合(用项分隔符隔开各值)
+	 * @param valueIndex 位置
+	 * @param value 新值, 如果为null, 则忽略
+	 * @return 返回替换后的值列表, 如果不变, 则返回原列表串对象
+	 */
+	public static String insertValue(String valueList, int valueIndex, Object value) {
+		return resetValue0(valueList, valueIndex, value, true, SEPARATOR);
+	}
+
+	/**
+	 * 替换值列表中对应位置的值
+	 * @param valueList 字符串值集合(用项分隔符隔开各值)
+	 * @param valueIndex 位置
+	 * @param value 新值, 如果为null, 则删除
+	 * @param separator 项分隔符
+	 * @return 返回替换后的值列表, 如果不变, 则返回原列表串对象
+	 */
+	public static String replaceValue(String valueList, int valueIndex, Object value, String separator) {
+		return resetValue0(valueList, valueIndex, value, false, separator);
+	}
+
+	/**
+	 * 替换值列表中对应位置的值
+	 * @param valueList 字符串值集合(用项分隔符隔开各值)
+	 * @param valueIndex 位置
+	 * @param value 新值, 如果为null, 则删除
+	 * @return 返回替换后的值列表, 如果不变, 则返回原列表串对象
+	 */
+	public static String replaceValue(String valueList, int valueIndex, Object value) {
+		return resetValue0(valueList, valueIndex, value, false, SEPARATOR);
+	}
+
+	/**
+	 * 重置或插入值列表中对应位置的值
+	 * @param valueList 字符串值集合(用项分隔符隔开各值)
+	 * @param valueIndex 位置
+	 * @param value 新值
+	 * @param insert 是否是插入
+	 * @param separator 项分隔符
+	 * @return 返回替换后的值列表, 如果不变, 则返回原列表串对象
+	 */
+	private static String resetValue0(String valueList, int valueIndex, Object value, boolean insert, String separator) {
+		if (valueList == null || insert && value == null) {
+			return valueList;
+		}
+		final int len = valueList.length();
+		String item = toString(value);
+		if (len == 0) {
+			return insert ? item : valueList;
+		}
+		final int sepLen = separator.length();
+		if (sepLen == 0) {
+			return resetString(valueList, valueIndex, item, insert);
+		}
+		// 1️⃣ 定位目标区间
+		int start = 0;
+		int end = len;
+		int idx = valueIndex;
+		if (idx >= 0) {
+			for (; idx > 0; idx--) {
+				if ((start = valueList.indexOf(separator, start)) < 0) {
+					return valueList; // 越界
+				}
+				start += sepLen;
+			}
+			if ((end = valueList.indexOf(separator, start)) < 0) {
+				end = len;
+			}
+		} else {
+			idx = -idx - 1;
+			for (; idx > 0; idx--) {
+				if ((end = valueList.lastIndexOf(separator, end - 1)) < 0) {
+					return valueList;
+				}
+			}
+			if ((start = valueList.lastIndexOf(separator, end - 1)) < 0) {
+				start = 0;
+			} else {
+				start += sepLen;
+			}
+		}
+		// 2️⃣ 越界保护（插入允许在末尾）
+		if (insert) {
+			if (end < len && start > end) {
+				return valueList;
+			}
+		} else {
+			if (start >= end) {
+				return valueList;
+			}
+		}
+		// 3️⃣ 删除
+		if (item == null) {
+			if (start == 0) {
+				// 第一个
+				return end == len ? EMPTY : valueList.substring(end + sepLen);
+			}
+			if (end == len) {
+				// 最后一个
+				return valueList.substring(0, start - sepLen);
+			}
+			// 中间
+			return valueList.substring(0, start - sepLen) + valueList.substring(end);
+		}
+
+		// 4️⃣ 插入 / 替换
+		StringBuilder sb = new StringBuilder(len + item.length() + (insert ? sepLen : 0));
+		if (insert) {
+			sb.append(valueList, 0, start);
+			sb.append(item);
+			if (start != len) {
+				sb.append(separator);
+			}
+			sb.append(valueList, start, len);
+		} else {
+			sb.append(valueList, 0, start);
+			sb.append(item);
+			sb.append(valueList, end, len);
+		}
+		return sb.toString();
+	}
 
 	private static String resetString(String valueList, int valueIndex, String value, boolean insert) {
 		if (valueIndex < 0) {
@@ -2585,5 +2656,628 @@ public class TextUtils {
 			return value.substring(prefix.length());
 		}
 		return value;
+	}
+
+	// ======================== Map 格式字符串工具方法 ========================
+	// 格式: key1,key2:value1,value2,value3;key3:value4
+	// 默认分隔符: entrySeparator=";", kvSeparator=":", itemSeparator=","
+
+	// ---- 私有辅助方法：基于 regionMatches / indexOf 遍历，避免 split ----
+
+	/**
+	 * 在 entry 区域 [entryStart, entryEnd) 内查找 kvSeparator 的位置
+	 * @return kvSeparator 在 valueMap 中的起始位置，未找到返回 -1
+	 */
+	private static int findKvSeparator(String valueMap, int entryStart, int entryEnd, String kvSeparator) {
+		if (isEmpty(kvSeparator)) {
+			return -1;
+		}
+		int pos = valueMap.indexOf(kvSeparator, entryStart);
+		return (pos >= 0 && pos + kvSeparator.length() <= entryEnd) ? pos : -1;
+	}
+
+	/**
+	 * 在区域 [regionStart, regionEnd) 内使用 regionMatches 检查是否包含精确匹配的项
+	 */
+	private static boolean containsItemInRegion(String valueMap, int regionStart, int regionEnd, String value, String itemSeparator) {
+		if (regionStart >= regionEnd) {
+			return false;
+		}
+		int len = value.length();
+		// 检查第一项
+		int itemStart = regionStart;
+		int itemEnd = isEmpty(itemSeparator) ? regionEnd : valueMap.indexOf(itemSeparator, regionStart);
+		if (itemEnd < 0 || itemEnd > regionEnd) {
+			itemEnd = regionEnd;
+		}
+		while (true) {
+			int itemLen = itemEnd - itemStart;
+			if (itemLen == len && valueMap.regionMatches(itemStart, value, 0, len)) {
+				return true;
+			}
+			if (isEmpty(itemSeparator) || itemEnd >= regionEnd) {
+				break;
+			}
+			itemStart = itemEnd + itemSeparator.length();
+			itemEnd = valueMap.indexOf(itemSeparator, itemStart);
+			if (itemEnd < 0 || itemEnd > regionEnd) {
+				itemEnd = regionEnd;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * 收集区域 [regionStart, regionEnd) 内的所有非空项（去重，保持顺序），追加到 StringBuilder
+	 *
+	 * @return 收集的项
+	 */
+	private static String collectItemsInRegion(String valueMap, int regionStart, int regionEnd, String itemSeparator, String values, StringBuilder sb) {
+		if (regionStart >= regionEnd) {
+			return valueMap;
+		}
+		int itemStart = regionStart;
+		int itemEnd = isEmpty(itemSeparator) ? regionEnd : valueMap.indexOf(itemSeparator, regionStart);
+		if (itemEnd < 0 || itemEnd > regionEnd) {
+			itemEnd = regionEnd;
+		}
+		while (true) {
+			if (itemEnd > itemStart) {
+				// 去重：检查 sb 中是否已存在该项
+				if (values.isEmpty() || indexOf(values, valueMap, itemStart, itemEnd - itemStart, false, false, itemSeparator) < 0) {
+					if (sb.length() > 0) {
+						sb.append(itemSeparator);
+					}
+					sb.append(valueMap, itemStart, itemEnd);
+					values = sb.toString();
+				}
+			}
+			if (isEmpty(itemSeparator) || itemEnd >= regionEnd) {
+				break;
+			}
+			itemStart = itemEnd + itemSeparator.length();
+			itemEnd = valueMap.indexOf(itemSeparator, itemStart);
+			if (itemEnd < 0 || itemEnd > regionEnd) {
+				itemEnd = regionEnd;
+			}
+		}
+		return values;
+	}
+
+	// ---- 公共方法 ----
+
+	/**
+	 * 查询指定 key 在 map 格式字符串中的字符索引位置
+	 * <p>
+	 * 返回 key 在 valueMap 中的起始字符位置，未找到返回 -1。
+	 * </p>
+	 *
+	 * @param valueMap map 格式字符串，如 {@code "key1,key2:v1,v2;key3:v3"}
+	 * @param key 要查找的 key
+	 * @return key 在原字符串中的起始字符索引，未找到返回 -1
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.keyIndexOf("k1,k2:v1,v2;k3:v3", "k1");   // -> 0
+	 * TextUtils.keyIndexOf("k1,k2:v1,v2;k3:v3", "k2");   // -> 3
+	 * TextUtils.keyIndexOf("k1,k2:v1,v2;k3:v3", "k3");   // -> 14
+	 * TextUtils.keyIndexOf("k1,k2:v1,v2;k3:v3", "k4");   // -> -1
+	 * }</pre>
+	 */
+	public static int keyIndexOf(String valueMap, Object key) {
+		return keyIndexOf(valueMap, key, COLON, SEMICOLON, SEPARATOR);
+	}
+
+	/**
+	 * 查询指定 key 在 map 格式字符串中的字符索引位置（使用自定义分隔符）
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param key            要查找的 key
+	 * @param kvSeparator    key-value 分隔符（默认 {@code ":"}）
+	 * @param entrySeparator entry 分隔符（默认 {@code ";"}）
+	 * @return key 在原字符串中的起始字符索引，未找到返回 -1
+	 */
+	public static int keyIndexOf(String valueMap, Object key, String kvSeparator, String entrySeparator) {
+		return keyIndexOf(valueMap, key, kvSeparator, entrySeparator, SEPARATOR);
+	}
+	/**
+	 * 查询指定 key 在 map 格式字符串中的字符索引位置（使用自定义分隔符）
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param key            要查找的 key
+	 * @param kvSeparator    key-value 分隔符（默认 {@code ":"}）
+	 * @param entrySeparator entry 分隔符（默认 {@code ";"}）
+	 * @param itemSeparator  项分隔符（默认 {@code ","}）
+	 * @return key 在原字符串中的起始字符索引，未找到返回 -1
+	 */
+	public static int keyIndexOf(String valueMap, Object key, String kvSeparator, String entrySeparator, String itemSeparator) {
+		if (isEmpty(valueMap) || key == null) {
+			return -1;
+		}
+		String keyStr = toString(key);
+		int keyLen = keyStr.length();
+		int mapLen = valueMap.length();
+		int entryStart = 0;
+		while (entryStart <= mapLen) {
+			int entryEnd = isEmpty(entrySeparator) ? mapLen : valueMap.indexOf(entrySeparator, entryStart);
+			if (entryEnd < 0) {
+				entryEnd = mapLen;
+			}
+			if (entryEnd > entryStart) {
+				int kvPos = findKvSeparator(valueMap, entryStart, entryEnd, kvSeparator);
+				int keysEnd = kvPos >= 0 ? kvPos : entryEnd;
+				// 在 keys 区域中用 regionMatches 查找 key，返回字符索引
+				int itemStart = entryStart;
+				int itemEnd = isEmpty(itemSeparator) ? keysEnd : valueMap.indexOf(itemSeparator, entryStart);
+				if (itemEnd < 0 || itemEnd > keysEnd) {
+					itemEnd = keysEnd;
+				}
+				while (true) {
+					int itemLen = itemEnd - itemStart;
+					if (itemLen == keyLen && valueMap.regionMatches(itemStart, keyStr, 0, keyLen)) {
+						return itemStart;
+					}
+					if (isEmpty(itemSeparator) || itemEnd >= keysEnd) {
+						break;
+					}
+					itemStart = itemEnd + itemSeparator.length();
+					itemEnd = valueMap.indexOf(itemSeparator, itemStart);
+					if (itemEnd < 0 || itemEnd > keysEnd) {
+						itemEnd = keysEnd;
+					}
+				}
+			}
+			if (entryEnd >= mapLen) {
+				break;
+			}
+			entryStart = entryEnd + (isEmpty(entrySeparator) ? 1 : entrySeparator.length());
+		}
+		return -1;
+	}
+
+	/**
+	 * 检查 map 格式字符串中是否包含指定 key
+	 *
+	 * @param valueMap map 格式字符串
+	 * @param key 要检查的 key
+	 * @return 如果包含该 key 返回 true，否则返回 false
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.containsMapKey("k1,k2:v1,v2;k3:v3", "k1");   // -> true
+	 * TextUtils.containsMapKey("k1,k2:v1,v2;k3:v3", "k4");   // -> false
+	 * }</pre>
+	 */
+	public static boolean containsMapKey(String valueMap, String key) {
+		return containsMapKey(valueMap, key, COLON, SEMICOLON, SEPARATOR);
+	}
+
+	/**
+	 * 检查 map 格式字符串中是否包含指定 key（使用自定义分隔符）
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param key            要检查的 key
+	 * @param kvSeparator    key-value 分隔符
+	 * @param entrySeparator entry 分隔符
+	 * @return 如果包含该 key 返回 true，否则返回 false
+	 */
+	public static boolean containsMapKey(String valueMap, Object key, String kvSeparator, String entrySeparator) {
+		return keyIndexOf(valueMap, key, kvSeparator, entrySeparator, SEPARATOR) >= 0;
+	}
+
+	/**
+	 * 检查 map 格式字符串中是否包含指定 key（使用自定义分隔符）
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param key            要检查的 key
+	 * @param kvSeparator    key-value 分隔符
+	 * @param entrySeparator entry 分隔符
+	 * @param itemSeparator  项分隔符
+	 * @return 如果包含该 key 返回 true，否则返回 false
+	 */
+	public static boolean containsMapKey(String valueMap, Object key, String kvSeparator, String entrySeparator, String itemSeparator) {
+		return keyIndexOf(valueMap, key, kvSeparator, entrySeparator, itemSeparator) >= 0;
+	}
+
+	/**
+	 * 检查 map 格式字符串中是否包含指定 value
+	 *
+	 * @param valueMap map 格式字符串
+	 * @param value 要检查的 value
+	 * @return 如果包含该 value 返回 true，否则返回 false
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.containsMapValue("k1,k2:v1,v2;k3:v3", "v1");   // -> true
+	 * TextUtils.containsMapValue("k1,k2:v1,v2;k3:v3", "v4");   // -> false
+	 * }</pre>
+	 */
+	public static boolean containsMapValue(String valueMap, Object value) {
+		return containsMapValue(valueMap, value, COLON, SEMICOLON, SEPARATOR);
+	}
+
+	/**
+	 * 检查 map 格式字符串中是否包含指定 value（使用自定义分隔符）
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param value          要检查的 value
+	 * @param entrySeparator entry 分隔符
+	 * @return 如果包含该 value 返回 true，否则返回 false
+	 */
+	public static boolean containsMapValue(String valueMap, Object value, String kvSeparator, String entrySeparator) {
+		return containsMapValue(valueMap, value, kvSeparator, entrySeparator, SEPARATOR);
+	}
+
+	/**
+	 * 检查 map 格式字符串中是否包含指定 value（使用自定义分隔符）
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param value          要检查的 value
+	 * @param kvSeparator    key-value 分隔符
+	 * @param entrySeparator entry 分隔符
+	 * @param itemSeparator  项分隔符
+	 * @return 如果包含该 value 返回 true，否则返回 false
+	 */
+	public static boolean containsMapValue(String valueMap, Object value, String kvSeparator, String entrySeparator, String itemSeparator) {
+		if (isEmpty(valueMap) || value == null) {
+			return false;
+		}
+		String valueStr = toString(value);
+		int mapLen = valueMap.length();
+		int entryStart = 0;
+		while (entryStart <= mapLen) {
+			int entryEnd = isEmpty(entrySeparator) ? mapLen : valueMap.indexOf(entrySeparator, entryStart);
+			if (entryEnd < 0) {
+				entryEnd = mapLen;
+			}
+			if (entryEnd > entryStart) {
+				int kvPos = findKvSeparator(valueMap, entryStart, entryEnd, kvSeparator);
+				int valuesStart = kvPos >= 0 ? kvPos + kvSeparator.length() : entryEnd;
+				if (containsItemInRegion(valueMap, valuesStart, entryEnd, valueStr, itemSeparator)) {
+					return true;
+				}
+			}
+			if (entryEnd >= mapLen) {
+				break;
+			}
+			entryStart = entryEnd + (isEmpty(entrySeparator) ? 1 : entrySeparator.length());
+		}
+		return false;
+	}
+
+	/**
+	 * 检查 map 格式字符串中是否包含指定的 key-value 对应关系
+	 *
+	 * @param valueMap map 格式字符串
+	 * @param key 要检查的 key
+	 * @param value 要检查的 value
+	 * @return 如果该 key 对应的值中包含指定 value 返回 true，否则返回 false
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.containsMapKeyValue("k1,k2:v1,v2;k3:v3", "k1", "v1");   // -> true
+	 * TextUtils.containsMapKeyValue("k1,k2:v1,v2;k3:v3", "k1", "v3");   // -> false
+	 * TextUtils.containsMapKeyValue("k1,k2:v1,v2;k3:v3", "k3", "v3");   // -> true
+	 * }</pre>
+	 */
+	public static boolean containsMapKeyValue(String valueMap, Object key, Object value) {
+		return containsMapKeyValue(valueMap, key, value, COLON, SEMICOLON, SEPARATOR);
+	}
+
+	/**
+	 * 检查 map 格式字符串中是否包含指定的 key-value 对应关系（使用自定义分隔符）
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param key            要检查的 key
+	 * @param value          要检查的 value
+	 * @param kvSeparator    key-value 分隔符
+	 * @param entrySeparator entry 分隔符
+	 * @return 如果该 key 对应的值中包含指定 value 返回 true，否则返回 false
+	 */
+	public static boolean containsMapKeyValue(String valueMap, Object key, Object value, String kvSeparator, String entrySeparator) {
+		return containsMapKeyValue(valueMap, key, value, kvSeparator, entrySeparator, SEPARATOR);
+	}
+	/**
+	 * 检查 map 格式字符串中是否包含指定的 key-value 对应关系（使用自定义分隔符）
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param key            要检查的 key
+	 * @param value          要检查的 value
+	 * @param kvSeparator    key-value 分隔符
+	 * @param entrySeparator entry 分隔符
+	 * @param itemSeparator  项分隔符
+	 * @return 如果该 key 对应的值中包含指定 value 返回 true，否则返回 false
+	 */
+	public static boolean containsMapKeyValue(String valueMap, Object key, Object value, String kvSeparator, String entrySeparator, String itemSeparator) {
+		if (isEmpty(valueMap) || key == null || value == null) {
+			return false;
+		}
+		String keyStr = toString(key);
+		String valueStr = toString(value);
+		int mapLen = valueMap.length();
+		int entryStart = 0;
+		while (entryStart <= mapLen) {
+			int entryEnd = isEmpty(entrySeparator) ? mapLen : valueMap.indexOf(entrySeparator, entryStart);
+			if (entryEnd < 0) {
+				entryEnd = mapLen;
+			}
+			if (entryEnd > entryStart) {
+				int kvPos = findKvSeparator(valueMap, entryStart, entryEnd, kvSeparator);
+				int keysEnd = kvPos >= 0 ? kvPos : entryEnd;
+				if (containsItemInRegion(valueMap, entryStart, keysEnd, keyStr, itemSeparator)) {
+					int valuesStart = kvPos >= 0 ? kvPos + kvSeparator.length() : entryEnd;
+					if (containsItemInRegion(valueMap, valuesStart, entryEnd, valueStr, itemSeparator)) {
+						return true;
+					}
+				}
+			}
+			if (entryEnd >= mapLen) {
+				break;
+			}
+			entryStart = entryEnd + (isEmpty(entrySeparator) ? 1 : entrySeparator.length());
+		}
+		return false;
+	}
+
+	/**
+	 * 获取 map 格式字符串中指定 key 对应的 value 字符串
+	 * <p>
+	 * 返回的是 value 部分的原字符串（可能包含多个逗号分隔的值）。
+	 * </p>
+	 *
+	 * @param valueMap map 格式字符串
+	 * @param key 要查找的 key
+	 * @return 对应的 value 字符串，未找到返回 null
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.getMapValue("k1,k2:v1,v2;k3:v3", "k1");   // -> "v1,v2"
+	 * TextUtils.getMapValue("k1,k2:v1,v2;k3:v3", "k3");   // -> "v3"
+	 * TextUtils.getMapValue("k1,k2:v1,v2;k3:v3", "k4");   // -> null
+	 * }</pre>
+	 */
+	public static String getMapValue(String valueMap, Object key) {
+		return getMapValue(valueMap, key, COLON, SEMICOLON, SEPARATOR);
+	}
+
+	/**
+	 * 获取 map 格式字符串中指定 key 对应的 value 字符串（使用自定义分隔符）
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param key            要查找的 key
+	 * @param kvSeparator    key-value 分隔符
+	 * @param entrySeparator entry 分隔符
+	 * @return 对应的 value 字符串，未找到返回 null
+	 */
+	public static String getMapValue(String valueMap, Object key, String kvSeparator, String entrySeparator) {
+		return getMapValue(valueMap, key, kvSeparator, entrySeparator, SEPARATOR);
+	}
+	/**
+	 * 获取 map 格式字符串中指定 key 对应的 value 字符串（使用自定义分隔符）
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param key            要查找的 key
+	 * @param kvSeparator    key-value 分隔符
+	 * @param entrySeparator entry 分隔符
+	 * @param itemSeparator  项分隔符
+	 * @return 对应的 value 字符串，未找到返回 null
+	 */
+	public static String getMapValue(String valueMap, Object key, String kvSeparator, String entrySeparator, String itemSeparator) {
+		if (isEmpty(valueMap) || key == null) {
+			return null;
+		}
+		String item = toString(key);
+		int mapLen = valueMap.length();
+		int entryStart = 0;
+		while (entryStart <= mapLen) {
+			int entryEnd = isEmpty(entrySeparator) ? mapLen : valueMap.indexOf(entrySeparator, entryStart);
+			if (entryEnd < 0) {
+				entryEnd = mapLen;
+			}
+			if (entryEnd > entryStart) {
+				int kvPos = findKvSeparator(valueMap, entryStart, entryEnd, kvSeparator);
+				int keysEnd = kvPos >= 0 ? kvPos : entryEnd;
+				if (containsItemInRegion(valueMap, entryStart, keysEnd, item, itemSeparator)) {
+					return kvPos >= 0 ? valueMap.substring(kvPos + kvSeparator.length(), entryEnd) : EMPTY;
+				}
+			}
+			if (entryEnd >= mapLen) {
+				break;
+			}
+			entryStart = entryEnd + (isEmpty(entrySeparator) ? 1 : entrySeparator.length());
+		}
+		return null;
+	}
+
+	/**
+	 * 获取 map 格式字符串中指定 value 对应的 key 字符串
+	 * <p>
+	 * 返回的是 key 部分的原字符串（可能包含多个逗号分隔的 key）。
+	 * 如果有多个 entry 包含该 value，返回第一个匹配的 key。
+	 * </p>
+	 *
+	 * @param valueMap map 格式字符串
+	 * @param value 要查找的 value
+	 * @return 对应的 key 字符串，未找到返回 null
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.getMapKey("k1,k2:v1,v2;k3:v3", "v1");   // -> "k1,k2"
+	 * TextUtils.getMapKey("k1,k2:v1,v2;k3:v3", "v3");   // -> "k3"
+	 * TextUtils.getMapKey("k1,k2:v1,v2;k3:v3", "v4");   // -> null
+	 * }</pre>
+	 */
+	public static String getMapKey(String valueMap, Object value) {
+		return getMapKey(valueMap, value, COLON, SEMICOLON, SEPARATOR);
+	}
+
+	/**
+	 * 获取 map 格式字符串中指定 value 对应的 key 字符串（使用自定义分隔符）
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param value          要查找的 value
+	 * @param kvSeparator    key-value 分隔符
+	 * @param entrySeparator entry 分隔符
+	 * @return 对应的 key 字符串，未找到返回 null
+	 */
+	public static String getMapKey(String valueMap, Object value, String kvSeparator, String entrySeparator) {
+		return getMapKey(valueMap, value, kvSeparator, entrySeparator, SEPARATOR);
+	}
+	/**
+	 * 获取 map 格式字符串中指定 value 对应的 key 字符串（使用自定义分隔符）
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param value          要查找的 value
+	 * @param kvSeparator    key-value 分隔符
+	 * @param entrySeparator entry 分隔符
+	 * @param itemSeparator  项分隔符
+	 * @return 对应的 key 字符串，未找到返回 null
+	 */
+	public static String getMapKey(String valueMap, Object value, String kvSeparator, String entrySeparator, String itemSeparator) {
+		if (isEmpty(valueMap) || value == null) {
+			return null;
+		}
+		String item = toString(value);
+		int mapLen = valueMap.length();
+		int entryStart = 0;
+		while (entryStart <= mapLen) {
+			int entryEnd = isEmpty(entrySeparator) ? mapLen : valueMap.indexOf(entrySeparator, entryStart);
+			if (entryEnd < 0) {
+				entryEnd = mapLen;
+			}
+			if (entryEnd > entryStart) {
+				int kvPos = findKvSeparator(valueMap, entryStart, entryEnd, kvSeparator);
+				int valuesStart = kvPos >= 0 ? kvPos + kvSeparator.length() : entryEnd;
+				if (containsItemInRegion(valueMap, valuesStart, entryEnd, item, itemSeparator)) {
+					return kvPos >= 0 ? valueMap.substring(entryStart, kvPos) : valueMap.substring(entryStart, entryEnd);
+				}
+			}
+			if (entryEnd >= mapLen) {
+				break;
+			}
+			entryStart = entryEnd + (isEmpty(entrySeparator) ? 1 : entrySeparator.length());
+		}
+		return null;
+	}
+
+	/**
+	 * 获取 map 格式字符串中所有的 key（去重）
+	 * <p>
+	 * 按出现顺序返回所有 entry 中的 key，多个 key 用 itemSeparator 拼接。
+	 * </p>
+	 *
+	 * @param valueMap map 格式字符串
+	 * @return 所有 key 用 itemSeparator 拼接的字符串
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.mapKeys("k1,k2:v1,v2;k3:v3");   // -> "k1,k2,k3"
+	 * }</pre>
+	 */
+	public static String mapKeys(String valueMap) {
+		return mapKeys(valueMap, COLON, SEMICOLON, SEPARATOR);
+	}
+
+	/**
+	 * 获取 map 格式字符串中所有的 key（去重，使用自定义分隔符）
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param kvSeparator    key-value 分隔符
+	 * @param entrySeparator entry 分隔符
+	 * @return 所有 key 用 itemSeparator 拼接的字符串
+	 */
+	public static String mapKeys(String valueMap, String kvSeparator, String entrySeparator) {
+		return mapKeys(valueMap, kvSeparator, entrySeparator, SEPARATOR);
+	}
+	/**
+	 * 获取 map 格式字符串中所有的 key（去重，使用自定义分隔符）
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param kvSeparator    key-value 分隔符
+	 * @param entrySeparator entry 分隔符
+	 * @param itemSeparator  项分隔符，也用于拼接结果
+	 * @return 所有 key 用 itemSeparator 拼接的字符串
+	 */
+	public static String mapKeys(String valueMap, String kvSeparator, String entrySeparator, String itemSeparator) {
+		if (isEmpty(valueMap)) {
+			return EMPTY;
+		}
+		StringBuilder sb = new StringBuilder();
+		int mapLen = valueMap.length();
+		int entryStart = 0;
+		String keys = EMPTY;
+		while (entryStart <= mapLen) {
+			int entryEnd = isEmpty(entrySeparator) ? mapLen : valueMap.indexOf(entrySeparator, entryStart);
+			if (entryEnd < 0) {
+				entryEnd = mapLen;
+			}
+			if (entryEnd > entryStart) {
+				int kvPos = findKvSeparator(valueMap, entryStart, entryEnd, kvSeparator);
+				int keysEnd = kvPos >= 0 ? kvPos : entryEnd;
+				keys = collectItemsInRegion(valueMap, entryStart, keysEnd, itemSeparator, keys, sb);
+			}
+			if (entryEnd >= mapLen) {
+				break;
+			}
+			entryStart = entryEnd + (isEmpty(entrySeparator) ? 1 : entrySeparator.length());
+		}
+		return keys;
+	}
+
+	/**
+	 * 获取 map 格式字符串中所有的 value（去重）
+	 * <p>
+	 * 按出现顺序返回所有 entry 中的 value，多个 value 用 itemSeparator 拼接。
+	 * </p>
+	 *
+	 * @param valueMap map 格式字符串
+	 * @return 所有 value 用 itemSeparator 拼接的字符串
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.mapValues("k1,k2:v1,v2;k3:v3");   // -> "v1,v2,v3"
+	 * }</pre>
+	 */
+	public static String mapValues(String valueMap) {
+		return mapValues(valueMap, COLON, SEMICOLON, SEPARATOR);
+	}
+
+	/**
+	 * 获取 map 格式字符串中所有的 value（去重，使用自定义分隔符）
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param kvSeparator    key-value 分隔符
+	 * @param entrySeparator entry 分隔符
+	 * @return 所有 value 用 itemSeparator 拼接的字符串
+	 */
+	public static String mapValues(String valueMap, String kvSeparator, String entrySeparator) {
+		return mapValues(valueMap, kvSeparator, entrySeparator, SEPARATOR);
+	}
+
+	/**
+	 * 获取 map 格式字符串中所有的 value（去重，使用自定义分隔符）
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param kvSeparator    key-value 分隔符
+	 * @param entrySeparator entry 分隔符
+	 * @param itemSeparator  项分隔符，也用于拼接结果
+	 * @return 所有 value 用 itemSeparator 拼接的字符串
+	 */
+	public static String mapValues(String valueMap, String kvSeparator, String entrySeparator, String itemSeparator) {
+		if (isEmpty(valueMap)) {
+			return EMPTY;
+		}
+		StringBuilder sb = new StringBuilder();
+		int mapLen = valueMap.length();
+		int entryStart = 0;
+		String values = EMPTY;
+		while (entryStart <= mapLen) {
+			int entryEnd = isEmpty(entrySeparator) ? mapLen : valueMap.indexOf(entrySeparator, entryStart);
+			if (entryEnd < 0) {
+				entryEnd = mapLen;
+			}
+			if (entryEnd > entryStart) {
+				int kvPos = findKvSeparator(valueMap, entryStart, entryEnd, kvSeparator);
+				int valuesStart = kvPos >= 0 ? kvPos + kvSeparator.length() : entryEnd;
+				values = collectItemsInRegion(valueMap, valuesStart, entryEnd, itemSeparator, values, sb);
+			}
+			if (entryEnd >= mapLen) {
+				break;
+			}
+			entryStart = entryEnd + (isEmpty(entrySeparator) ? 1 : entrySeparator.length());
+		}
+		return values;
 	}
 }
