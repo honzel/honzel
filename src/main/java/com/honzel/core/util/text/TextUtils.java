@@ -2662,8 +2662,6 @@ public class TextUtils {
 	// 格式: key1,key2:value1,value2,value3;key3:value4
 	// 默认分隔符: entrySeparator=";", kvSeparator=":", itemSeparator=","
 
-	// ---- 私有辅助方法：基于 regionMatches / indexOf 遍历，避免 split ----
-
 	/**
 	 * 在 entry 区域 [entryStart, entryEnd) 内查找 kvSeparator 的位置
 	 * @return kvSeparator 在 valueMap 中的起始位置，未找到返回 -1
@@ -2680,10 +2678,13 @@ public class TextUtils {
 	 * 在区域 [regionStart, regionEnd) 内使用 regionMatches 检查是否包含精确匹配的项
 	 */
 	private static boolean containsItemInRegion(String valueMap, int regionStart, int regionEnd, String value, String itemSeparator) {
-		if (regionStart >= regionEnd) {
+		if (regionStart > regionEnd) {
 			return false;
 		}
 		int len = value.length();
+		if (regionStart == regionEnd) {
+			return len == 0;
+		}
 		// 检查第一项
 		int itemStart = regionStart;
 		int itemEnd = isEmpty(itemSeparator) ? regionEnd : valueMap.indexOf(itemSeparator, regionStart);
@@ -2714,7 +2715,7 @@ public class TextUtils {
 	 */
 	private static String collectItemsInRegion(String valueMap, int regionStart, int regionEnd, String itemSeparator, String values, StringBuilder sb) {
 		if (regionStart >= regionEnd) {
-			return valueMap;
+			return values;
 		}
 		int itemStart = regionStart;
 		int itemEnd = isEmpty(itemSeparator) ? regionEnd : valueMap.indexOf(itemSeparator, regionStart);
@@ -2744,16 +2745,17 @@ public class TextUtils {
 		return values;
 	}
 
-	// ---- 公共方法 ----
-
 	/**
-	 * 查询指定 key 在 map 格式字符串中的字符索引位置
+	 /**
+	 * 查询指定 key 在 map 格式字符串中的字符索引位置（使用自定义分隔符）
 	 * <p>
-	 * 返回 key 在 valueMap 中的起始字符位置，未找到返回 -1。
+	 * 在所有 entry 的 key 区域中查找指定的 key，返回其在原字符串中的起始字符索引。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，
+	 *     此时若要查找的 key 为空字符串，则返回该 entry 的起始位置。
 	 * </p>
 	 *
-	 * @param valueMap map 格式字符串，如 {@code "key1,key2:v1,v2;key3:v3"}
-	 * @param key 要查找的 key
+	 * @param valueMap       map 格式字符串
+	 * @param key            要查找的 key
 	 * @return key 在原字符串中的起始字符索引，未找到返回 -1
 	 * @example
 	 * <pre>{@code
@@ -2768,7 +2770,13 @@ public class TextUtils {
 	}
 
 	/**
+	 /**
 	 * 查询指定 key 在 map 格式字符串中的字符索引位置（使用自定义分隔符）
+	 * <p>
+	 * 在所有 entry 的 key 区域中查找指定的 key，返回其在原字符串中的起始字符索引。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，
+	 *     此时若要查找的 key 为空字符串，则返回该 entry 的起始位置。
+	 * </p>
 	 *
 	 * @param valueMap       map 格式字符串
 	 * @param key            要查找的 key
@@ -2780,7 +2788,13 @@ public class TextUtils {
 		return keyIndexOf(valueMap, key, kvSeparator, entrySeparator, SEPARATOR);
 	}
 	/**
+	 /**
 	 * 查询指定 key 在 map 格式字符串中的字符索引位置（使用自定义分隔符）
+	 * <p>
+	 * 在所有 entry 的 key 区域中查找指定的 key，返回其在原字符串中的起始字符索引。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，
+	 *     此时若要查找的 key 为空字符串，则返回该 entry 的起始位置。
+	 * </p>
 	 *
 	 * @param valueMap       map 格式字符串
 	 * @param key            要查找的 key
@@ -2804,25 +2818,30 @@ public class TextUtils {
 			}
 			if (entryEnd > entryStart) {
 				int kvPos = findKvSeparator(valueMap, entryStart, entryEnd, kvSeparator);
-				int keysEnd = kvPos >= 0 ? kvPos : entryEnd;
-				// 在 keys 区域中用 regionMatches 查找 key，返回字符索引
-				int itemStart = entryStart;
-				int itemEnd = isEmpty(itemSeparator) ? keysEnd : valueMap.indexOf(itemSeparator, entryStart);
-				if (itemEnd < 0 || itemEnd > keysEnd) {
-					itemEnd = keysEnd;
-				}
-				while (true) {
-					int itemLen = itemEnd - itemStart;
-					if (itemLen == keyLen && valueMap.regionMatches(itemStart, keyStr, 0, keyLen)) {
-						return itemStart;
+				if (kvPos < 0) {
+					if (keyLen == 0) {
+						return entryStart;
 					}
-					if (isEmpty(itemSeparator) || itemEnd >= keysEnd) {
-						break;
+				} else {
+					// 在 keys 区域中用 regionMatches 查找 key，返回字符索引
+					int itemStart = entryStart;
+					int itemEnd = isEmpty(itemSeparator) ? kvPos : valueMap.indexOf(itemSeparator, entryStart);
+					if (itemEnd < 0 || itemEnd > kvPos) {
+						itemEnd = kvPos;
 					}
-					itemStart = itemEnd + itemSeparator.length();
-					itemEnd = valueMap.indexOf(itemSeparator, itemStart);
-					if (itemEnd < 0 || itemEnd > keysEnd) {
-						itemEnd = keysEnd;
+					while (true) {
+						int itemLen = itemEnd - itemStart;
+						if (itemLen == keyLen && valueMap.regionMatches(itemStart, keyStr, 0, keyLen)) {
+							return itemStart;
+						}
+						if (isEmpty(itemSeparator) || itemEnd >= kvPos) {
+							break;
+						}
+						itemStart = itemEnd + itemSeparator.length();
+						itemEnd = valueMap.indexOf(itemSeparator, itemStart);
+						if (itemEnd < 0 || itemEnd > kvPos) {
+							itemEnd = kvPos;
+						}
 					}
 				}
 			}
@@ -2835,10 +2854,15 @@ public class TextUtils {
 	}
 
 	/**
-	 * 检查 map 格式字符串中是否包含指定 key
+	 * 检查 map 格式字符串中是否包含指定 key（使用自定义分隔符）
+	 * <p>
+	 * 在所有 entry 的 key 区域中查找指定的 key。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，
+	 *     此时若要查找的 key 为空字符串，则返回 true。
+	 * </p>
 	 *
-	 * @param valueMap map 格式字符串
-	 * @param key 要检查的 key
+	 * @param valueMap       map 格式字符串
+	 * @param key            要检查的 key
 	 * @return 如果包含该 key 返回 true，否则返回 false
 	 * @example
 	 * <pre>{@code
@@ -2852,6 +2876,11 @@ public class TextUtils {
 
 	/**
 	 * 检查 map 格式字符串中是否包含指定 key（使用自定义分隔符）
+	 * <p>
+	 * 在所有 entry 的 key 区域中查找指定的 key。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，
+	 *     此时若要查找的 key 为空字符串，则返回 true。
+	 * </p>
 	 *
 	 * @param valueMap       map 格式字符串
 	 * @param key            要检查的 key
@@ -2865,6 +2894,11 @@ public class TextUtils {
 
 	/**
 	 * 检查 map 格式字符串中是否包含指定 key（使用自定义分隔符）
+	 * <p>
+	 * 在所有 entry 的 key 区域中查找指定的 key。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，
+	 *     此时若要查找的 key 为空字符串，则返回 true。
+	 * </p>
 	 *
 	 * @param valueMap       map 格式字符串
 	 * @param key            要检查的 key
@@ -2878,10 +2912,14 @@ public class TextUtils {
 	}
 
 	/**
-	 * 检查 map 格式字符串中是否包含指定 value
+	 * 检查 map 格式字符串中是否包含指定 value（使用自定义分隔符）
+	 * <p>
+	 * 在所有 entry 的值区域中查找指定的 value。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为值区域。
+	 * </p>
 	 *
-	 * @param valueMap map 格式字符串
-	 * @param value 要检查的 value
+	 * @param valueMap       map 格式字符串
+	 * @param value          要检查的 value
 	 * @return 如果包含该 value 返回 true，否则返回 false
 	 * @example
 	 * <pre>{@code
@@ -2895,9 +2933,14 @@ public class TextUtils {
 
 	/**
 	 * 检查 map 格式字符串中是否包含指定 value（使用自定义分隔符）
+	 * <p>
+	 * 在所有 entry 的值区域中查找指定的 value。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为值区域。
+	 * </p>
 	 *
 	 * @param valueMap       map 格式字符串
 	 * @param value          要检查的 value
+	 * @param kvSeparator    key-value 分隔符
 	 * @param entrySeparator entry 分隔符
 	 * @return 如果包含该 value 返回 true，否则返回 false
 	 */
@@ -2907,6 +2950,10 @@ public class TextUtils {
 
 	/**
 	 * 检查 map 格式字符串中是否包含指定 value（使用自定义分隔符）
+	 * <p>
+	 * 在所有 entry 的值区域中查找指定的 value。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为值区域。
+	 * </p>
 	 *
 	 * @param valueMap       map 格式字符串
 	 * @param value          要检查的 value
@@ -2929,7 +2976,7 @@ public class TextUtils {
 			}
 			if (entryEnd > entryStart) {
 				int kvPos = findKvSeparator(valueMap, entryStart, entryEnd, kvSeparator);
-				int valuesStart = kvPos >= 0 ? kvPos + kvSeparator.length() : entryEnd;
+				int valuesStart = kvPos >= 0 ? kvPos + kvSeparator.length() : entryStart;
 				if (containsItemInRegion(valueMap, valuesStart, entryEnd, valueStr, itemSeparator)) {
 					return true;
 				}
@@ -2943,11 +2990,16 @@ public class TextUtils {
 	}
 
 	/**
-	 * 检查 map 格式字符串中是否包含指定的 key-value 对应关系
+	 * 检查 map 格式字符串中是否包含指定的 key-value 对应关系（使用自定义分隔符）
+	 * <p>
+	 * 在 entry 中查找是否存在指定的 key 且其对应的值中包含指定的 value。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value，key 视为空字符串，
+	 *     此时若要检查的 key 为空字符串且在值区域中找到指定 value，则返回 true。
+	 * </p>
 	 *
-	 * @param valueMap map 格式字符串
-	 * @param key 要检查的 key
-	 * @param value 要检查的 value
+	 * @param valueMap       map 格式字符串
+	 * @param key            要检查的 key
+	 * @param value          要检查的 value
 	 * @return 如果该 key 对应的值中包含指定 value 返回 true，否则返回 false
 	 * @example
 	 * <pre>{@code
@@ -2962,6 +3014,11 @@ public class TextUtils {
 
 	/**
 	 * 检查 map 格式字符串中是否包含指定的 key-value 对应关系（使用自定义分隔符）
+	 * <p>
+	 * 在 entry 中查找是否存在指定的 key 且其对应的值中包含指定的 value。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value，key 视为空字符串，
+	 *     此时若要检查的 key 为空字符串且在值区域中找到指定 value，则返回 true。
+	 * </p>
 	 *
 	 * @param valueMap       map 格式字符串
 	 * @param key            要检查的 key
@@ -2975,6 +3032,11 @@ public class TextUtils {
 	}
 	/**
 	 * 检查 map 格式字符串中是否包含指定的 key-value 对应关系（使用自定义分隔符）
+	 * <p>
+	 * 在 entry 中查找是否存在指定的 key 且其对应的值中包含指定的 value。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value，key 视为空字符串，
+	 *     此时若要检查的 key 为空字符串且在值区域中找到指定 value，则返回 true。
+	 * </p>
 	 *
 	 * @param valueMap       map 格式字符串
 	 * @param key            要检查的 key
@@ -2999,10 +3061,15 @@ public class TextUtils {
 			}
 			if (entryEnd > entryStart) {
 				int kvPos = findKvSeparator(valueMap, entryStart, entryEnd, kvSeparator);
-				int keysEnd = kvPos >= 0 ? kvPos : entryEnd;
-				if (containsItemInRegion(valueMap, entryStart, keysEnd, keyStr, itemSeparator)) {
-					int valuesStart = kvPos >= 0 ? kvPos + kvSeparator.length() : entryEnd;
-					if (containsItemInRegion(valueMap, valuesStart, entryEnd, valueStr, itemSeparator)) {
+				// 如果没有 kvSeparator，key 视为空字符串
+				if (kvPos < 0) {
+					// 整个 entry 都是值区域，key 为空字符串
+					if (keyStr.isEmpty() && containsItemInRegion(valueMap, entryStart, entryEnd, valueStr, itemSeparator)) {
+						return true;
+					}
+				} else {
+					if (containsItemInRegion(valueMap, entryStart, kvPos, keyStr, itemSeparator)
+						&& containsItemInRegion(valueMap, kvPos + kvSeparator.length(), entryEnd, valueStr, itemSeparator)) {
 						return true;
 					}
 				}
@@ -3016,13 +3083,15 @@ public class TextUtils {
 	}
 
 	/**
-	 * 获取 map 格式字符串中指定 key 对应的 value 字符串
+	 * 获取 map 格式字符串中指定 key 对应的 value 字符串（使用自定义分隔符）
 	 * <p>
-	 * 返回的是 value 部分的原字符串（可能包含多个逗号分隔的值）。
+	 * 在 entry 中查找指定的 key，返回对应的 value。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value，key 视为空字符串，
+	 *     此时若要查找的 key 为空字符串，则返回整个 entry 作为 value。
 	 * </p>
 	 *
-	 * @param valueMap map 格式字符串
-	 * @param key 要查找的 key
+	 * @param valueMap       map 格式字符串
+	 * @param key            要查找的 key
 	 * @return 对应的 value 字符串，未找到返回 null
 	 * @example
 	 * <pre>{@code
@@ -3037,6 +3106,11 @@ public class TextUtils {
 
 	/**
 	 * 获取 map 格式字符串中指定 key 对应的 value 字符串（使用自定义分隔符）
+	 * <p>
+	 * 在 entry 中查找指定的 key，返回对应的 value。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value，key 视为空字符串，
+	 *     此时若要查找的 key 为空字符串，则返回整个 entry 作为 value。
+	 * </p>
 	 *
 	 * @param valueMap       map 格式字符串
 	 * @param key            要查找的 key
@@ -3049,6 +3123,11 @@ public class TextUtils {
 	}
 	/**
 	 * 获取 map 格式字符串中指定 key 对应的 value 字符串（使用自定义分隔符）
+	 * <p>
+	 * 在 entry 中查找指定的 key，返回对应的 value。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value，key 视为空字符串，
+	 *     此时若要查找的 key 为空字符串，则返回整个 entry 作为 value。
+	 * </p>
 	 *
 	 * @param valueMap       map 格式字符串
 	 * @param key            要查找的 key
@@ -3071,9 +3150,15 @@ public class TextUtils {
 			}
 			if (entryEnd > entryStart) {
 				int kvPos = findKvSeparator(valueMap, entryStart, entryEnd, kvSeparator);
-				int keysEnd = kvPos >= 0 ? kvPos : entryEnd;
-				if (containsItemInRegion(valueMap, entryStart, keysEnd, item, itemSeparator)) {
-					return kvPos >= 0 ? valueMap.substring(kvPos + kvSeparator.length(), entryEnd) : EMPTY;
+				// 如果没有 kvSeparator，key 视为空字符串
+				if (kvPos < 0) {
+					if (item.isEmpty()) {
+						return valueMap.substring(entryStart, entryEnd);
+					}
+				} else {
+					if (containsItemInRegion(valueMap, entryStart, kvPos, item, itemSeparator)) {
+						return valueMap.substring(kvPos + kvSeparator.length(), entryEnd);
+					}
 				}
 			}
 			if (entryEnd >= mapLen) {
@@ -3107,25 +3192,35 @@ public class TextUtils {
 
 	/**
 	 * 获取 map 格式字符串中指定 value 对应的 key 字符串（使用自定义分隔符）
+	 * <p>
+	 * 在 entry 中查找指定的 value，返回对应的 key。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value，key 视为空字符串，
+	 *     此时若匹配到 value 则返回空字符串。
+	 * </p>
 	 *
 	 * @param valueMap       map 格式字符串
 	 * @param value          要查找的 value
 	 * @param kvSeparator    key-value 分隔符
 	 * @param entrySeparator entry 分隔符
-	 * @return 对应的 key 字符串，未找到返回 null
+	 * @return 对应的 key 字符串，未找到返回 null；若 entry 无 kvSeparator 且匹配到 value 则返回空字符串
 	 */
 	public static String getMapKey(String valueMap, Object value, String kvSeparator, String entrySeparator) {
 		return getMapKey(valueMap, value, kvSeparator, entrySeparator, SEPARATOR);
 	}
 	/**
 	 * 获取 map 格式字符串中指定 value 对应的 key 字符串（使用自定义分隔符）
+	 * <p>
+	 * 在 entry 中查找指定的 value，返回对应的 key。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value，key 视为空字符串，
+	 *     此时若匹配到 value 则返回空字符串。
+	 * </p>
 	 *
 	 * @param valueMap       map 格式字符串
 	 * @param value          要查找的 value
 	 * @param kvSeparator    key-value 分隔符
 	 * @param entrySeparator entry 分隔符
 	 * @param itemSeparator  项分隔符
-	 * @return 对应的 key 字符串，未找到返回 null
+	 * @return 对应的 key 字符串，未找到返回 null；若 entry 无 kvSeparator 且匹配到 value 则返回空字符串
 	 */
 	public static String getMapKey(String valueMap, Object value, String kvSeparator, String entrySeparator, String itemSeparator) {
 		if (isEmpty(valueMap) || value == null) {
@@ -3141,9 +3236,9 @@ public class TextUtils {
 			}
 			if (entryEnd > entryStart) {
 				int kvPos = findKvSeparator(valueMap, entryStart, entryEnd, kvSeparator);
-				int valuesStart = kvPos >= 0 ? kvPos + kvSeparator.length() : entryEnd;
+				int valuesStart = kvPos >= 0 ? kvPos + kvSeparator.length() : entryStart;
 				if (containsItemInRegion(valueMap, valuesStart, entryEnd, item, itemSeparator)) {
-					return kvPos >= 0 ? valueMap.substring(entryStart, kvPos) : valueMap.substring(entryStart, entryEnd);
+					return kvPos >= 0 ? valueMap.substring(entryStart, kvPos) : EMPTY;
 				}
 			}
 			if (entryEnd >= mapLen) {
@@ -3158,6 +3253,7 @@ public class TextUtils {
 	 * 获取 map 格式字符串中所有的 key（去重）
 	 * <p>
 	 * 按出现顺序返回所有 entry 中的 key，多个 key 用 itemSeparator 拼接。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，不会被收集。
 	 * </p>
 	 *
 	 * @param valueMap map 格式字符串
@@ -3173,6 +3269,7 @@ public class TextUtils {
 
 	/**
 	 * 获取 map 格式字符串中所有的 key（去重，使用自定义分隔符）
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，不会被收集
 	 *
 	 * @param valueMap       map 格式字符串
 	 * @param kvSeparator    key-value 分隔符
@@ -3184,6 +3281,7 @@ public class TextUtils {
 	}
 	/**
 	 * 获取 map 格式字符串中所有的 key（去重，使用自定义分隔符）
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，不会被收集
 	 *
 	 * @param valueMap       map 格式字符串
 	 * @param kvSeparator    key-value 分隔符
@@ -3206,8 +3304,9 @@ public class TextUtils {
 			}
 			if (entryEnd > entryStart) {
 				int kvPos = findKvSeparator(valueMap, entryStart, entryEnd, kvSeparator);
-				int keysEnd = kvPos >= 0 ? kvPos : entryEnd;
-				keys = collectItemsInRegion(valueMap, entryStart, keysEnd, itemSeparator, keys, sb);
+				if (kvPos >= 0) {
+					keys = collectItemsInRegion(valueMap, entryStart, kvPos, itemSeparator, keys, sb);
+				}
 			}
 			if (entryEnd >= mapLen) {
 				break;
@@ -3221,6 +3320,7 @@ public class TextUtils {
 	 * 获取 map 格式字符串中所有的 value（去重）
 	 * <p>
 	 * 按出现顺序返回所有 entry 中的 value，多个 value 用 itemSeparator 拼接。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value。
 	 * </p>
 	 *
 	 * @param valueMap map 格式字符串
@@ -3236,7 +3336,10 @@ public class TextUtils {
 
 	/**
 	 * 获取 map 格式字符串中所有的 value（去重，使用自定义分隔符）
-	 *
+	 * <p>
+	 * 按出现顺序返回所有 entry 中的 value，多个 value 用 itemSeparator 拼接。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value。
+	 * </p>
 	 * @param valueMap       map 格式字符串
 	 * @param kvSeparator    key-value 分隔符
 	 * @param entrySeparator entry 分隔符
@@ -3248,7 +3351,10 @@ public class TextUtils {
 
 	/**
 	 * 获取 map 格式字符串中所有的 value（去重，使用自定义分隔符）
-	 *
+	 * <p>
+	 * 按出现顺序返回所有 entry 中的 value，多个 value 用 itemSeparator 拼接。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value。
+	 * </p>
 	 * @param valueMap       map 格式字符串
 	 * @param kvSeparator    key-value 分隔符
 	 * @param entrySeparator entry 分隔符
@@ -3270,7 +3376,7 @@ public class TextUtils {
 			}
 			if (entryEnd > entryStart) {
 				int kvPos = findKvSeparator(valueMap, entryStart, entryEnd, kvSeparator);
-				int valuesStart = kvPos >= 0 ? kvPos + kvSeparator.length() : entryEnd;
+				int valuesStart = kvPos >= 0 ? kvPos + kvSeparator.length() : entryStart;
 				values = collectItemsInRegion(valueMap, valuesStart, entryEnd, itemSeparator, values, sb);
 			}
 			if (entryEnd >= mapLen) {
