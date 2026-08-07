@@ -2846,7 +2846,7 @@ public class TextUtils {
 	 * TextUtils.containsMapKey("k1,k2:v1,v2;k3:v3", "k4");   // -> false
 	 * }</pre>
 	 */
-	public static boolean containsMapKey(String valueMap, String key) {
+	public static boolean containsMapKey(String valueMap, Object key) {
 		return containsMapKey(valueMap, key, COLON, SEMICOLON, SEPARATOR);
 	}
 
