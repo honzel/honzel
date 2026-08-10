@@ -408,7 +408,7 @@ public enum FormatTypeEnum implements TextFormatType {
         /**
          * 格式化值
          * @param value 值
-         * @param parameters 参数 (参数1:摘要算法 参数2:字符集 参数3:编码算法),(参数1:编码算法 参数2:字符集)
+         * @param parameters 参数 (参数1:摘要算法 参数2:字符集 参数3:编码算法[hex/base64]),(参数1:编码算法[hex/base64] 参数2:字符集)
          * @return 格式化后的值
          */
         public String formatValue(Object value, String... parameters) {
