@@ -2839,7 +2839,7 @@ public class TextUtils {
 
 	/**
 	 /**
-	 * 查询指定 key 在 map 格式字符串中的字符索引位置（使用自定义分隔符）
+	 * 查询指定 key 在 map 格式字符串中的字符索引位置（使用默认分隔符）
 	 * <p>
 	 * 在所有 entry 的 key 区域中查找指定的 key，返回其在原字符串中的起始字符索引。
 	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，
@@ -2951,7 +2951,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 检查 map 格式字符串中是否包含指定 key（使用自定义分隔符）
+	 * 检查 map 格式字符串中是否包含指定 key（使用默认分隔符）
 	 * <p>
 	 * 在所有 entry 的 key 区域中查找指定的 key。
 	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，
@@ -3010,7 +3010,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 检查 map 格式字符串中是否包含指定 value（使用自定义分隔符）
+	 * 检查 map 格式字符串中是否包含指定 value（使用默认分隔符）
 	 * <p>
 	 * 在所有 entry 的值区域中查找指定的 value。
 	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为值区域。
@@ -3091,7 +3091,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 检查 map 格式字符串中是否包含指定的 key-value 对应关系（使用自定义分隔符）
+	 * 检查 map 格式字符串中是否包含指定的 key-value 对应关系（使用默认分隔符）
 	 * <p>
 	 * 在 entry 中查找是否存在指定的 key 且其对应的值中包含指定的 value。
 	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value，key 视为空字符串，
@@ -3445,7 +3445,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 获取 map 格式字符串中指定 key 对应的 value 字符串（使用自定义分隔符）
+	 * 获取 map 格式字符串中指定 key 对应的 value 字符串（使用默认分隔符）
 	 * <p>
 	 * 在 entry 中查找指定的 key，返回对应的 value。
 	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value，key 视为空字符串，
@@ -3533,7 +3533,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 获取 map 格式字符串中指定 value 对应的 key 字符串
+	 * 获取 map 格式字符串中指定 value 对应的 key 字符串（使用默认分隔符）
 	 * <p>
 	 * 返回的是 key 部分的原字符串（可能包含多个逗号分隔的 key）。
 	 * 如果有多个 entry 包含该 value，返回第一个匹配的 key。
@@ -3614,7 +3614,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 获取 map 格式字符串中所有的 key（去重）
+	 * 获取 map 格式字符串中所有的 key（去重，使用默认分隔符）
 	 * <p>
 	 * 按出现顺序返回所有 entry 中的 key，多个 key 用 itemSeparator 拼接。
 	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，不会被收集。
@@ -3633,7 +3633,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 获取 map 格式字符串中所有的 key（去重，使用自定义分隔符）
+	 * 获取 map 格式字符串中所有的 key
 	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，不会被收集
 	 * 默认分隔符: itemSeparator=","
 	 * @param valueMap       map 格式字符串
@@ -3682,7 +3682,7 @@ public class TextUtils {
 	}
 
 	/**
-	 * 获取 map 格式字符串中所有的 value（去重）
+	 * 获取 map 格式字符串中所有的 value（去重，使用默认分隔符）
 	 * <p>
 	 * 按出现顺序返回所有 entry 中的 value，多个 value 用 itemSeparator 拼接。
 	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value。
