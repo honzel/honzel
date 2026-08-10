@@ -1128,7 +1128,7 @@ public class TextUtils {
 
 	private static StringBuilder appendFormatValue(StringBuilder content, Resolver resolver, TextFormatType textFormatType, String[] parameters, Object value, boolean appendForEmpty, int originPosition, boolean isLastValue) {
 		// 格式化值
-		String stringValue = textFormatType.formatValue(value, Objects.nonNull(parameters) ? parameters : ArrayConstants.EMPTY_STRING_ARRAY);
+		String stringValue = TextUtils.isEmpty(value) ? TextUtils.toString(value) : textFormatType.formatValue(value, Objects.nonNull(parameters) ? parameters : ArrayConstants.EMPTY_STRING_ARRAY);
 		// 判断是否去掉前缀
 		boolean emptyValue = isEmpty(stringValue);
 		if (appendForEmpty != emptyValue) {
@@ -1335,9 +1335,9 @@ public class TextUtils {
 				//
 				if (Objects.nonNull(parameters)) {
 					// 如果有带参数, 作为结果值的截取
-					stringValue = textFormatType.formatValue(stringValue == null && !nestPattern ? filterValue : stringValue, parameters);
+					Object valuePattern = stringValue == null && !nestPattern ? filterValue : stringValue;
 					//
-					if (isNotEmpty(stringValue) && parameters.length == 0) {
+					if (isNotEmpty(valuePattern) && isNotEmpty(stringValue = textFormatType.formatValue(valuePattern, parameters)) && parameters.length == 0) {
 						// 非空并且没有参数时，转化结果
 						StringBuilder textBuilder = new StringBuilder(stringValue.length());
 						textFormatType.appendValue(textBuilder, stringValue);

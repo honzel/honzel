@@ -1,5 +1,6 @@
 package com.honzel.core.util.text;
 
+import com.honzel.core.util.bean.BeanHelper;
 import com.honzel.core.util.time.LocalDateTimeUtils;
 import com.honzel.core.util.web.WebUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -19,6 +20,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
 import java.time.temporal.TemporalAccessor;
 import java.util.*;
 
@@ -48,7 +50,7 @@ public enum FormatTypeEnum implements TextFormatType {
          * @return 格式化后的值
          */
         public String formatValue(Object value, String... parameters) {
-            if (isNotEmpty(value) && parameters.length > 0 && isNotEmpty(parameters[0])) {
+            if (parameters.length > 0 && isNotEmpty(parameters[0])) {
                 String pattern = parameters[0];
                 try {
                     if (value instanceof TemporalAccessor) {
@@ -192,7 +194,7 @@ public enum FormatTypeEnum implements TextFormatType {
          */
         public String formatValue(Object value, String... parameters) {
             String stringValue = TextUtils.toString(value);
-            if (stringValue == null || parameters.length == 0) {
+            if (parameters.length == 0) {
                 return stringValue;
             }
             int valueLen = stringValue.length();
@@ -225,7 +227,7 @@ public enum FormatTypeEnum implements TextFormatType {
          */
         public String formatValue(Object value, String... parameters) {
             String stringValue = TextUtils.toString(value);
-            if (stringValue == null || parameters.length == 0 || EMPTY.equals(parameters[0])) {
+            if (parameters.length == 0 || EMPTY.equals(parameters[0])) {
                 return stringValue;
             }
             // 计算结束位置
@@ -287,7 +289,7 @@ public enum FormatTypeEnum implements TextFormatType {
          * @return 格式化后的值
          */
         public String formatValue(Object value, String... parameters) {
-            if (value == null || parameters.length < 1) {
+            if (parameters.length < 1) {
                 return TextUtils.toString(value);
             }
             // 计算符
@@ -406,49 +408,82 @@ public enum FormatTypeEnum implements TextFormatType {
         /**
          * 格式化值
          * @param value 值
-         * @param parameters 参数 (进制：长度)
+         * @param parameters 参数 (参数1:摘要算法 参数2:字符集 参数3:编码算法),(参数1:编码算法 参数2:字符集)
          * @return 格式化后的值
          */
         public String formatValue(Object value, String... parameters) {
-            if (isNotEmpty(value) && parameters.length > 0) {
-                // 获取进制
-                String algorithm = parameters[0];
-                String encodeAlgorithm = parameters.length > 2 ? parameters[2] : null;
-                if (isEmpty(encodeAlgorithm)) {
-                    if ("hex".equalsIgnoreCase(algorithm) || "base64".equalsIgnoreCase(algorithm)) {
-                        encodeAlgorithm = algorithm;
-                        algorithm = EMPTY;
-                    } else {
-                        encodeAlgorithm = "hex";
-                    }
-                }
-                Charset charset = parameters.length > 1 && !EMPTY.equals(parameters[1]) ? Charset.forName(parameters[1]) : StandardCharsets.UTF_8;
-
-                byte[] dataBytes;
-                if (value instanceof byte[]) {
-                    dataBytes = (byte[]) value;
-                } else if (value instanceof ByteBuffer) {
-                    dataBytes = ((ByteBuffer) value).array();
-                } else if (value instanceof ByteArrayOutputStream) {
-                    dataBytes = ((ByteArrayOutputStream) value).toByteArray();
-                } else {
-                    dataBytes = TextUtils.toString(value).getBytes(charset);
-                }
-                if (!algorithm.isEmpty()) {
-                    try {
-                        dataBytes = MessageDigest.getInstance(algorithm).digest(dataBytes);
-                    } catch (NoSuchAlgorithmException e) {
-                        throw new IllegalArgumentException(e.getMessage(), e);
-                    }
-                }
-                if ("base64".equalsIgnoreCase(encodeAlgorithm)) {
-                    // Base64
-                    return Base64.getEncoder().encodeToString(dataBytes);
-                }
-                // Hex
-                return HexFormat.of().formatHex(dataBytes);
+            if (parameters.length == 0) {
+                return TextUtils.toString(value);
             }
-            return TextUtils.toString(value);
+            // 获取进制
+            String algorithm = parameters[0];
+            String encodeAlgorithm = parameters.length > 2 ? parameters[2] : null;
+            if (isEmpty(encodeAlgorithm)) {
+                if ("hex".equalsIgnoreCase(algorithm) || "base64".equalsIgnoreCase(algorithm)) {
+                    encodeAlgorithm = algorithm;
+                    algorithm = EMPTY;
+                } else {
+                    encodeAlgorithm = "hex";
+                }
+            }
+            Charset charset = parameters.length > 1 && !EMPTY.equals(parameters[1]) ? Charset.forName(parameters[1]) : StandardCharsets.UTF_8;
+
+            byte[] dataBytes;
+            if (value instanceof byte[]) {
+                dataBytes = (byte[]) value;
+            } else if (value instanceof ByteBuffer) {
+                dataBytes = ((ByteBuffer) value).array();
+            } else if (value instanceof ByteArrayOutputStream) {
+                dataBytes = ((ByteArrayOutputStream) value).toByteArray();
+            } else {
+                dataBytes = TextUtils.toString(value).getBytes(charset);
+            }
+            if (!algorithm.isEmpty()) {
+                try {
+                    dataBytes = MessageDigest.getInstance(algorithm).digest(dataBytes);
+                } catch (NoSuchAlgorithmException e) {
+                    throw new IllegalArgumentException(e.getMessage(), e);
+                }
+            }
+            if ("base64".equalsIgnoreCase(encodeAlgorithm)) {
+                // Base64
+                return Base64.getEncoder().encodeToString(dataBytes);
+            }
+            // Hex
+            return HexFormat.of().formatHex(dataBytes);
+        }
+    },
+    /**
+     * 时间格式化
+     */
+    TIME("time") {
+        /**
+         * 格式化值
+         * @param value 值
+         * @param parameters 参数 (参数1:时间转字符串格式 参数2:解析成时间格式),(参数1:时间转字符串格式)
+         * @return 格式化后的值
+         */
+        @Override
+        public String formatValue(Object value, String... parameters) {
+            if (parameters.length == 0) {
+                return TextUtils.toString(value);
+            }
+            String toPattern = parameters[0];
+            String fromPattern = parameters.length > 1 ? parameters[1] : null;
+            if (value instanceof TemporalAccessor) {
+                // 时间格式化
+                return TextUtils.isEmpty(toPattern) ? TextUtils.toString(value) : LocalDateTimeUtils.format((TemporalAccessor) value, toPattern);
+            }
+            LocalDateTime time;
+            if (TextUtils.isNotEmpty(fromPattern) && value instanceof CharSequence) {
+                // 字符串解析成时间
+                time = LocalDateTimeUtils.parse(TextUtils.toString(value), LocalDateTimeUtils.getFormatter(fromPattern));
+            } else {
+                // 其他类型转成时间
+                time = BeanHelper.convert(value, LocalDateTime.class);
+            }
+            // 时间格式化
+            return TextUtils.isEmpty(toPattern) ? TextUtils.toString(time) : LocalDateTimeUtils.format(time, toPattern);
         }
     },
     ;
