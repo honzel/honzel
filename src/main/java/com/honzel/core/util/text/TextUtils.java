@@ -3227,13 +3227,12 @@ public class TextUtils {
 				&& ((keyPos > entryStart && valueMap.regionMatches(keyPos - itemSeparator.length(), itemSeparator, 0, itemSeparator.length()))
 				|| (keyPos + keyStr.length() < kvPos && valueMap.regionMatches(keyPos + keyStr.length(), itemSeparator, 0, itemSeparator.length())));
 
-		if (!multiKey) {
-			// === 单 key 处理 ===
-			return putSimpleKeyMapValue(valueMap, kvPos, entryStart, entryEnd, value, kvSeparator, entrySeparator, isRemove);
+		if (multiKey) {
+			// === 多 key 处理 ===
+			return putMultiKeyMapValue(valueMap, keyStr, kvPos, entryStart, entryEnd, value, kvSeparator, entrySeparator, itemSeparator, isRemove);
 		}
-		// === 多 key 处理 ===
-		// 收集 key 区域中除当前 key 外的其他 key（直接写入 StringBuilder，避免中间字符串）
-		return putMultiKeyMapValue(valueMap, keyStr, kvPos, entryStart, entryEnd, value, kvSeparator, entrySeparator, itemSeparator, isRemove);
+		// === 单 key 处理 ===
+		return putSimpleKeyMapValue(valueMap, kvPos, entryStart, entryEnd, value, kvSeparator, entrySeparator, isRemove);
 	}
 
 
