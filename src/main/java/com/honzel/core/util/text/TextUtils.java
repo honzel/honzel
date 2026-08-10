@@ -1940,6 +1940,34 @@ public class TextUtils {
 		}
 		return valueList + separator + item;
 	}
+	/**
+	 * 检查值列表是否包含任意一个指定的值（使用逗号分隔）
+	 *
+	 * @param valueList 字符串值列表
+	 * @param values 要检查的多个值，用逗号分隔
+	 * @return 如果包含任意一个值返回 true，否则返回 false
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.containsAny("apple,banana,orange", "apple,grape");  // -> true (apple 存在)
+	 * TextUtils.containsAny("apple,banana,orange", "grape,kiwi");   // -> false
+	 * }</pre>
+	 */
+	public static boolean containsAny(String valueList, String values) {
+		return containsValues(valueList, values, SEPARATOR, true);
+	}
+
+	/**
+	 * 检查值列表是否包含任意一个指定的值（使用自定义分隔符）
+	 *
+	 * @param valueList 字符串值列表
+	 * @param values 要检查的多个值
+	 * @param separator 项分隔符
+	 * @return 如果包含任意一个值返回 true，否则返回 false
+	 * @see #containsAny(String, String)
+	 */
+	public static boolean containsAny(String valueList, String values, String separator) {
+		return containsValues(valueList, values, separator, true);
+	}
 
 
 	/**
@@ -1955,7 +1983,7 @@ public class TextUtils {
 	 * }</pre>
 	 */
 	public static boolean containsAll(String valueList, String values) {
-		return containsAll(valueList, values, SEPARATOR);
+		return containsValues(valueList, values, SEPARATOR, false);
 	}
 
 	/**
@@ -1968,30 +1996,45 @@ public class TextUtils {
 	 * @see #containsAll(String, String)
 	 */
 	public static boolean containsAll(String valueList, String values, String separator) {
+		return containsValues(valueList, values, separator, false);
+	}
+	/**
+	 * 检查值列表是否包含指定值（使用自定义分隔符）
+	 *
+	 * @param valueList 字符串值列表
+	 * @param values 要检查的多个值
+	 * @param separator 项分隔符
+	 * @param any 是否任意一个
+	 * @return 如果包含指定值返回 true，否则返回 false
+	 * @see #containsAll(String, String)
+	 */
+	private static boolean containsValues(String valueList, String values, String separator, boolean any) {
 		if (valueList == null || values == null) {
 			return false;
 		}
 		if (indexOf(valueList, values, 0, values.length(), false, false, separator) != -1) {
+			// 匹配到值
 			return true;
 		}
-		if (isEmpty(separator)) {
+		if (isEmpty(separator) || !values.contains(separator)) {
+			// 仅一个值
 			return false;
 		}
-		if (!values.contains(separator)) {
-			return false;
-		}
+		// 拆分 values 逐个检查
 		int start = 0;
 		while (start < values.length()) {
 			int end = values.indexOf(separator, start);
 			if (end < 0) {
+				// 最后一个值
 				return indexOf(valueList, values, start, values.length() - start, false, false, separator) != -1;
 			}
-			if (indexOf(valueList, values, start, end - start, false, false, separator) == -1) {
-				return false;
+			// 检查当前分段是否存在于 valueList 中
+			if ((indexOf(valueList, values, start, end - start, false, false, separator) != -1) == any) {
+				return any;
 			}
 			start = end + separator.length();
 		}
-		return true;
+		return !any;
 	}
 
 	/**
