@@ -2701,7 +2701,7 @@ public class TextUtils {
 
 	// ======================== Map 格式字符串工具方法 ========================
 	// 格式: key1,key2:value1,value2,value3;key3:value4
-	// 默认分隔符: entrySeparator=";", kvSeparator="=", itemSeparator=""
+	//默认分隔符：kvSeparator="=", entrySeparator=";", itemSeparator=","
 
 	/**
 	 * 在 entry 区域 [entryStart, entryEnd) 内查找 kvSeparator 的位置
@@ -2851,7 +2851,7 @@ public class TextUtils {
 	 * @return key 在原字符串中的起始字符索引，未找到返回 -1
 	 */
 	public static int keyIndexOf(String valueMap, Object key) {
-		return keyIndexOf(valueMap, key, EQUAL, SEMICOLON, EMPTY);
+		return keyIndexOf(valueMap, key, EQUAL, SEMICOLON, SEPARATOR);
 	}
 
 	/**
@@ -2870,7 +2870,7 @@ public class TextUtils {
 	 * @return key 在原字符串中的起始字符索引，未找到返回 -1
 	 */
 	public static int keyIndexOf(String valueMap, Object key, String kvSeparator, String entrySeparator) {
-		return keyIndexOf(valueMap, key, kvSeparator, entrySeparator, EMPTY);
+		return keyIndexOf(valueMap, key, kvSeparator, entrySeparator, SEPARATOR);
 	}
 	/**
 	 /**
@@ -2963,7 +2963,7 @@ public class TextUtils {
 	 * @return 如果包含该 key 返回 true，否则返回 false
 	 */
 	public static boolean containsMapKey(String valueMap, Object key) {
-		return containsMapKey(valueMap, key, EQUAL, SEMICOLON, EMPTY);
+		return containsMapKey(valueMap, key, EQUAL, SEMICOLON, SEPARATOR);
 	}
 
 	/**
@@ -2981,7 +2981,7 @@ public class TextUtils {
 	 * @return 如果包含该 key 返回 true，否则返回 false
 	 */
 	public static boolean containsMapKey(String valueMap, Object key, String kvSeparator, String entrySeparator) {
-		return keyIndexOf(valueMap, key, kvSeparator, entrySeparator, EMPTY) >= 0;
+		return keyIndexOf(valueMap, key, kvSeparator, entrySeparator, SEPARATOR) >= 0;
 	}
 
 	/**
@@ -3021,7 +3021,7 @@ public class TextUtils {
 	 * @return 如果包含该 value 返回 true，否则返回 false
 	 */
 	public static boolean containsMapValue(String valueMap, Object value) {
-		return containsMapValue(valueMap, value, EQUAL, SEMICOLON, EMPTY);
+		return containsMapValue(valueMap, value, EQUAL, SEMICOLON, SEPARATOR);
 	}
 
 	/**
@@ -3038,7 +3038,7 @@ public class TextUtils {
 	 * @return 如果包含该 value 返回 true，否则返回 false
 	 */
 	public static boolean containsMapValue(String valueMap, Object value, String kvSeparator, String entrySeparator) {
-		return containsMapValue(valueMap, value, kvSeparator, entrySeparator, EMPTY);
+		return containsMapValue(valueMap, value, kvSeparator, entrySeparator, SEPARATOR);
 	}
 
 	/**
@@ -3104,7 +3104,7 @@ public class TextUtils {
 	 * @return 如果该 key 对应的值中包含指定 value 返回 true，否则返回 false
 	 */
 	public static boolean containsMapKeyValue(String valueMap, Object key, Object value) {
-		return containsMapKeyValue(valueMap, key, value, EQUAL, SEMICOLON, EMPTY);
+		return containsMapKeyValue(valueMap, key, value, EQUAL, SEMICOLON, SEPARATOR);
 	}
 
 	/**
@@ -3123,7 +3123,7 @@ public class TextUtils {
 	 * @return 如果该 key 对应的值中包含指定 value 返回 true，否则返回 false
 	 */
 	public static boolean containsMapKeyValue(String valueMap, Object key, Object value, String kvSeparator, String entrySeparator) {
-		return containsMapKeyValue(valueMap, key, value, kvSeparator, entrySeparator, EMPTY);
+		return containsMapKeyValue(valueMap, key, value, kvSeparator, entrySeparator, SEPARATOR);
 	}
 	/**
 	 * 检查 map 格式字符串中是否包含指定的 key-value 对应关系（使用自定义分隔符）
@@ -3189,7 +3189,7 @@ public class TextUtils {
 	/**
 	 * 在 map 格式字符串中设置或更新指定 key 对应的 value 字符串（使用默认分隔符）
 	 * <p>
-	 * 默认分隔符：kvSeparator="=", entrySeparator=";", itemSeparator=""
+	 * 默认分隔符：kvSeparator="=", entrySeparator=";", itemSeparator=","
 	 * </p>
 	 *
 	 * @param valueMap map 格式字符串
@@ -3198,7 +3198,7 @@ public class TextUtils {
 	 * @return 设置后的 map 格式字符串
 	 */
 	public static String putMapValue(String valueMap, Object key, Object value) {
-		return putMapValue(valueMap, key, value, EQUAL, SEMICOLON, EMPTY);
+		return putMapValue(valueMap, key, value, EQUAL, SEMICOLON, SEPARATOR);
 	}
 
 	/**
@@ -3212,7 +3212,7 @@ public class TextUtils {
 	 * @return 设置后的 map 格式字符串
 	 */
 	public static String putMapValue(String valueMap, Object key, Object value, String kvSeparator, String entrySeparator) {
-		return putMapValue(valueMap, key, value, kvSeparator, entrySeparator, EMPTY);
+		return putMapValue(valueMap, key, value, kvSeparator, entrySeparator, SEPARATOR);
 	}
 	/**
 	 * 在 map 格式字符串中设置或更新指定 key 对应的 value 字符串（使用自定义分隔符）
@@ -3463,7 +3463,7 @@ public class TextUtils {
 	 * }</pre>
 	 */
 	public static String getMapValue(String valueMap, Object key) {
-		return getMapValue(valueMap, key, EQUAL, SEMICOLON, EMPTY);
+		return getMapValue(valueMap, key, EQUAL, SEMICOLON, SEPARATOR);
 	}
 
 	/**
@@ -3481,7 +3481,7 @@ public class TextUtils {
 	 * @return 对应的 value 字符串，未找到返回 null
 	 */
 	public static String getMapValue(String valueMap, Object key, String kvSeparator, String entrySeparator) {
-		return getMapValue(valueMap, key, kvSeparator, entrySeparator, EMPTY);
+		return getMapValue(valueMap, key, kvSeparator, entrySeparator, SEPARATOR);
 	}
 	/**
 	 * 获取 map 格式字符串中指定 key 对应的 value 字符串（使用自定义分隔符）
@@ -3550,7 +3550,7 @@ public class TextUtils {
 	 * }</pre>
 	 */
 	public static String getMapKey(String valueMap, Object value) {
-		return getMapKey(valueMap, value, EQUAL, SEMICOLON, EMPTY);
+		return getMapKey(valueMap, value, EQUAL, SEMICOLON, SEPARATOR);
 	}
 
 	/**
@@ -3568,7 +3568,7 @@ public class TextUtils {
 	 * @return 对应的 key 字符串，未找到返回 null；若 entry 无 kvSeparator 且匹配到 value 则返回空字符串
 	 */
 	public static String getMapKey(String valueMap, Object value, String kvSeparator, String entrySeparator) {
-		return getMapKey(valueMap, value, kvSeparator, entrySeparator, EMPTY);
+		return getMapKey(valueMap, value, kvSeparator, entrySeparator, SEPARATOR);
 	}
 	/**
 	 * 获取 map 格式字符串中指定 value 对应的 key 字符串（使用自定义分隔符）
