@@ -2701,7 +2701,7 @@ public class TextUtils {
 
 	// ======================== Map 格式字符串工具方法 ========================
 	// 格式: key1,key2:value1,value2,value3;key3:value4
-	//默认分隔符：kvSeparator="=", entrySeparator=";", itemSeparator=","
+	//默认分隔符：kvSeparator="=", entrySeparator=";", itemSeparator=""
 
 	/**
 	 * 在 entry 区域 [entryStart, entryEnd) 内查找 kvSeparator 的位置
@@ -2851,12 +2851,29 @@ public class TextUtils {
 	 * @return key 在原字符串中的起始字符索引，未找到返回 -1
 	 */
 	public static int keyIndexOf(String valueMap, Object key) {
-		return keyIndexOf(valueMap, key, EQUAL, SEMICOLON, SEPARATOR);
+		return keyIndexOf(valueMap, key, EQUAL, SEMICOLON, EMPTY);
+	}
+	/**
+	 /**
+	 * 查询指定 key 在 map 格式字符串中的字符索引位置（使用默认entity分隔符,自定义项分隔符）
+	 * <p>
+	 * 在所有 entry 的 key 区域中查找指定的 key，返回其在原字符串中的起始字符索引。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，
+	 *     此时若要查找的 key 为空字符串，则返回该 entry 的起始位置。
+	 * </p>
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param key            要查找的 key
+	 * @param itemSeparator  项分隔符
+	 * @return key 在原字符串中的起始字符索引，未找到返回 -1
+	 */
+	public static int keyIndexOf(String valueMap, Object key, String itemSeparator) {
+		return keyIndexOf(valueMap, key, EQUAL, SEMICOLON, itemSeparator);
 	}
 
 	/**
 	 /**
-	 * 查询指定 key 在 map 格式字符串中的字符索引位置（使用自定义分隔符）
+	 * 查询指定 key 在 map 格式字符串中的字符索引位置（使用自定义entity分隔符,默认项分隔符）
 	 * <p>
 	 * 在所有 entry 的 key 区域中查找指定的 key，返回其在原字符串中的起始字符索引。
 	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，
@@ -2870,7 +2887,7 @@ public class TextUtils {
 	 * @return key 在原字符串中的起始字符索引，未找到返回 -1
 	 */
 	public static int keyIndexOf(String valueMap, Object key, String kvSeparator, String entrySeparator) {
-		return keyIndexOf(valueMap, key, kvSeparator, entrySeparator, SEPARATOR);
+		return keyIndexOf(valueMap, key, kvSeparator, entrySeparator, EMPTY);
 	}
 	/**
 	 /**
@@ -2898,10 +2915,14 @@ public class TextUtils {
 	 */
 	public static int keyIndexOf(String valueMap, Object key, String kvSeparator, String entrySeparator, String itemSeparator) {
 		if (isEmpty(valueMap) || key == null) {
+			// 无效参数
 			return -1;
 		}
+		// 获取 key 字符串
 		String keyStr = toString(key);
+		// key 长度
 		int keyLen = keyStr.length();
+		// 源字符串长度
 		int mapLen = valueMap.length();
 		int entryStart = 0;
 		// 是否有 entry 分隔符
@@ -2909,33 +2930,39 @@ public class TextUtils {
 		// 是否有项分隔符
 		boolean noItemSeparator = isEmpty(itemSeparator);
 		while (entryStart <= mapLen) {
+			// 获取 entry 的结束位置
 			int entryEnd = noEntrySeparator ? mapLen : valueMap.indexOf(entrySeparator, entryStart);
 			if (entryEnd < 0) {
 				entryEnd = mapLen;
 			}
 			if (entryEnd > entryStart) {
+				// 获取 key-value 的分隔符位置
 				int kvPos = findKvSeparator(valueMap, entryStart, entryEnd, kvSeparator);
 				if (kvPos < 0) {
 					if (keyLen == 0) {
+						// key 为空字符串
 						return entryStart;
 					}
 				} else {
 					// 在 keys 区域中用 regionMatches 查找 key，返回字符索引
 					int itemStart = entryStart;
+					// 项结束位置
 					int itemEnd = noItemSeparator ? kvPos : valueMap.indexOf(itemSeparator, entryStart);
 					if (itemEnd < 0 || itemEnd > kvPos) {
 						itemEnd = kvPos;
 					}
 					while (true) {
-						int itemLen = itemEnd - itemStart;
-						if (itemLen == keyLen && valueMap.regionMatches(itemStart, keyStr, 0, keyLen)) {
+						// 判断 key 是否匹配
+						if (itemEnd - itemStart == keyLen && valueMap.regionMatches(itemStart, keyStr, 0, keyLen)) {
+							// 匹配成功, 返回项的起始位置
 							return itemStart;
 						}
 						if (noItemSeparator || itemEnd >= kvPos) {
+							// key匹配结束
 							break;
 						}
-						itemStart = itemEnd + itemSeparator.length();
-						itemEnd = valueMap.indexOf(itemSeparator, itemStart);
+						// 获取下一个项的开始和结束位置
+						itemEnd = valueMap.indexOf(itemSeparator, itemStart = itemEnd + itemSeparator.length());
 						if (itemEnd < 0 || itemEnd > kvPos) {
 							itemEnd = kvPos;
 						}
@@ -2943,8 +2970,10 @@ public class TextUtils {
 				}
 			}
 			if (entryEnd >= mapLen) {
+				// 匹配结束
 				break;
 			}
+			// 获取下一个 entry 的开始位置
 			entryStart = entryEnd + (noEntrySeparator ? 1 : entrySeparator.length());
 		}
 		return -1;
@@ -2963,11 +2992,28 @@ public class TextUtils {
 	 * @return 如果包含该 key 返回 true，否则返回 false
 	 */
 	public static boolean containsMapKey(String valueMap, Object key) {
-		return containsMapKey(valueMap, key, EQUAL, SEMICOLON, SEPARATOR);
+		return containsMapKey(valueMap, key, EQUAL, SEMICOLON, EMPTY);
 	}
 
 	/**
-	 * 检查 map 格式字符串中是否包含指定 key（使用自定义分隔符）
+	 * 检查 map 格式字符串中是否包含指定 key（使用默认entity分隔符,自定义项分隔符）
+	 * <p>
+	 * 在所有 entry 的 key 区域中查找指定的 key。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，
+	 *     此时若要查找的 key 为空字符串，则返回 true。
+	 * </p>
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param key            要检查的 key
+	 * @param itemSeparator  项分隔符
+	 * @return 如果包含该 key 返回 true，否则返回 false
+	 */
+	public static boolean containsMapKey(String valueMap, Object key, String itemSeparator) {
+		return containsMapKey(valueMap, key, EQUAL, SEMICOLON, itemSeparator);
+	}
+
+	/**
+	 * 检查 map 格式字符串中是否包含指定 key（使用自定义entity分隔符,默认项分隔符）
 	 * <p>
 	 * 在所有 entry 的 key 区域中查找指定的 key。
 	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，
@@ -2981,7 +3027,7 @@ public class TextUtils {
 	 * @return 如果包含该 key 返回 true，否则返回 false
 	 */
 	public static boolean containsMapKey(String valueMap, Object key, String kvSeparator, String entrySeparator) {
-		return keyIndexOf(valueMap, key, kvSeparator, entrySeparator, SEPARATOR) >= 0;
+		return keyIndexOf(valueMap, key, kvSeparator, entrySeparator, EMPTY) >= 0;
 	}
 
 	/**
@@ -3021,11 +3067,27 @@ public class TextUtils {
 	 * @return 如果包含该 value 返回 true，否则返回 false
 	 */
 	public static boolean containsMapValue(String valueMap, Object value) {
-		return containsMapValue(valueMap, value, EQUAL, SEMICOLON, SEPARATOR);
+		return containsMapValue(valueMap, value, EQUAL, SEMICOLON, EMPTY);
 	}
 
 	/**
-	 * 检查 map 格式字符串中是否包含指定 value（使用自定义分隔符）
+	 * 检查 map 格式字符串中是否包含指定 value（使用默认entity分隔符,自定义项分隔符）
+	 * <p>
+	 * 在所有 entry 的值区域中查找指定的 value。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为值区域。
+	 * </p>
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param value          要检查的 value
+	 * @param itemSeparator  项分隔符
+	 * @return 如果包含该 value 返回 true，否则返回 false
+	 */
+	public static boolean containsMapValue(String valueMap, Object value, String itemSeparator) {
+		return containsMapValue(valueMap, value, EQUAL, SEMICOLON, itemSeparator);
+	}
+
+	/**
+	 * 检查 map 格式字符串中是否包含指定 value（使用自定义entity分隔符,默认项分隔符）
 	 * <p>
 	 * 在所有 entry 的值区域中查找指定的 value。
 	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为值区域。
@@ -3038,11 +3100,11 @@ public class TextUtils {
 	 * @return 如果包含该 value 返回 true，否则返回 false
 	 */
 	public static boolean containsMapValue(String valueMap, Object value, String kvSeparator, String entrySeparator) {
-		return containsMapValue(valueMap, value, kvSeparator, entrySeparator, SEPARATOR);
+		return containsMapValue(valueMap, value, kvSeparator, entrySeparator, EMPTY);
 	}
 
 	/**
-	 * 检查 map 格式字符串中是否包含指定 value（使用自定义分隔符）
+	 * 检查 map 格式字符串中是否包含指定 value（使用自定义entity分隔符和项分隔符）
 	 * <p>
 	 * 在所有 entry 的值区域中查找指定的 value。
 	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为值区域。
@@ -3071,20 +3133,28 @@ public class TextUtils {
 		// 没有entrySeparator
 		boolean noEntrySeparator = isEmpty(entrySeparator);
 		while (entryStart <= mapLen) {
+			// 获取当前 entry 的结束位置
 			int entryEnd = noEntrySeparator ? mapLen : valueMap.indexOf(entrySeparator, entryStart);
 			if (entryEnd < 0) {
+				// 如果没分割符，则 entryEnd = mapLen
 				entryEnd = mapLen;
 			}
 			if (entryEnd > entryStart) {
+				// 获取 key-value分割符位置
 				int kvPos = findKvSeparator(valueMap, entryStart, entryEnd, kvSeparator);
+				// 获取 value 区域的起始位置
 				int valuesStart = kvPos >= 0 ? kvPos + kvSeparator.length() : entryStart;
+				// 判断区域中是否包含该 value
 				if (containsItemInRegion(valueMap, valuesStart, entryEnd, valueStr, itemSeparator)) {
+					// 包含该 value
 					return true;
 				}
 			}
 			if (entryEnd >= mapLen) {
+				// 匹配完毕
 				break;
 			}
+			// 获取下一个 entry 的起始位置
 			entryStart = entryEnd + (noEntrySeparator ? 1 : entrySeparator.length());
 		}
 		return false;
@@ -3104,11 +3174,28 @@ public class TextUtils {
 	 * @return 如果该 key 对应的值中包含指定 value 返回 true，否则返回 false
 	 */
 	public static boolean containsMapKeyValue(String valueMap, Object key, Object value) {
-		return containsMapKeyValue(valueMap, key, value, EQUAL, SEMICOLON, SEPARATOR);
+		return containsMapKeyValue(valueMap, key, value, EQUAL, SEMICOLON, EMPTY);
+	}
+	/**
+	 * 检查 map 格式字符串中是否包含指定的 key-value 对应关系（使用默认entity分隔符,自定义项分隔符）
+	 * <p>
+	 * 在 entry 中查找是否存在指定的 key 且其对应的值中包含指定的 value。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value，key 视为空字符串，
+	 *     此时若要检查的 key 为空字符串且在值区域中找到指定 value，则返回 true。
+	 * </p>
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param key            要检查的 key
+	 * @param value          要检查的 value
+	 * @param itemSeparator  项分隔符
+	 * @return 如果该 key 对应的值中包含指定 value 返回 true，否则返回 false
+	 */
+	public static boolean containsMapKeyValue(String valueMap, Object key, Object value, String itemSeparator) {
+		return containsMapKeyValue(valueMap, key, value, EQUAL, SEMICOLON, itemSeparator);
 	}
 
 	/**
-	 * 检查 map 格式字符串中是否包含指定的 key-value 对应关系（使用自定义分隔符）
+	 * 检查 map 格式字符串中是否包含指定的 key-value 对应关系（使用自定义entity分隔符,默认项分隔符）
 	 * <p>
 	 * 在 entry 中查找是否存在指定的 key 且其对应的值中包含指定的 value。
 	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value，key 视为空字符串，
@@ -3123,7 +3210,7 @@ public class TextUtils {
 	 * @return 如果该 key 对应的值中包含指定 value 返回 true，否则返回 false
 	 */
 	public static boolean containsMapKeyValue(String valueMap, Object key, Object value, String kvSeparator, String entrySeparator) {
-		return containsMapKeyValue(valueMap, key, value, kvSeparator, entrySeparator, SEPARATOR);
+		return containsMapKeyValue(valueMap, key, value, kvSeparator, entrySeparator, EMPTY);
 	}
 	/**
 	 * 检查 map 格式字符串中是否包含指定的 key-value 对应关系（使用自定义分隔符）
@@ -3150,36 +3237,49 @@ public class TextUtils {
 	 */
 	public static boolean containsMapKeyValue(String valueMap, Object key, Object value, String kvSeparator, String entrySeparator, String itemSeparator) {
 		if (isEmpty(valueMap) || key == null || value == null) {
+			// 无效参数
 			return false;
 		}
+		// 获取 key 和 value 的字符串表示
 		String keyStr = toString(key);
 		String valueStr = toString(value);
+		// 获取 map 的长度
 		int mapLen = valueMap.length();
+		// 获取 entry 的起始位置
 		int entryStart = 0;
+		// 判断 entrySeparator是否为空
 		boolean noEntrySeparator = isEmpty(entrySeparator);
+		// 遍历 map
 		while (entryStart <= mapLen) {
+			// 获取 entry 的结束位置
 			int entryEnd = noEntrySeparator ? mapLen : valueMap.indexOf(entrySeparator, entryStart);
 			if (entryEnd < 0) {
+				//如果没有找到 entrySeparator，则 entry 的结束位置为 map 的长度
 				entryEnd = mapLen;
 			}
 			if (entryEnd > entryStart) {
+				// 获取 entry 的 key-value的分隔位置
 				int kvPos = findKvSeparator(valueMap, entryStart, entryEnd, kvSeparator);
 				// 如果没有 kvSeparator，key 视为空字符串
 				if (kvPos < 0) {
 					// 整个 entry 都是值区域，key 为空字符串
 					if (keyStr.isEmpty() && containsItemInRegion(valueMap, entryStart, entryEnd, valueStr, itemSeparator)) {
+						// 整个entity区域中匹配指定 value
 						return true;
 					}
 				} else {
 					if (containsItemInRegion(valueMap, entryStart, kvPos, keyStr, itemSeparator)
 						&& containsItemInRegion(valueMap, kvPos + kvSeparator.length(), entryEnd, valueStr, itemSeparator)) {
+						// 匹配指定 key 和 value
 						return true;
 					}
 				}
 			}
 			if (entryEnd >= mapLen) {
+				// 遍历结束
 				break;
 			}
+			// 获取 entry 的下一个 entry 的起始位置
 			entryStart = entryEnd + (noEntrySeparator ? 1 : entrySeparator.length());
 		}
 		return false;
@@ -3189,7 +3289,7 @@ public class TextUtils {
 	/**
 	 * 在 map 格式字符串中设置或更新指定 key 对应的 value 字符串（使用默认分隔符）
 	 * <p>
-	 * 默认分隔符：kvSeparator="=", entrySeparator=";", itemSeparator=","
+	 * 默认分隔符：kvSeparator="=", entrySeparator=";", itemSeparator=""
 	 * </p>
 	 *
 	 * @param valueMap map 格式字符串
@@ -3198,11 +3298,26 @@ public class TextUtils {
 	 * @return 设置后的 map 格式字符串
 	 */
 	public static String putMapValue(String valueMap, Object key, Object value) {
-		return putMapValue(valueMap, key, value, EQUAL, SEMICOLON, SEPARATOR);
+		return putMapValue(valueMap, key, value, EQUAL, SEMICOLON, EMPTY);
+	}
+	/**
+	 * 在 map 格式字符串中设置或更新指定 key 对应的 value 字符串（使用默认entity分隔符,自定义项分隔符）
+	 * <p>
+	 * 默认分隔符：kvSeparator="=", entrySeparator=";", itemSeparator=""
+	 * </p>
+	 *
+	 * @param valueMap map 格式字符串
+	 * @param key      要设置的 key
+	 * @param value    要设置的 value，为 null 时移除该 key 对应的 entry
+	 * @param itemSeparator  项分隔符
+	 * @return 设置后的 map 格式字符串
+	 */
+	public static String putMapValue(String valueMap, Object key, Object value, String itemSeparator) {
+		return putMapValue(valueMap, key, value, EQUAL, SEMICOLON, itemSeparator);
 	}
 
 	/**
-	 * 在 map 格式字符串中设置或更新指定 key 对应的 value 字符串（使用自定义分隔符）
+	 * 在 map 格式字符串中设置或更新指定 key 对应的 value 字符串（使用自定义entity分隔符,默认项分隔符）
 	 *
 	 * @param valueMap       map 格式字符串
 	 * @param key            要设置的 key
@@ -3212,7 +3327,7 @@ public class TextUtils {
 	 * @return 设置后的 map 格式字符串
 	 */
 	public static String putMapValue(String valueMap, Object key, Object value, String kvSeparator, String entrySeparator) {
-		return putMapValue(valueMap, key, value, kvSeparator, entrySeparator, SEPARATOR);
+		return putMapValue(valueMap, key, value, kvSeparator, entrySeparator, EMPTY);
 	}
 	/**
 	 * 在 map 格式字符串中设置或更新指定 key 对应的 value 字符串（使用自定义分隔符）
@@ -3239,28 +3354,33 @@ public class TextUtils {
 	 * @return 设置后的 map 格式字符串
 	 */
 	public static String putMapValue(String valueMap, Object key, Object value, String kvSeparator, String entrySeparator, String itemSeparator) {
-		if (valueMap == null) {
-			valueMap = EMPTY;
-		}
 		if (key == null) {
+			// key 为 null
 			return valueMap;
 		}
+		// 获取 key 的字符串表示
 		String keyStr = toString(key);
+		// 是否移除
 		boolean isRemove = value == null;
+		// 获取 key 的位置
 		int keyPos = keyIndexOf(valueMap, keyStr, kvSeparator, entrySeparator, itemSeparator);
 		if (keyPos < 0) {
+			// key 不存在
 			return putNotExistsKeyMapValue(valueMap, keyStr, value, kvSeparator, entrySeparator, isRemove);
 		}
 		// key 存在，定位 entry 范围
 		int entryStart = keyPos;
 		if (entryStart > 0) {
+			// 获取上一个 entry 的起始位置
 			int prevSep = valueMap.lastIndexOf(entrySeparator, entryStart - 1);
 			if (prevSep >= 0) {
 				entryStart = prevSep + entrySeparator.length();
 			}
 		}
+		// 获取 entry 的结束位置
 		int entryEnd = isEmpty(entrySeparator) ? valueMap.length() : valueMap.indexOf(entrySeparator, entryStart);
 		if (entryEnd < 0) {
+			// 没有 entrySeparator，则 entry 的结束位置为 map 的长度
 			entryEnd = valueMap.length();
 		}
 		// 获取 key 区域的 kvSeparator 位置
@@ -3302,11 +3422,14 @@ public class TextUtils {
 			if (remainKeys.length() == 0) {
 				// 没有其他 key，移除整个 entry
 				int seqStart = entryStart > 0 && isNotEmpty(entrySeparator) ? entryStart - entrySeparator.length() : entryStart;
+				// 构建新字符串
 				StringBuilder sb = new StringBuilder(valueMap.length() - (entryEnd - seqStart));
 				if (seqStart > 0) {
+					// 添加前缀
 					sb.append(valueMap, 0, seqStart);
 				}
 				if (entryEnd < valueMap.length()) {
+					// 添加后缀
 					sb.append(valueMap, entryEnd, valueMap.length());
 				}
 				return sb.toString();
@@ -3366,11 +3489,12 @@ public class TextUtils {
 	private static CharSequence parseRemainKeys(String valueMap, String keyStr, int kvPos, int entryStart, String itemSeparator) {
 		StringBuilder remainKeys = null;
 		int scanStart = entryStart;
+		int keyLen = keyStr.length();
 		while (scanStart < kvPos) {
 			int sep = valueMap.indexOf(itemSeparator, scanStart);
 			int partEnd = (sep < 0 || sep > kvPos) ? kvPos : sep;
 			// 跳过当前 key
-			if (partEnd - scanStart != keyStr.length() || !valueMap.regionMatches(scanStart, keyStr, 0, keyStr.length())) {
+			if (partEnd - scanStart != keyLen || !valueMap.regionMatches(scanStart, keyStr, 0, keyLen)) {
 				if (remainKeys == null) {
 					remainKeys = new StringBuilder(kvPos - entryStart);
 				}
@@ -3390,28 +3514,35 @@ public class TextUtils {
 			// 移除整个 entry
 			int seqStart = entryStart > 0 && isNotEmpty(entrySeparator) ?  entryStart - entrySeparator.length() : entryStart;
 			if (seqStart == 0 && entryEnd >= valueMap.length()) {
+				// 移除整个字符串
 				return EMPTY;
 			}
+			// 构建新字符串
 			StringBuilder sb = new StringBuilder(valueMap.length());
 			if (seqStart > 0) {
+				// 追加前缀
 				sb.append(valueMap, 0, seqStart);
 			}
 			if (entryEnd < valueMap.length()) {
+				// 追加后缀
 				sb.append(valueMap, entryEnd, valueMap.length());
 			}
 			return sb.toString();
 		} else {
 			// 替换 value
 			String valueStr = toString(value);
+			// 旧 value 区域的起始位置
 			int valuesStart = kvPos >= 0 ? kvPos + kvSeparator.length() : entryStart;
+			// 检查旧 value 是否已改变
 			int oldLen = entryEnd - valuesStart;
 			if (oldLen == valueStr.length() && valueMap.regionMatches(valuesStart, valueStr, 0, oldLen)) {
 				// 值未改变
 				return valueMap;
 			}
+			// 构建新字符串
 			StringBuilder sb = new StringBuilder(valueMap.length() + valueStr.length() - oldLen);
-			sb.append(valueMap, 0, valuesStart);
-			sb.append(valueStr);
+			// 追加前缀和新值
+			sb.append(valueMap, 0, valuesStart).append(valueStr);
 			if (entryEnd < valueMap.length()) {
 				// 追加后缀
 				sb.append(valueMap, entryEnd, valueMap.length());
@@ -3423,22 +3554,36 @@ public class TextUtils {
 	private static String putNotExistsKeyMapValue(String valueMap, String keyStr, Object value, String kvSeparator, String entrySeparator, boolean isRemove) {
 		// key 不存在
 		if (isRemove) {
+			// 返回原字符串
 			return valueMap;
 		}
+		if (valueMap == null) {
+			// 创建空字符串
+			valueMap = EMPTY;
+		}
+		// 值串
 		String valueStr = toString(value);
+		// 是否没有 kvSeparator
 		boolean noKvSeparator = isEmpty(kvSeparator);
-		int extraLen = (isEmpty(entrySeparator) ? 0 : entrySeparator.length())
+		// 是否没有 entrySeparator
+		boolean noEntrySeparator = isEmpty(entrySeparator);
+		// 添加长度
+		int extraLen = (noEntrySeparator ? 0 : entrySeparator.length())
 				+ (noKvSeparator ? 0 : kvSeparator.length() + keyStr.length())
 				+ valueStr.length();
 		StringBuilder sb = new StringBuilder(valueMap.length() + extraLen);
+		// 追加原字符串
 		sb.append(valueMap);
-		if (valueMap.length() > 0 && isNotEmpty(entrySeparator)) {
+		if (!noEntrySeparator && valueMap.length() > 0) {
+			// 追加 entrySeparator
 			sb.append(entrySeparator);
 		}
+		// 追加 key-value
 		if (noKvSeparator) {
 			// 没有 kvSeparator，key 视为空字符串，只追加 value
 			sb.append(valueStr);
 		} else {
+			// 添加 key-value
 			sb.append(keyStr).append(kvSeparator).append(valueStr);
 		}
 		return sb.toString();
@@ -3463,11 +3608,28 @@ public class TextUtils {
 	 * }</pre>
 	 */
 	public static String getMapValue(String valueMap, Object key) {
-		return getMapValue(valueMap, key, EQUAL, SEMICOLON, SEPARATOR);
+		return getMapValue(valueMap, key, EQUAL, SEMICOLON, EMPTY);
 	}
 
 	/**
-	 * 获取 map 格式字符串中指定 key 对应的 value 字符串（使用自定义分隔符）
+	 * 获取 map 格式字符串中指定 key 对应的 value 字符串（使用默认entity分隔符,自定义项分隔符）
+	 * <p>
+	 * 在 entry 中查找指定的 key，返回对应的 value。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value，key 视为空字符串，
+	 *     此时若要查找的 key 为空字符串，则返回整个 entry 作为 value。
+	 * </p>
+	 *
+	 * @param valueMap       map 格式字符串
+	 * @param key            要查找的 key
+	 * @param itemSeparator  项分隔符
+	 * @return 对应的 value 字符串，未找到返回 null
+	 */
+	public static String getMapValue(String valueMap, Object key, String itemSeparator) {
+		return getMapValue(valueMap, key, EQUAL, SEMICOLON, itemSeparator);
+	}
+
+	/**
+	 * 获取 map 格式字符串中指定 key 对应的 value 字符串（使用自定义entity分隔符,默认项分隔符）
 	 * <p>
 	 * 在 entry 中查找指定的 key，返回对应的 value。
 	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value，key 视为空字符串，
@@ -3481,7 +3643,7 @@ public class TextUtils {
 	 * @return 对应的 value 字符串，未找到返回 null
 	 */
 	public static String getMapValue(String valueMap, Object key, String kvSeparator, String entrySeparator) {
-		return getMapValue(valueMap, key, kvSeparator, entrySeparator, SEPARATOR);
+		return getMapValue(valueMap, key, kvSeparator, entrySeparator, EMPTY);
 	}
 	/**
 	 * 获取 map 格式字符串中指定 key 对应的 value 字符串（使用自定义分隔符）
@@ -3500,33 +3662,47 @@ public class TextUtils {
 	 */
 	public static String getMapValue(String valueMap, Object key, String kvSeparator, String entrySeparator, String itemSeparator) {
 		if (isEmpty(valueMap) || key == null) {
+			// 空串都为不匹配
 			return null;
 		}
-		String item = toString(key);
+		// key 值
+		String keyStr = toString(key);
+		// map 长度
 		int mapLen = valueMap.length();
 		int entryStart = 0;
+		// 是否没有 entrySeparator
 		boolean noEntrySeparator = isEmpty(entrySeparator);
+		// 遍历 entry
 		while (entryStart <= mapLen) {
+			// 获取 entry结束位置
 			int entryEnd = noEntrySeparator ? mapLen : valueMap.indexOf(entrySeparator, entryStart);
 			if (entryEnd < 0) {
+				// 如果没找到 entrySeparator, 则 entryEnd 置为 mapLen
 				entryEnd = mapLen;
 			}
 			if (entryEnd > entryStart) {
+				// 获取 key-value 分隔位置
 				int kvPos = findKvSeparator(valueMap, entryStart, entryEnd, kvSeparator);
 				// 如果没有 kvSeparator，key 视为空字符串
 				if (kvPos < 0) {
-					if (item.isEmpty()) {
+					// 如果 key 为空字符串，代表key为空字符串
+					if (keyStr.isEmpty()) {
+						// 整个 entry都是 value
 						return valueMap.substring(entryStart, entryEnd);
 					}
 				} else {
-					if (containsItemInRegion(valueMap, entryStart, kvPos, item, itemSeparator)) {
+					// 匹配 key
+					if (containsItemInRegion(valueMap, entryStart, kvPos, keyStr, itemSeparator)) {
+						// 获取 value
 						return valueMap.substring(kvPos + kvSeparator.length(), entryEnd);
 					}
 				}
 			}
 			if (entryEnd >= mapLen) {
+				// 匹配结束
 				break;
 			}
+			// 获取下一个 entry 开始位置
 			entryStart = entryEnd + (noEntrySeparator ? 1 : entrySeparator.length());
 		}
 		return null;
@@ -3550,11 +3726,27 @@ public class TextUtils {
 	 * }</pre>
 	 */
 	public static String getMapKey(String valueMap, Object value) {
-		return getMapKey(valueMap, value, EQUAL, SEMICOLON, SEPARATOR);
+		return getMapKey(valueMap, value, EQUAL, SEMICOLON, EMPTY);
 	}
 
 	/**
-	 * 获取 map 格式字符串中指定 value 对应的 key 字符串（使用自定义分隔符）
+	 * 获取 map 格式字符串中指定 value 对应的 key 字符串（使用默认entity分隔符,自定义项分隔符）
+	 * <p>
+	 * 返回的是 key 部分的原字符串（可能包含多个逗号分隔的 key）。
+	 * 如果有多个 entry 包含该 value，返回第一个匹配的 key。
+	 * </p>
+	 *
+	 * @param valueMap map 格式字符串
+	 * @param value 要查找的 value
+	 * @param itemSeparator  项分隔符
+	 * @return 对应的 key 字符串，未找到返回 null
+	 */
+	public static String getMapKey(String valueMap, Object value, String itemSeparator) {
+		return getMapKey(valueMap, value, EQUAL, SEMICOLON, itemSeparator);
+	}
+
+	/**
+	 * 获取 map 格式字符串中指定 value 对应的 key 字符串（使用自定义entity分隔符,默认项分隔符）
 	 * <p>
 	 * 在 entry 中查找指定的 value，返回对应的 key。
 	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value，key 视为空字符串，
@@ -3568,7 +3760,7 @@ public class TextUtils {
 	 * @return 对应的 key 字符串，未找到返回 null；若 entry 无 kvSeparator 且匹配到 value 则返回空字符串
 	 */
 	public static String getMapKey(String valueMap, Object value, String kvSeparator, String entrySeparator) {
-		return getMapKey(valueMap, value, kvSeparator, entrySeparator, SEPARATOR);
+		return getMapKey(valueMap, value, kvSeparator, entrySeparator, EMPTY);
 	}
 	/**
 	 * 获取 map 格式字符串中指定 value 对应的 key 字符串（使用自定义分隔符）
@@ -3587,6 +3779,7 @@ public class TextUtils {
 	 */
 	public static String getMapKey(String valueMap, Object value, String kvSeparator, String entrySeparator, String itemSeparator) {
 		if (isEmpty(valueMap) || value == null) {
+			// 空串都为不匹配
 			return null;
 		}
 		String item = toString(value);
@@ -3619,7 +3812,7 @@ public class TextUtils {
 	 * 按出现顺序返回所有 entry 中的 key，多个 key 用 itemSeparator 拼接。
 	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，不会被收集。
 	 * </p>
-	 * 默认分隔符: entrySeparator=";", kvSeparator="=", itemSeparator=","
+	 * 默认分隔符: entrySeparator=";", kvSeparator="=", itemSeparator=""
 	 *
 	 * @param valueMap map 格式字符串
 	 * @return 所有 key 用 itemSeparator 拼接的字符串
@@ -3633,9 +3826,25 @@ public class TextUtils {
 	}
 
 	/**
-	 * 获取 map 格式字符串中所有的 key
+	 * 获取 map 格式字符串中所有的 key（去重，使用默认entity分隔符,自定义项分隔符）
+	 * <p>
+	 * 按出现顺序返回所有 entry 中的 key，多个 key 用 itemSeparator 拼接。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，不会被收集。
+	 * </p>
+	 * 默认分隔符: entrySeparator=";", kvSeparator="=", itemSeparator=""
+	 *
+	 * @param valueMap map 格式字符串
+	 * @param itemSeparator  项分隔符，也用于拼接结果
+	 * @return 所有 key 用 itemSeparator 拼接的字符串
+	 */
+	public static String mapKeys(String valueMap, String itemSeparator) {
+		return mapKeys(valueMap, EQUAL, SEMICOLON, itemSeparator);
+	}
+
+	/**
+	 * 获取 map 格式字符串中所有的 key（使用自定义entity分隔符,默认项分隔符）
 	 * 注：若 entry 中没有 kvSeparator，则该 entry 的 key 视为空字符串，不会被收集
-	 * 默认分隔符: itemSeparator=","
+	 * 默认分隔符: itemSeparator=""
 	 * @param valueMap       map 格式字符串
 	 * @param kvSeparator    key-value 分隔符
 	 * @param entrySeparator entry 分隔符
@@ -3656,7 +3865,7 @@ public class TextUtils {
 	 */
 	public static String mapKeys(String valueMap, String kvSeparator, String entrySeparator, String itemSeparator) {
 		if (isEmpty(valueMap)) {
-			return EMPTY;
+			return valueMap;
 		}
 		StringBuilder sb = new StringBuilder();
 		int mapLen = valueMap.length();
@@ -3701,7 +3910,27 @@ public class TextUtils {
 	}
 
 	/**
-	 * 获取 map 格式字符串中所有的 value（去重，使用自定义分隔符）
+	 * 获取 map 格式字符串中所有的 value（去重，使用默认entity分隔符,自定义项分隔符）
+	 * <p>
+	 * 按出现顺序返回所有 entry 中的 value，多个 value 用 itemSeparator 拼接。
+	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value。
+	 * </p>
+	 * 默认分隔符: entrySeparator=";", kvSeparator="=", itemSeparator=","
+	 *
+	 * @param valueMap map 格式字符串
+	 * @param itemSeparator  项分隔符，也用于拼接结果
+	 * @return 所有 value 用 itemSeparator 拼接的字符串
+	 * @example
+	 * <pre>{@code
+	 * TextUtils.mapValues("k1,k2=v1,v2;k3=v3");   // -> "v1,v2,v3"
+	 * }</pre>
+	 */
+	public static String mapValues(String valueMap, String itemSeparator) {
+		return mapValues(valueMap, EQUAL, SEMICOLON, itemSeparator);
+	}
+
+	/**
+	 * 获取 map 格式字符串中所有的 value（去重，使用自定义entity分隔符,默认项分隔符）
 	 * <p>
 	 * 按出现顺序返回所有 entry 中的 value，多个 value 用 itemSeparator 拼接。
 	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value。
@@ -3730,7 +3959,7 @@ public class TextUtils {
 	 */
 	public static String mapValues(String valueMap, String kvSeparator, String entrySeparator, String itemSeparator) {
 		if (isEmpty(valueMap)) {
-			return EMPTY;
+			return valueMap;
 		}
 		StringBuilder sb = new StringBuilder();
 		int mapLen = valueMap.length();
