@@ -1169,7 +1169,7 @@ public class TextUtils {
 			}
 			next = resolver.hasNext();
 		}
-		if (!isLastValue && nonSeparator) {
+		if (!isLastValue && nonSeparator && originPosition != content.length()) {
 			// 没有指定分隔符时默认使用英文逗号
 			content.append(SEPARATOR);
 		}
