@@ -1,5 +1,6 @@
 package com.honzel.core.util.text;
 
+import com.honzel.core.constant.NumberConstants;
 import com.honzel.core.util.bean.BeanHelper;
 import com.honzel.core.util.time.LocalDateTimeUtils;
 import com.honzel.core.util.web.WebUtils;
@@ -21,6 +22,7 @@ import java.security.NoSuchAlgorithmException;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.TemporalAccessor;
 import java.util.*;
 
@@ -470,17 +472,30 @@ public enum FormatTypeEnum implements TextFormatType {
             }
             String toPattern = parameters[0];
             String fromPattern = parameters.length > 1 ? parameters[1] : null;
-            if (value instanceof TemporalAccessor) {
+            if (value instanceof TemporalAccessor && !"epoch".equals(toPattern)) {
                 // 时间格式化
                 return TextUtils.isEmpty(toPattern) ? TextUtils.toString(value) : LocalDateTimeUtils.format((TemporalAccessor) value, toPattern);
             }
             LocalDateTime time;
             if (TextUtils.isNotEmpty(fromPattern) && value instanceof CharSequence) {
                 // 字符串解析成时间
-                time = LocalDateTimeUtils.parse(TextUtils.toString(value), LocalDateTimeUtils.getFormatter(fromPattern));
+                String valueStr = TextUtils.toString(value);
+                if ("epoch".equals(fromPattern)) {
+                    long timestamp = Long.parseLong(valueStr);
+                    if (timestamp < Integer.MAX_VALUE) {
+                        timestamp *= NumberConstants.INTEGER_THOUSAND;
+                    }
+                    time = BeanHelper.convert(timestamp, LocalDateTime.class);
+                } else {
+                    time = LocalDateTimeUtils.parse(valueStr, LocalDateTimeUtils.getFormatter(fromPattern));
+                }
             } else {
                 // 其他类型转成时间
                 time = BeanHelper.convert(value, LocalDateTime.class);
+            }
+            if (time != null && "epoch".equals(toPattern)) {
+                // 时间转epoch
+                return String.valueOf(time.atZone(ZoneId.systemDefault()).toEpochSecond());
             }
             // 时间格式化
             return TextUtils.isEmpty(toPattern) ? TextUtils.toString(time) : LocalDateTimeUtils.format(time, toPattern);
