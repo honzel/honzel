@@ -407,6 +407,8 @@ public enum FormatTypeEnum implements TextFormatType {
      * 摘要计算
      */
     DIGEST("digest") {
+        private static final String ENCODED_BASE64 = "base64";
+        private static final String ENCODED_HEX = "hex";
         /**
          * 格式化值
          * @param value 值
@@ -421,11 +423,11 @@ public enum FormatTypeEnum implements TextFormatType {
             String algorithm = parameters[0];
             String encodeAlgorithm = parameters.length > 2 ? parameters[2] : null;
             if (isEmpty(encodeAlgorithm)) {
-                if ("hex".equalsIgnoreCase(algorithm) || "base64".equalsIgnoreCase(algorithm)) {
+                if (ENCODED_HEX.equalsIgnoreCase(algorithm) || ENCODED_BASE64.equalsIgnoreCase(algorithm)) {
                     encodeAlgorithm = algorithm;
                     algorithm = EMPTY;
                 } else {
-                    encodeAlgorithm = "hex";
+                    encodeAlgorithm = ENCODED_HEX;
                 }
             }
             Charset charset = parameters.length > 1 && !EMPTY.equals(parameters[1]) ? Charset.forName(parameters[1]) : StandardCharsets.UTF_8;
@@ -447,7 +449,7 @@ public enum FormatTypeEnum implements TextFormatType {
                     throw new IllegalArgumentException(e.getMessage(), e);
                 }
             }
-            if ("base64".equalsIgnoreCase(encodeAlgorithm)) {
+            if (ENCODED_BASE64.equalsIgnoreCase(encodeAlgorithm)) {
                 // Base64
                 return Base64.getEncoder().encodeToString(dataBytes);
             }
@@ -459,6 +461,7 @@ public enum FormatTypeEnum implements TextFormatType {
      * 时间格式化
      */
     TIME("time") {
+        private static final String EPOCH_PATTERN = "epoch";
         /**
          * 格式化值
          * @param value 值
@@ -467,12 +470,12 @@ public enum FormatTypeEnum implements TextFormatType {
          */
         @Override
         public String formatValue(Object value, String... parameters) {
-            if (parameters.length == 0) {
-                return TextUtils.toString(value);
-            }
-            String toPattern = parameters[0];
+            // 目标时间格式
+            String toPattern = parameters.length > 0 ? parameters[0] : null;
+            // 源时间格式
             String fromPattern = parameters.length > 1 ? parameters[1] : null;
-            if (value instanceof TemporalAccessor && !"epoch".equals(toPattern)) {
+
+            if (value instanceof TemporalAccessor && !EPOCH_PATTERN.equals(toPattern)) {
                 // 时间格式化
                 return TextUtils.isEmpty(toPattern) ? TextUtils.toString(value) : LocalDateTimeUtils.format((TemporalAccessor) value, toPattern);
             }
@@ -480,7 +483,7 @@ public enum FormatTypeEnum implements TextFormatType {
             if (TextUtils.isNotEmpty(fromPattern) && value instanceof CharSequence) {
                 // 字符串解析成时间
                 String valueStr = TextUtils.toString(value);
-                if ("epoch".equals(fromPattern)) {
+                if (EPOCH_PATTERN.equals(fromPattern)) {
                     long timestamp = Long.parseLong(valueStr);
                     if (timestamp < Integer.MAX_VALUE) {
                         timestamp *= NumberConstants.INTEGER_THOUSAND;
@@ -493,7 +496,7 @@ public enum FormatTypeEnum implements TextFormatType {
                 // 其他类型转成时间
                 time = BeanHelper.convert(value, LocalDateTime.class);
             }
-            if (time != null && "epoch".equals(toPattern)) {
+            if (time != null && EPOCH_PATTERN.equals(toPattern)) {
                 // 时间转epoch
                 return String.valueOf(time.atZone(ZoneId.systemDefault()).toEpochSecond());
             }

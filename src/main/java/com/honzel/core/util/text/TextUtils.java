@@ -246,6 +246,7 @@ public class TextUtils {
 		registerFormatType(FormatTypeEnum.PAD);
 		registerFormatType(FormatTypeEnum.CALC);
 		registerFormatType(FormatTypeEnum.DIGEST);
+		registerFormatType(FormatTypeEnum.TIME);
 	}
 
 	protected TextUtils() {
