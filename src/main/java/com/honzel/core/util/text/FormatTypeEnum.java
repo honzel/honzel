@@ -189,7 +189,7 @@ public enum FormatTypeEnum implements TextFormatType {
         }
         @Override
         public void appendValue(StringBuilder formattedContent, String formattedValue, boolean nonForce) {
-            if (nonForce && formattedContent.length() > 0 && formattedContent.charAt(formattedContent.length() - 1) != '=') {
+            if (nonForce && formattedContent.length() > 0 && "=&?".indexOf(formattedContent.charAt(formattedContent.length() - 1)) == -1) {
                 formattedContent.append(formattedValue);
             } else {
                 formattedContent.append(WebUtils.encode(formattedValue));
