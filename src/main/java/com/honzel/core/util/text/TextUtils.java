@@ -1011,6 +1011,7 @@ public class TextUtils {
 		String pFlag = alternateHolderEnabled ? BRACE_START : PARENTHESES_START;
 		// 输入数据
 		String format = (String) resolver.getInput();
+		boolean nonForce = true;
 		if (resolver.hasNext(BRACKET_START + SEMICOLON)) {
 			if (resolver.endsInTokens(SEMICOLON)) {
 				// 带格式化类型
@@ -1023,6 +1024,7 @@ public class TextUtils {
 					textFormatType = localDataType;
 					// 格式化参数
 					parameters = parseParameters(resolver, pFlag, BRACKET_START);
+					nonForce = false;
 				}
 				// 解析下一部分
 				resolver.resetToBeyond(1).useTerminal(terminal).hasNext();
@@ -1059,6 +1061,10 @@ public class TextUtils {
 			value = getParamValue(resolver, params, offset);
 			offset ++;
 		}
+		if (nonForce && !(resolver.isInTokens() && format.charAt(resolver.getStart()) == EXPR_FLAG)) {
+			// 非表达式，需要强制格式化
+			nonForce = false;
+		}
 		boolean parsed = false;
 		if (parameters == null || parameters.length > 0) {
 			int startLen = content.length();
@@ -1076,7 +1082,7 @@ public class TextUtils {
 					Object itemValue = formatValue(resolver, iterator.next(), index++, configParams, params, alternateHolderEnabled, simplified);
 					hasNext = iterator.hasNext();
 					// 附加值
-					originPosition = appendFormatValue(content, resolver, textFormatType, null, itemValue, appendForEmpty, originPosition, !hasNext).length();
+					originPosition = appendFormatValue(content, resolver, textFormatType, parameters, itemValue, nonForce, appendForEmpty, originPosition, !hasNext).length();
 					if (hasNext) {
 						if (!prefix.isEmpty()) {
 							// 添加前缀
@@ -1100,7 +1106,7 @@ public class TextUtils {
 					// 是否有新一个
 					boolean hasNext = (i + 1 != len);
 					// 附加值
-					originPosition = appendFormatValue(content, resolver, textFormatType, parameters, itemValue, appendForEmpty, originPosition, !hasNext).length();
+					originPosition = appendFormatValue(content, resolver, textFormatType, parameters, itemValue, nonForce, appendForEmpty, originPosition, !hasNext).length();
 					if (hasNext) {
 						if (!prefix.isEmpty()) {
 							// 添加前缀
@@ -1118,7 +1124,7 @@ public class TextUtils {
 			// 先格式化
 			value = formatValue(resolver, value, null, configParams, params, alternateHolderEnabled, simplified);
 			// 没有解析到内容时
-			appendFormatValue(content, resolver, textFormatType, parameters, value, appendForEmpty, originPosition, true);
+			appendFormatValue(content, resolver, textFormatType, parameters, value, nonForce, appendForEmpty, originPosition, true);
 		}
 		// 该段解析结束，准备解析后一段的内容
 		resolver.resetToBeyond(1).useTypes(HOLDER_FLAG_TYPE);
@@ -1127,7 +1133,7 @@ public class TextUtils {
 
 
 
-	private static StringBuilder appendFormatValue(StringBuilder content, Resolver resolver, TextFormatType textFormatType, String[] parameters, Object value, boolean appendForEmpty, int originPosition, boolean isLastValue) {
+	private static StringBuilder appendFormatValue(StringBuilder content, Resolver resolver, TextFormatType textFormatType, String[] parameters, Object value, boolean nonForce, boolean appendForEmpty, int originPosition, boolean isLastValue) {
 		// 格式化值
 		String stringValue = TextUtils.isEmpty(value) ? TextUtils.toString(value) : textFormatType.formatValue(value, Objects.nonNull(parameters) ? parameters : ArrayConstants.EMPTY_STRING_ARRAY);
 		// 判断是否去掉前缀
@@ -1138,7 +1144,7 @@ public class TextUtils {
 		}
 		if (!emptyValue) {
 			//添加参数值
-			textFormatType.appendValue(content, stringValue);
+			textFormatType.appendValue(content, stringValue, nonForce);
 		}
 		String format = (String) resolver.getInput();
 		// 是否分隔符
@@ -1324,7 +1330,7 @@ public class TextUtils {
 			if (match) {
 				if (nestPattern) {
 					// 默认类型
-					TextFormatType defaultFormatType = Objects.nonNull(textFormatType) && Objects.isNull(parameters) ? textFormatType : getFormatType(EMPTY);
+					TextFormatType defaultFormatType = Objects.nonNull(textFormatType) && Objects.isNull(parameters) ? textFormatType : FormatTypeEnum.SIMPLE;
 					// 格式化
 					String pattern = resolver.next();
 					stringValue = format0(!alternateHolderEnabled, defaultFormatType, pattern, configParams, params, value, valueIndex, simplified);
@@ -1341,7 +1347,7 @@ public class TextUtils {
 					if (isNotEmpty(valuePattern) && isNotEmpty(stringValue = textFormatType.formatValue(valuePattern, parameters)) && parameters.length == 0) {
 						// 非空并且没有参数时，转化结果
 						StringBuilder textBuilder = new StringBuilder(stringValue.length());
-						textFormatType.appendValue(textBuilder, stringValue);
+						textFormatType.appendValue(textBuilder, stringValue, false);
 						stringValue = textBuilder.toString();
 					}
 				}

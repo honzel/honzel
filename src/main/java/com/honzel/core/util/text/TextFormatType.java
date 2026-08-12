@@ -41,10 +41,12 @@ public interface TextFormatType {
 
     /**
      * 添加格式化值
+     *
      * @param formattedContent 格式化后的内容
-     * @param formattedValue 格式化后的值
+     * @param formattedValue   格式化后的值
+     * @param nonForce 非强制
      */
-    default void appendValue(StringBuilder formattedContent, String formattedValue) {
+    default void appendValue(StringBuilder formattedContent, String formattedValue, boolean nonForce) {
         formattedContent.append(formattedValue);
     }
 

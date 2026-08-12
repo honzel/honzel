@@ -87,7 +87,11 @@ public enum FormatTypeEnum implements TextFormatType {
             return Objects.nonNull(format) && !EMPTY.equals(format = format.trim()) && (format.startsWith(BRACE_START) && format.endsWith(BRACE_END) || format.startsWith(BRACKET_START) && format.endsWith(BRACKET_END));
         }
         @Override
-        public void appendValue(StringBuilder formattedContent, String formattedValue) {
+        public void appendValue(StringBuilder formattedContent, String formattedValue, boolean nonForce) {
+            if (nonForce && formattedContent.length() > 0 && formattedContent.charAt(formattedContent.length() - 1) != '"' && preliminaryMatch(formattedValue)) {
+                formattedContent.append(formattedValue);
+                return;
+            }
             int start = 0;
             for (int i = 0, len = formattedValue.length(); i < len; i++) {
                 char ch = formattedValue.charAt(i);
@@ -147,7 +151,11 @@ public enum FormatTypeEnum implements TextFormatType {
             return Objects.nonNull(format) && !EMPTY.equals(format = format.trim()) && format.startsWith("<") && format.endsWith(">");
         }
         @Override
-        public void appendValue(StringBuilder formattedContent, String formattedValue) {
+        public void appendValue(StringBuilder formattedContent, String formattedValue, boolean nonForce) {
+            if (nonForce && preliminaryMatch(formattedValue)) {
+                formattedContent.append(formattedValue);
+                return;
+            }
             for (int i = 0, len = formattedValue.length(); i < len; i++) {
                 char ch = formattedValue.charAt(i);
                 switch (ch) {
@@ -180,8 +188,12 @@ public enum FormatTypeEnum implements TextFormatType {
             return Objects.nonNull(format) && !EMPTY.equals(format = format.trim()) && format.lastIndexOf("://", 20) > 0;
         }
         @Override
-        public void appendValue(StringBuilder formattedContent, String formattedValue) {
-            formattedContent.append(WebUtils.encode(formattedValue));
+        public void appendValue(StringBuilder formattedContent, String formattedValue, boolean nonForce) {
+            if (nonForce && formattedContent.length() > 0 && formattedContent.charAt(formattedContent.length() - 1) != '=') {
+                formattedContent.append(formattedValue);
+            } else {
+                formattedContent.append(WebUtils.encode(formattedValue));
+            }
         }
     },
     /**
