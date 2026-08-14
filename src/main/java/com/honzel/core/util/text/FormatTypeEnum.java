@@ -516,9 +516,10 @@ public enum FormatTypeEnum implements TextFormatType {
                     if (StringUtils.isNumeric(valueStr)) {
                         long timestamp = Long.parseLong(valueStr);
                         if (timestamp < Integer.MAX_VALUE) {
-                            timestamp *= NumberConstants.INTEGER_THOUSAND;
+                            return LocalDateTime.ofInstant(Instant.ofEpochSecond(timestamp), ZoneId.systemDefault());
+                        } else {
+                            return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.systemDefault());
                         }
-                        return BeanHelper.convert(timestamp, LocalDateTime.class);
                     } else {
                         return BeanHelper.convert(valueStr, LocalDateTime.class);
                     }
