@@ -88,7 +88,8 @@ public enum FormatTypeEnum implements TextFormatType {
         }
         @Override
         public void appendValue(StringBuilder formattedContent, String formattedValue, boolean nonForce) {
-            if (nonForce && formattedContent.length() > 0 && formattedContent.charAt(formattedContent.length() - 1) != '"' && preliminaryMatch(formattedValue)) {
+            if (nonForce && formattedContent.length() > 0
+                    && formattedContent.charAt(formattedContent.length() - 1) != '"' && preliminaryMatch(formattedValue)) {
                 formattedContent.append(formattedValue);
                 return;
             }
