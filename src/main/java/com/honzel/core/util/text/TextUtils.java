@@ -3607,12 +3607,6 @@ public class TextUtils {
 	 * @param valueMap       map 格式字符串
 	 * @param key            要查找的 key
 	 * @return 对应的 value 字符串，未找到返回 null
-	 * @example
-	 * <pre>{@code
-	 * TextUtils.getMapValue("k1,k2=v1,v2;k3=v3", "k1");   // -> "v1,v2"
-	 * TextUtils.getMapValue("k1,k2=v1,v2;k3=v3", "k3");   // -> "v3"
-	 * TextUtils.getMapValue("k1,k2=v1,v2;k3=v3", "k4");   // -> null
-	 * }</pre>
 	 */
 	public static String getMapValue(String valueMap, Object key) {
 		return getMapValue(valueMap, key, EQUAL, SEMICOLON, EMPTY);
@@ -3625,6 +3619,12 @@ public class TextUtils {
 	 * 注：若 entry 中没有 kvSeparator，则该 entry 整体被视为 value，key 视为空字符串，
 	 *     此时若要查找的 key 为空字符串，则返回整个 entry 作为 value。
 	 * </p>
+	 * @example 分隔符itemSeparator=","
+	 * <pre>{@code
+	 * TextUtils.getMapValue("k1,k2=v1,v2;k3=v3", "k1");   // -> "v1,v2"
+	 * TextUtils.getMapValue("k1,k2=v1,v2;k3=v3", "k3");   // -> "v3"
+	 * TextUtils.getMapValue("k1,k2=v1,v2;k3=v3", "k4");   // -> null
+	 * }</pre>
 	 *
 	 * @param valueMap       map 格式字符串
 	 * @param key            要查找的 key

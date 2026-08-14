@@ -2,8 +2,6 @@ package com.honzel.core.util.web;
 
 import com.honzel.core.constant.ArrayConstants;
 import com.honzel.core.util.bean.BeanHelper;
-import com.honzel.core.util.resolver.Resolver;
-import com.honzel.core.util.resolver.ResolverUtils;
 import com.honzel.core.util.text.TextUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +16,7 @@ import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.zip.GZIPInputStream;
 
 /**
@@ -37,9 +36,9 @@ public class WebUtils {
     private static final int DEFAULT_UPLOAD_TIMEOUT = 100000;
 
 
-    private HostnameVerifier verifier;
-    private SSLSocketFactory socketFactory;
-    private CookieHandler cookieHandler;
+    protected HostnameVerifier verifier;
+    protected SSLSocketFactory socketFactory;
+    protected CookieHandler cookieHandler;
     private static class DefaultTrustManager implements X509TrustManager {
         private static final X509Certificate[] EMPTY_CERTIFICATES = {};
         public X509Certificate[] getAcceptedIssuers() {
@@ -82,26 +81,22 @@ public class WebUtils {
 
     private void initSSLContext() {
         try {
-            SSLContext ctx = SSLContext.getInstance(sslProtocol());
-            KeyManager[] km;
-            if ((km = initSSLKeyManagers()) == null) {
-                km = new KeyManager[0];
-            }
-            TrustManager[] tm;
-            if ((tm = initSSLTrustManagers()) == null) {
-                tm = new TrustManager[]{new DefaultTrustManager()};
-            }
-            ctx.init(km, tm, new SecureRandom());
-            // 初始化客户端
-            initSSLClientSessionContext(ctx.getClientSessionContext());
-            // 初始化服务器端
-            initSSLServerSessionContext(ctx.getServerSessionContext());
-
-            socketFactory = ctx.getSocketFactory();
-
+            socketFactory = initSSLSocketFactory();
             verifier = initHostnameVerifier();
+            if (socketFactory == null) {
+                SSLContext ctx = SSLContext.getInstance("TLS");
+                KeyManager[] km = new KeyManager[0];
+                TrustManager[] tm = new TrustManager[]{new DefaultTrustManager()};
+                ctx.init(km, tm, new SecureRandom());
+                // 初始化客户端
+                SSLSessionContext context = ctx.getClientSessionContext();
+                context.setSessionTimeout(15);
+                context.setSessionCacheSize(1000);
+                // 初始化参数
+                socketFactory = ctx.getSocketFactory();
+            }
         } catch (Exception e) {
-            LOG.error("initialize SSL SSLContext fail: {}", e.getMessage());
+            LOG.error("initialize SSL SSLContext fail: {}", e.getMessage(), e);
         }
         if (socketFactory != null && verifier == null) {
             verifier = (hostname, session) -> {
@@ -111,31 +106,14 @@ public class WebUtils {
     }
 
 
-
-    protected String sslProtocol() {
-        return "TLS";
-    }
-
-    protected KeyManager[] initSSLKeyManagers() {
-        return null;
-    }
-
-    protected TrustManager[] initSSLTrustManagers() {
-        return null;
-    }
     protected HostnameVerifier initHostnameVerifier() {
+        return null;
+    }
+    protected SSLSocketFactory initSSLSocketFactory() {
         return null;
     }
     protected CookieHandler initDefaultCookieHandler() {
         return null;
-    }
-
-    protected void initSSLClientSessionContext(SSLSessionContext context) {
-        context.setSessionTimeout(15);
-        context.setSessionCacheSize(1000);
-    }
-
-    protected void initSSLServerSessionContext(SSLSessionContext context) {
     }
 
     /**
@@ -258,14 +236,15 @@ public class WebUtils {
      * @throws IOException 异常
      */
     public static String doPost(String url, String content, Charset charset, int connectTimeout, int readTimeout, Map<String, ?> headerMap) throws IOException {
+        WebUtils instance = getInstance();
         if (charset == null) {
-            charset = getInstance().getDefaultCharset();
+            charset = instance.getDefaultCharset();
         }
         String contentType = null;
         if (headerMap == null) {
             contentType = "application/x-www-form-urlencoded;charset=" + charset;
         }
-        return doRequest(getConnection(url, METHOD_POST, contentType, connectTimeout, readTimeout, headerMap), content, charset);
+        return doRequest(instance.buildConnection(url, METHOD_POST, contentType, connectTimeout, readTimeout, headerMap), content, charset);
     }
     /**
      * 执行HTTP POST请求。
@@ -486,15 +465,16 @@ public class WebUtils {
         if (fileParams == null || fileParams.isEmpty()) {
             return doPost(url, textParams, charset, connectTimeout, readTimeout, headerMap);
         }
+        WebUtils instance = getInstance();
         if (charset == null) {
-            charset = getInstance().getDefaultCharset();
+            charset = instance.getDefaultCharset();
         }
         String boundary = String.valueOf(System.currentTimeMillis()); // 随机分隔线
         URLConnection conn = null;
         OutputStream out = null;
         try {
             String cType = "multipart/form-data;boundary=" + boundary + ";charset=" + charset;
-            conn = getConnection(url, METHOD_POST, cType, connectTimeout, readTimeout, headerMap);
+            conn = instance.buildConnection(url, METHOD_POST, cType, connectTimeout, readTimeout, headerMap);
             out = conn.getOutputStream();
             byte[] entryBoundaryBytes = ("\r\n--" + boundary + "\r\n").getBytes(charset);
             if (textParams != null) { // 组装文本请求参数
@@ -596,7 +576,7 @@ public class WebUtils {
         WebUtils instance = getInstance();
         Charset defaultCharset = instance.getDefaultCharset();
         String contentType = "application/x-www-form-urlencoded;charset=" + defaultCharset;
-        return doRequest(getConnection(buildGetUrl(url, params), METHOD_GET, contentType, instance.getDefaultConnectTimeout(), instance.getDefaultReadTimeout(), headerMap), null, defaultCharset);
+        return doRequest(instance.buildConnection(buildGetUrl(url, params), METHOD_GET, contentType, instance.getDefaultConnectTimeout(), instance.getDefaultReadTimeout(), headerMap), null, defaultCharset);
     }
 
     /**
@@ -612,14 +592,15 @@ public class WebUtils {
      * @throws IOException 异常
      */
     public static String doGet(String url, String queryString, Charset charset, int connectTimeout, int readTimeout, Map<String, ?> headerMap) throws IOException {
+        WebUtils instance = getInstance();
         if (charset == null) {
-            charset = getInstance().getDefaultCharset();
+            charset = instance.getDefaultCharset();
         }
         String contentType = null;
         if (headerMap == null) {
             contentType = "application/x-www-form-urlencoded;charset=" + charset;
         }
-        return doRequest(getConnection(buildGetUrl(url, queryString), METHOD_GET, contentType, connectTimeout, readTimeout, headerMap), null, charset);
+        return doRequest(instance.buildConnection(buildGetUrl(url, queryString), METHOD_GET, contentType, connectTimeout, readTimeout, headerMap), null, charset);
     }
 
     /**
@@ -645,15 +626,28 @@ public class WebUtils {
      * @return 返回连接
      */
     public static URLConnection getConnection(String url, String method, String contentType, int connectTimeout, int readTimeout, Map<String, ?> headerMap) throws IOException {
-        URLConnection conn = null;
+        // 获取连接
+        return getInstance().buildConnection(url, method, contentType, connectTimeout, readTimeout, headerMap);
+    }
+    /**
+     * 获取连接
+     * @param url 请求url
+     * @param method 请求方法
+     * @param contentType Content Type
+     * @param connectTimeout 链接超时时间
+     * @param readTimeout 读取超时时间
+     * @param headerMap 请求头
+     * @return 返回连接
+     */
+    protected URLConnection buildConnection(String url, String method, String contentType, int connectTimeout, int readTimeout, Map<String, ?> headerMap) throws IOException {
         try {
             URL endPoint = new URL(url);
+            URLConnection conn;
             if ("https".equals(endPoint.getProtocol())) {
                 HttpsURLConnection connHttps = (HttpsURLConnection) endPoint.openConnection();
                 conn = connHttps;
-                WebUtils instance = getInstance();
-                connHttps.setSSLSocketFactory(instance.socketFactory);
-                connHttps.setHostnameVerifier(instance.verifier);
+                connHttps.setSSLSocketFactory(socketFactory);
+                connHttps.setHostnameVerifier(verifier);
             } else {
                 conn = endPoint.openConnection();
             }
@@ -678,14 +672,11 @@ public class WebUtils {
                     }
                 }
             }
+            return conn;
         } catch (IOException e) {
-            if (conn != null) {
-                ((HttpURLConnection) conn).disconnect();
-            }
             LOG.warn("打开http连接时发生错误: {}", e.getMessage());
             throw e;
         }
-        return conn;
     }
 
     /**
@@ -718,7 +709,7 @@ public class WebUtils {
      */
     public static URLConnection getConnection(String url, String method, String contentType, Map<String, ?> headerMap) throws IOException {
         WebUtils instance = getInstance();
-        return getConnection(url, method, contentType, instance.getDefaultConnectTimeout(), instance.getDefaultReadTimeout(), headerMap);
+        return instance.buildConnection(url, method, contentType, instance.getDefaultConnectTimeout(), instance.getDefaultReadTimeout(), headerMap);
     }
 
     public static String buildGetUrl(String strUrl, String query) {
@@ -849,24 +840,15 @@ public class WebUtils {
      * @return
      */
     public static Charset getResponseCharset(String contentType, Charset defaultCharset) {
-        Charset charset = defaultCharset != null ? defaultCharset : getInstance().getDefaultCharset();
-        if (TextUtils.isEmpty(contentType)) {
-            return charset;
-        }
-        Resolver resolver = ResolverUtils.createResolver(";", "=", true);
-        resolver.reset(contentType);
-        while (resolver.hasNext()) {
-            if (resolver.isInTokens() && resolver.nextEquals("charset") && resolver.hasNext()) {
-                String charsetName = resolver.next();
-                try {
-                    charset = Charset.forName(charsetName);
-                } catch (Exception e) {
-                    LOG.warn("编码" + charsetName + "不支持");
-                }
-                break;
+        String charsetName = TextUtils.getMapValue(contentType, "charset", " ");
+        if (Objects.nonNull(charsetName) && !(charsetName = charsetName.trim()).isEmpty()) {
+            try {
+                return Charset.forName(charsetName);
+            } catch (Exception e) {
+                LOG.warn("编码" + charsetName + "不支持");
             }
         }
-        return charset;
+        return defaultCharset != null ? defaultCharset : getInstance().getDefaultCharset();
     }
 
     /**
