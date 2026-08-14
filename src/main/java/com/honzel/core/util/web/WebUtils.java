@@ -479,8 +479,7 @@ public class WebUtils {
             byte[] entryBoundaryBytes = ("\r\n--" + boundary + "\r\n").getBytes(charset);
             if (textParams != null) { // 组装文本请求参数
                 for (Entry<String, ?> textEntry : textParams.entrySet()) {
-                    String value = BeanHelper.convert(textEntry.getValue(), String.class);
-                    byte[] textBytes = getTextEntry(textEntry.getKey(), value, charset);
+                    byte[] textBytes = getTextEntry(textEntry.getKey(), TextUtils.toString(textEntry.getValue()), charset);
                     out.write(entryBoundaryBytes);
                     out.write(textBytes);
                 }
