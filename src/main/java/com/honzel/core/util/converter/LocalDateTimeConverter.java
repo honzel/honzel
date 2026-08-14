@@ -8,10 +8,7 @@ import com.honzel.core.util.time.LocalDateTimeUtils;
 import java.text.ParsePosition;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoField;
-import java.time.temporal.Temporal;
-import java.time.temporal.TemporalAccessor;
-import java.time.temporal.TemporalQueries;
+import java.time.temporal.*;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Objects;
@@ -287,8 +284,11 @@ public class LocalDateTimeConverter extends AbstractConverter {
 			return Objects.nonNull(localDateTime = parseByFormatter((CharSequence) value, LocalTime.class)) ? localDateTime.toLocalTime() : LocalTime.parse((CharSequence) value);
 		}
 		LocalTime localTime;
-		if (value instanceof TemporalAccessor && Objects.nonNull(localTime = ((TemporalAccessor) value).query(TemporalQueries.localTime()))) {
-			return localTime;
+		if (value instanceof TemporalAccessor) {
+			ZoneId zoneId = ((TemporalAccessor) value).query(TemporalQueries.zone());
+			if (Objects.isNull(zoneId) && Objects.nonNull(localTime = ((TemporalAccessor) value).query(TemporalQueries.localTime()))) {
+				return localTime;
+			}
 		}
 		Instant instant = ofInstant(value);
 		if (instant != null) {
@@ -304,8 +304,11 @@ public class LocalDateTimeConverter extends AbstractConverter {
 			return Objects.nonNull(localDateTime = parseByFormatter((CharSequence) value, LocalDate.class)) ? localDateTime.toLocalDate() : LocalDate.parse((CharSequence) value);
 		}
 		LocalDate localDate;
-		if (value instanceof TemporalAccessor && Objects.nonNull(localDate = ((TemporalAccessor) value).query(TemporalQueries.localDate()))) {
-			return localDate;
+		if (value instanceof TemporalAccessor) {
+			ZoneId zoneId = ((TemporalAccessor) value).query(TemporalQueries.zone());
+			if (Objects.isNull(zoneId) && Objects.nonNull(localDate = ((TemporalAccessor) value).query(TemporalQueries.localDate()))) {
+				return localDate;
+			}
 		}
 		Instant instant = ofInstant(value);
 		if (instant != null) {
@@ -333,10 +336,13 @@ public class LocalDateTimeConverter extends AbstractConverter {
 		}
 		if (value instanceof TemporalAccessor) {
 			TemporalAccessor temporal = (TemporalAccessor) value;
-			LocalDate localDate = temporal.query(TemporalQueries.localDate());
-			LocalTime localTime = temporal.query(TemporalQueries.localTime());
-			if (localDate != null || localTime != null) {
-				return LocalDateTime.of(localDate != null ? localDate : LocalDateTimeUtils.EPOCH_DATE, localTime != null ? localTime : LocalTime.MIN);
+			ZoneId zoneId = temporal.query(TemporalQueries.zone());
+			if (Objects.isNull(zoneId)) {
+				LocalDate localDate = temporal.query(TemporalQueries.localDate());
+				LocalTime localTime = temporal.query(TemporalQueries.localTime());
+				if (localDate != null || localTime != null) {
+					return LocalDateTime.of(localDate != null ? localDate : LocalDateTimeUtils.EPOCH_DATE, localTime != null ? localTime : LocalTime.MIN);
+				}
 			}
 		}
 		Instant instant = ofInstant(value);
@@ -344,7 +350,6 @@ public class LocalDateTimeConverter extends AbstractConverter {
 	}
 
 	private Instant ofInstant(Object value) {
-
 		if (value instanceof Instant) {
 			return  (Instant) value;
 		}

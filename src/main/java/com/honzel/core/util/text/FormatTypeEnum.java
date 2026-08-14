@@ -21,8 +21,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.*;
+import java.time.temporal.ChronoField;
 import java.time.temporal.TemporalAccessor;
 import java.util.*;
 
@@ -473,7 +473,10 @@ public enum FormatTypeEnum implements TextFormatType {
      * 时间格式化
      */
     TIME("time") {
-        private static final String EPOCH_PATTERN = "epoch";
+        private static final String EPOCH_PATTERN = "@";
+        private static final String EPOCH_SECONDS_PATTERN = "@s";
+        private static final String EPOCH_MILLISECONDS_PATTERN = "@ms";
+        private static final String EPOCH_DAYS_PATTERN = "@d";
         /**
          * 格式化值
          * @param value 值
@@ -487,33 +490,114 @@ public enum FormatTypeEnum implements TextFormatType {
             // 源时间格式
             String fromPattern = parameters.length > 1 ? parameters[1] : null;
 
-            if (value instanceof TemporalAccessor && !EPOCH_PATTERN.equals(toPattern)) {
+            if (value instanceof TemporalAccessor) {
                 // 时间格式化
-                return TextUtils.isEmpty(toPattern) ? TextUtils.toString(value) : LocalDateTimeUtils.format((TemporalAccessor) value, toPattern);
+                return formatTime((TemporalAccessor) value, toPattern);
             }
             LocalDateTime time;
             if (TextUtils.isNotEmpty(fromPattern) && value instanceof CharSequence) {
                 // 字符串解析成时间
-                String valueStr = TextUtils.toString(value);
-                if (EPOCH_PATTERN.equals(fromPattern)) {
-                    long timestamp = Long.parseLong(valueStr);
-                    if (timestamp < Integer.MAX_VALUE) {
-                        timestamp *= NumberConstants.INTEGER_THOUSAND;
-                    }
-                    time = BeanHelper.convert(timestamp, LocalDateTime.class);
-                } else {
-                    time = LocalDateTimeUtils.parse(valueStr, LocalDateTimeUtils.getFormatter(fromPattern));
-                }
+                time = parseTime(value.toString(), fromPattern);
             } else {
                 // 其他类型转成时间
                 time = BeanHelper.convert(value, LocalDateTime.class);
             }
-            if (time != null && EPOCH_PATTERN.equals(toPattern)) {
-                // 时间转epoch
-                return String.valueOf(time.atZone(ZoneId.systemDefault()).toEpochSecond());
-            }
             // 时间格式化
-            return TextUtils.isEmpty(toPattern) ? TextUtils.toString(time) : LocalDateTimeUtils.format(time, toPattern);
+            return time == null ? null : formatTime(time, toPattern);
+        }
+
+        private LocalDateTime parseTime(String valueStr, String pattern) {
+            if (StringUtils.isEmpty(pattern)) {
+                pattern = EPOCH_PATTERN;
+            }
+            // 时间戳
+            switch (pattern) {
+                case EPOCH_PATTERN:
+                    if (StringUtils.isNumeric(valueStr)) {
+                        long timestamp = Long.parseLong(valueStr);
+                        if (timestamp < Integer.MAX_VALUE) {
+                            timestamp *= NumberConstants.INTEGER_THOUSAND;
+                        }
+                        return BeanHelper.convert(timestamp, LocalDateTime.class);
+                    } else {
+                        return BeanHelper.convert(valueStr, LocalDateTime.class);
+                    }
+                case EPOCH_SECONDS_PATTERN:
+                    // 时间戳(s)转时间
+                    if (StringUtils.isNumeric(valueStr)) {
+                        return LocalDateTime.ofInstant(Instant.ofEpochSecond(Long.parseLong(valueStr)), ZoneId.systemDefault());
+                    } else {
+                        return BeanHelper.convert(valueStr, LocalDateTime.class);
+                    }
+                case EPOCH_MILLISECONDS_PATTERN:
+                    // 时间戳(ms)转时间
+                    if (StringUtils.isNumeric(valueStr)) {
+                        return LocalDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(valueStr)), ZoneId.systemDefault());
+                    } else {
+                        return BeanHelper.convert(valueStr, LocalDateTime.class);
+                    }
+                case EPOCH_DAYS_PATTERN:
+                    // 日期转时间
+                    if (StringUtils.isNumeric(valueStr)) {
+                        return LocalDate.ofEpochDay(Long.parseLong(valueStr)).atTime(LocalTime.MIN);
+                    } else {
+                        return BeanHelper.convert(valueStr, LocalDateTime.class);
+                    }
+                default:
+                    // 字符串转时间
+                    return LocalDateTimeUtils.parse(valueStr, LocalDateTimeUtils.getFormatter(pattern));
+            }
+        }
+
+        private String formatTime(TemporalAccessor value, String pattern) {
+            if (StringUtils.isEmpty(pattern)) {
+                pattern = EPOCH_PATTERN;
+            }
+            Instant instant;
+            switch (pattern) {
+                case EPOCH_PATTERN:
+                case EPOCH_SECONDS_PATTERN:
+                    if (value.isSupported(ChronoField.INSTANT_SECONDS)) {
+                        return String.valueOf(value.getLong(ChronoField.INSTANT_SECONDS));
+                    }
+                    if ((instant = BeanHelper.convert(value, Instant.class)) != null) {
+                        return String.valueOf(instant.getEpochSecond());
+                    } else {
+                        return TextUtils.toString(value);
+                    }
+                case EPOCH_MILLISECONDS_PATTERN:
+                    if (value.isSupported(ChronoField.INSTANT_SECONDS)) {
+                        long seconds = value.getLong(ChronoField.INSTANT_SECONDS);
+                        int nanos = value.isSupported(ChronoField.NANO_OF_SECOND) ? value.get(ChronoField.NANO_OF_SECOND) : 0;
+                        return String.valueOf(toEpochMilli(seconds, nanos));
+                    }
+                    if ((instant = BeanHelper.convert(value, Instant.class)) != null) {
+                        return String.valueOf(instant.toEpochMilli());
+                    } else {
+                        return TextUtils.toString(value);
+                    }
+                case EPOCH_DAYS_PATTERN:
+                    if (value.isSupported(ChronoField.EPOCH_DAY)) {
+                        return String.valueOf(value.getLong(ChronoField.EPOCH_DAY));
+                    }
+                    LocalDate localDate = BeanHelper.convert(value, LocalDate.class);
+                    if (localDate != null) {
+                        return String.valueOf(localDate.toEpochDay());
+                    } else {
+                        return TextUtils.toString(value);
+                    }
+            }
+            return LocalDateTimeUtils.format(value, pattern);
+        }
+        private long toEpochMilli(long seconds, int nanos) {
+            if (seconds < 0 && nanos > 0) {
+                long millis = (seconds + 1) * 1000;
+                long adjustment = nanos / 1000_000 - 1000;
+                return Math.addExact(millis, adjustment);
+            } else {
+                long millis = seconds * 1000;
+                return Math.addExact(millis, nanos / 1000_000);
+            }
         }
     },
     ;
