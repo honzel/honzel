@@ -156,10 +156,12 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 		// 默认业务链
 		ChainMethodList defaultResult = chainMethodMap.isEmpty() ? new ChainMethodList(processors, log) : chainMethodMap.remove(CHAIN_TYPE_DEFAULT);
 		if (defaultResult != null) {
-			// 完成解析
+			// 完成解析, 默认方法不需要判断是否可选
 			defaultResult.finish(allArgumentTypes);
 		}
-
+		// 移除全部方法都是可选的链
+		chainMethodMap.values().removeIf(ChainMethodList::isAllOptional);
+		// 使用final变量传递给lambda
 		chainMethodMap.forEach((chainType, methodList) -> {
 			// 设置默认链方法
 			methodList.setDefaultMethodList(defaultResult);
@@ -173,19 +175,19 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 		// 按业务链类型解析
 		boolean match = false;
 		ProcessType processType = annotation.processType();
-		boolean maskLow = annotation.maskLow();
+		boolean futureWait = annotation.futureWait();
+		boolean optional = annotation.optional();
 		for (int chainType : annotation.chainType()) {
-			int maskChainType = maskLow ? MASK_LOW_FLAG | (chainType & CHAIN_MASK_LOW) : chainType;
 			// 获取之前解析的对象
-			ChainMethodList chainMethodList = chainMethodMap.get(maskChainType);
+			ChainMethodList chainMethodList = chainMethodMap.get(chainType);
 			if (chainMethodList == null) {
 				// 如果没有则新建初始化
 				chainMethodList = new ChainMethodList(processors, log);
 				// 放入map
-				chainMethodMap.put(maskChainType, chainMethodList);
+				chainMethodMap.put(chainType, chainMethodList);
 			}
 			// 添加入方法
-			if (chainMethodList.addMethod(index, method, argumentTypes, processType, isDefault) && !match) {
+			if (chainMethodList.addMethod(index, method, argumentTypes, processType, isDefault, futureWait, optional) && !match) {
 				match = true;
 			}
 		}

@@ -37,9 +37,4 @@ public interface ChainConstants {
      * 属性处理类型
      */
     String ATTRIBUTE_PROCESS_TYPE = "processType";
-    /**
-     * 属性是否maskLow位
-     */
-    String ATTRIBUTE_MASK_LOW = "maskLow";
-
 }

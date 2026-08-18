@@ -1,13 +1,9 @@
 package com.honzel.core.stratery;
 
-import com.honzel.core.constant.ArrayConstants;
-import com.honzel.core.util.bean.BeanHelper;
 import org.slf4j.Logger;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.concurrent.Future;
 
 /**
  * 业务类型方法列表对象
@@ -16,27 +12,15 @@ import java.util.concurrent.Future;
  */
 class ChainMethodList {
     /**
-     * 返回值位
-     */
-    private static final int HASH_PARAM = 0;
-    /**
-     * 返回值位
-     */
-    private static final int HASH_RESULT = 1;
-    /**
-     * 返回值位
-     */
-    private static final int HASH_CHAIN_TYPE = 2;
-    /**
-     * 参数总位数
+     * 参数总长数
      */
     private static final int ARGS_LENGTH = 3;
     /**
-     * 参数预初始化长度
+     * 最多预初始化参数组数
      */
     private static final int PRE_ARGS_INIT_LENGTH = 3;
     /**
-     * 所有参数标识
+     * 二进制111，代表同时包含全部3个参数
      */
     private static final int HASH_ALL_ARGS = (1 << ARGS_LENGTH) - 1;
 
@@ -44,10 +28,6 @@ class ChainMethodList {
      * 日志对象
      */
     private final Logger log;
-    /**
-     * 无效方法
-     */
-    private static final Method INVALID_METHOD = BeanHelper.findDeclaredMethod(Object.class, "toString", ArrayConstants.EMPTY_CLASS_ARRAY);
     /**
      * 空参数上下文对象
      */
@@ -66,13 +46,9 @@ class ChainMethodList {
      */
     private int[] offsets = new int[PROCESS_TYPE_LENGTH];
     /**
-     * 处理器方法列表
+     * 处理器链方法列表, 按处理类型分组
      */
-    private Method[][] processMethods = new Method[PROCESS_TYPE_LENGTH][];
-    /**
-     * 处理方法参数标识
-     */
-    private int[][] argumentHashArray = new int[PROCESS_TYPE_LENGTH][];
+    private ChainMethod[][] chainMethods = new ChainMethod[PROCESS_TYPE_LENGTH][];
 
     /**
      * 最后解析位置是否默认
@@ -80,7 +56,7 @@ class ChainMethodList {
     private boolean[] topDefaults = new boolean[PROCESS_TYPE_LENGTH];
 
     /**
-     * 是否统一参数
+     * 所有方法的参数标识
      */
     private int argumentFlags;
     /**
@@ -115,26 +91,20 @@ class ChainMethodList {
      * @param allArgumentTypes 所有方法
      * @param processType 处理类型
      * @param isDefault 是否是默认链的方法
+     * @param futureWait 返回值为Future时是否等待结果
+     * @param optional 是否为可选方法
      */
-    boolean addMethod(int index, Method method, Class<?>[] allArgumentTypes, ProcessType processType, boolean isDefault) {
-        Class<?>[] actTypes = method.getParameterTypes();
-        // 默认方法先校验参数是否匹配, 不匹配时直接忽略
-        if (isDefault && hash(allArgumentTypes, actTypes, null) < 0) {
-            // 默认链的类型不匹配
-            return false;
-        }
+    boolean addMethod(int index, Method method, Class<?>[] allArgumentTypes, ProcessType processType, boolean isDefault, boolean futureWait, boolean optional) {
         // 校验上一个方法结果如果需要
         checkTopIndex(index, allArgumentTypes);
         // 方法类型
         final int typeIndex = processType.ordinal();
         // 如果为空时初始化
-        Method[] methods = processMethods[typeIndex];
+        ChainMethod[] methods = chainMethods[typeIndex];
         int offset;
         if (methods == null) {
-            // 方式数组初始化
-            processMethods[typeIndex] = (methods = new Method[processors.length - index]);
-            // 参数初始化
-            argumentHashArray[typeIndex] = new int[methods.length];
+            // 链方法数组初始化
+            chainMethods[typeIndex] = (methods = new ChainMethod[processors.length - index]);
             // 链方法起始位置
             offsets[typeIndex] = index;
             offset = 0;
@@ -145,7 +115,7 @@ class ChainMethodList {
             boolean topDefault;
             if ((topDefault = topDefaults[typeIndex]) == isDefault) {
                 if (log.isWarnEnabled()) {
-                    log.warn("同一处理器下对应相同的链类型有重复的处理方法, 后面一个将被忽略掉: [{}]<==>[{}]", toShortName(methods[offset], null), toShortName(method, actTypes));
+                    log.warn("同一处理器下对应相同的链类型有重复的处理方法, 后面一个将被忽略掉: [{}]<==>[{}]", methods[offset].getMethodRefName(), method);
                 }
                 return false;
             }
@@ -153,18 +123,35 @@ class ChainMethodList {
                 return false;
             }
         }
+        // 创建链方法对象
+        ChainMethod chainMethod = new ChainMethod(method, log);
+        if (isDefault) {
+            // 解析参数匹配
+            if (!chainMethod.parseMethod(allArgumentTypes, false)) {
+                // 参数不匹配
+                return false;
+            }
+        } else {
+            // 解析参数匹配
+            chainMethod.parseMethod(allArgumentTypes, true);
+            // 更新结果类型
+            resultClass = chainMethod.checkResultClass(allArgumentTypes, false, resultClass);
+            // 更新参数标识
+            int hash = chainMethod.getHash();
+            if (hash > 0) {
+                // 空参数不打标
+                argumentFlags |= (1 << (hash - 1));
+            }
+        }
+        // 设置futureWait和optional属性
+        chainMethod.setFutureWait(futureWait);
+        chainMethod.setOptional(optional);
         // 设置是否默认标识
         topDefaults[typeIndex] = isDefault;
-
-        if (!isDefault) {
-            // 非默认链的方法解析参数和返回结果
-            parseResultClass(typeIndex, offset, allArgumentTypes, actTypes, method);
-        }
         // 设置为可访问
         method.setAccessible(true);
         // 添加方法
-        methods[offset] = method;
-
+        methods[offset] = chainMethod;
         return true;
     }
 
@@ -175,9 +162,15 @@ class ChainMethodList {
         if (topDefaults != null) {
             for (int i = 0; i < topDefaults.length; i++) {
                 if (topDefaults[i]) {
-                    // 解析结果类型
-                    int offset = topIndex - offsets[i];
-                    parseResultClass(i, offset, allArgumentTypes, processMethods[i][offset].getParameterTypes(), null);
+                    // 重新解析默认方法的结果类型
+                    ChainMethod cm = chainMethods[i][topIndex - offsets[i]];
+                    // 解析默认结果类型
+                    tempResultClass = cm.checkResultClass(allArgumentTypes, true, tempResultClass);
+                    int hash = cm.getHash();
+                    if (hash > 0) {
+                        // 空参数不打标
+                        argumentFlags |= (1 << (hash - 1));
+                    }
                     // 去掉默认
                     topDefaults[i] = false;
                 }
@@ -186,133 +179,6 @@ class ChainMethodList {
         topIndex = parseIndex;
     }
 
-    private String toShortName(Method method, Class<?>[] parameterTypes) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(method.getDeclaringClass().getSimpleName()).append('.');
-        sb.append(method.getName());
-        sb.append('(');
-        int len = method.getParameterCount();
-        if (len > 0) {
-            if (parameterTypes == null) {
-                parameterTypes = method.getParameterTypes();
-            }
-            sb.append(parameterTypes[0].getSimpleName());
-            for (int i = 1; i < len; ++i) {
-                sb.append(',').append(parameterTypes[i].getSimpleName());
-            }
-        }
-        sb.append(')');
-        return sb.toString();
-    }
-
-    private void parseResultClass(int typeIndex, int offset, Class<?>[] allArgumentTypes, Class<?>[] actTypes, Method throwableMethod) {
-        // 解析参数位
-        int result;
-        if ((result = hash(allArgumentTypes, actTypes, throwableMethod)) < 0) {
-            // 参数不匹配
-            return;
-        }
-        if (result > 0) {
-            // 参数位标记
-            argumentHashArray[typeIndex][offset] = result;
-            argumentFlags |= (1 << (result - 1));
-        }
-        if ((result & (1 << HASH_RESULT)) == 0) {
-            // 如果没有结果参数
-            return;
-        }
-        Class<?> resultType = throwableMethod != null ? resultClass : tempResultClass;
-        if (resultType == null) {
-            // 实际类型是之前类型的子类型时，使用子类型
-            resultType = allArgumentTypes[HASH_RESULT];
-        }
-        // 解析参数类型中的结果类型位置
-        int pos = HASH_RESULT;
-        for (int i = 0; i < HASH_RESULT; ++i) {
-            if ((result & (1 << i)) == 0) {
-                --pos;
-            }
-        }
-        if (resultType.equals(actTypes[pos])) {
-            // 相等时不替换
-            return;
-        }
-        // 如果是结果类型及类型不相等
-        if (resultType.isAssignableFrom(actTypes[pos])) {
-            // 实际类型是之前类型的子类型时，使用子类型
-            if (throwableMethod != null) {
-                resultClass = actTypes[pos];
-            } else {
-                tempResultClass = actTypes[pos];
-            }
-            return;
-        }
-        if (throwableMethod != null && !actTypes[pos].isAssignableFrom(resultType)) {
-            // 参数的结果类型有冲突
-            throw new RuntimeException(String.format("处理器方法[%s]的结果对象类型[%s]与该业务链或其他处理器的结果类型[%s]有冲突",
-                    toShortName(throwableMethod, actTypes), actTypes[pos].getSimpleName(), resultType.getSimpleName()));
-        }
-    }
-
-
-    private int hash(Class<?>[] allArgumentTypes, Class<?>[] actTypes, Method throwableMethod) {
-        int argsNum;
-        if ((argsNum = actTypes.length) > allArgumentTypes.length) {
-            // 参数数量不匹配
-            if (throwableMethod == null) {
-                return -1;
-            }
-            throw new RuntimeException(String.format("处理器方法[%s]参数数量太多, 不能超过%s个", toShortName(throwableMethod, actTypes), allArgumentTypes.length));
-        }
-        if (argsNum == 0) {
-            return 0;
-        }
-        // 校验参数类型及解析参数类型中的结果类型
-        int pos = 0;
-        int result = 0;
-        for (int i = 0; i < allArgumentTypes.length; ++i) {
-            if (actTypes[pos].isAssignableFrom(allArgumentTypes[i]) || allArgumentTypes[i].isAssignableFrom(actTypes[pos])) {
-                if (++pos >= argsNum) {
-                    // 已匹配完成
-                    if (i < HASH_RESULT && matchResultType(allArgumentTypes[HASH_RESULT], actTypes[pos - 1])) {
-                        // 如果是结果类型，则优先作为结果类型
-                        result |= (1 << HASH_RESULT);
-                    } else {
-                        // 作为普通参数
-                        result |= (1 << i);
-                    }
-                    break;
-                }
-                result |= (1 << i);
-            } else if (i == HASH_RESULT && pos > 0 && matchResultType(allArgumentTypes[HASH_RESULT], actTypes[pos - 1])) {
-                // 如果是结果类型，则优先作为结果类型
-                if (result == 1) {
-                    result <<= HASH_RESULT;
-                } else {
-                    for (int j = HASH_RESULT - 1; j >= pos - 1; --j) {
-                        int h;
-                        if ((h = result & (1 << j)) != 0) {
-                            result = ~h & result | (1 << HASH_RESULT);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        if (pos < argsNum) {
-            // 参数类型不匹配
-            if (throwableMethod == null) {
-                return -1;
-            }
-            throw new RuntimeException(String.format("处理器方法[%s]第%s个参数的类型[%s]与业务链要求的类型[%s]不匹配",
-                    toShortName(throwableMethod, actTypes), pos + 1, actTypes[pos].getSimpleName(), allArgumentTypes[pos].getSimpleName()));
-        }
-        return result;
-    }
-
-    private boolean matchResultType(Class<?> argumentType, Class<?> actType) {
-        return argumentType.isAssignableFrom(actType) || ProcessResult.class.isAssignableFrom(actType) && actType.isAssignableFrom(argumentType);
-    }
 
     /**
      * 结束解析
@@ -322,37 +188,43 @@ class ChainMethodList {
         // 校验上一个方法
         checkTopIndex(topIndex + 1, allArgumentTypes);
         // 重新计算方法数组
-	    boolean first = true;
-        for (int i = processMethods.length - 1; i >= 0; --i) {
-            if (processMethods[i] == null) {
+        boolean first = true;
+        for (int i = chainMethods.length - 1; i >= 0; --i) {
+            if (chainMethods[i] == null) {
+                continue;
+            }
+            // 判断是否全部为空
+            int j = 0;
+            while (j < chainMethods[i].length && chainMethods[i][j] == null) j++;
+            // 如果全部为空
+            if (j == chainMethods[i].length) {
+                // 置空并跳过
+                chainMethods[i] = null;
                 continue;
             }
             if (first) {
-                if (i + 1 < processMethods.length) {
+                if (i + 1 < chainMethods.length) {
                     // 调整方法数组大小
-                    processMethods = Arrays.copyOf(processMethods, i + 1);
+                    chainMethods = Arrays.copyOf(chainMethods, i + 1);
                     offsets = Arrays.copyOf(offsets, i + 1);
-                    argumentHashArray = Arrays.copyOf(argumentHashArray, i + 1);
                 }
                 first = false;
-	        }
+            }
             // 只有check不需要distinct
             boolean distinct = i != ProcessType.CHECK.ordinal();
             // 调整链方法大小
-            processMethods[i] = resizeMethods(processMethods[i], topIndex - offsets[i], distinct);
-            // 是否长度有调整
-            if (argumentHashArray[i].length != processMethods[i].length) {
-                // 如果长度有调整
-                argumentHashArray[i] = Arrays.copyOf(argumentHashArray[i], processMethods[i].length);
+            chainMethods[i] = resizeMethods(chainMethods[i], j, topIndex - offsets[i], distinct);
+            if (j > 0) {
+                offsets[i] = offsets[i] + j;
             }
         }
-        topIndex --;
+        topIndex--;
         // 返回结果类型
         if (resultClass == null) {
             // 设置默认结果类型
-            resultClass = (tempResultClass != null ? tempResultClass : allArgumentTypes[HASH_RESULT]);
-            //
-        } else if (tempResultClass != null && !resultClass.equals(tempResultClass) && resultClass.isAssignableFrom(tempResultClass)) {
+            resultClass = (tempResultClass != null ? tempResultClass : allArgumentTypes[ChainMethod.HASH_RESULT]);
+        } else if (tempResultClass != null
+                && !resultClass.equals(tempResultClass) && resultClass.isAssignableFrom(tempResultClass)) {
             // 如果临时结果类型为子类型时，使用子类型做为结果类型
             resultClass = tempResultClass;
         }
@@ -361,36 +233,36 @@ class ChainMethodList {
         topDefaults = null;
     }
 
-    private Method[] resizeMethods(Method[] methods, int len, boolean distinct) {
-        if (methods == null) {
-            return null;
-        }
-        // 处理掉重复的保存方法，只取最后一个
-        int newLength = Math.min(len, methods.length);
-        // 获取是否第一次
+    private ChainMethod[] resizeMethods(ChainMethod[] methods, int offset, int len, boolean distinct) {
+        int end = Math.min(len, methods.length);
         boolean first = true;
-        // resize数组
-        for (int i = newLength - 1; i > 0; --i) {
-            Method method = methods[i];
-            if (method == null || method == INVALID_METHOD) {
+        for (int i = end - 1; i > offset; --i) {
+            ChainMethod cm = methods[i];
+            if (cm == null) {
                 if (first) {
-                    --newLength;
+                    --end;
                 }
                 continue;
             }
             if (distinct) {
-                first = false;
-                for (int j = i - 1; j >= 0; --j) {
-                    if (method.equals(methods[j])) {
-                        methods[j] = INVALID_METHOD;
+                if (first) {
+                    first = false;
+                }
+                if (cm.isValid()) {
+                    for (int j = i - 1; j >= offset; --j) {
+                        ChainMethod method = methods[j];
+                        if (method != null && cm.isSameProcessMethod(method)) {
+                            method.setToInvalid();
+                        }
                     }
                 }
             } else {
                 break;
             }
         }
-        if (newLength < methods.length) {
-            return Arrays.copyOf(methods, newLength);
+        if (end - offset < methods.length) {
+            // 调整方法数组大小
+            return Arrays.copyOfRange(methods, offset, end);
         }
         return methods;
     }
@@ -423,6 +295,7 @@ class ChainMethodList {
         if (lengthAndHash > 0 && lengthAndHash <= HASH_ALL_ARGS) {
             // 仅包含长度
             int len = lengthAndHash;
+            // 判断是否包含全参数，如果不包含则加上全参数
             if ((totalArgumentFlags & (1 << (HASH_ALL_ARGS - 1))) == 0) {
                 // 加上全参数
                 len += 1;
@@ -454,13 +327,13 @@ class ChainMethodList {
                     continue;
                 }
                 switch (j) {
-                    case HASH_PARAM:
+                    case ChainMethod.HASH_PARAM:
                         args[pos ++] = param;
                         break;
-                    case HASH_RESULT:
+                    case ChainMethod.HASH_RESULT:
                         args[pos ++] = processResult;
                         break;
-                    case HASH_CHAIN_TYPE:
+                    case ChainMethod.HASH_CHAIN_TYPE:
                         args[pos ++] = chainType;
                         break;
                 }
@@ -475,6 +348,11 @@ class ChainMethodList {
     }
 
 
+    /**
+     * 解析参数组合数量和参数标识,当参数组合数量大于预初始化组合数量限制时，只返回参数组合数量
+     * @param totalArgumentFlags 总参数标识
+     * @return 返回参数长度和参数标识
+     */
     private int parseLengthAndHash(int totalArgumentFlags) {
         int len = 0;
         int hashList = 0;
@@ -535,29 +413,23 @@ class ChainMethodList {
 
 
     private boolean doNonSave(Object[][] allArguments, int totalArgumentFlags, ChainMethodList[] secondaries, ProcessType processType) {
-        // 处理次要方法列表对象
         int typeIndex = processType.ordinal();
         // 获取起始位置
         int offset = getOffset(secondaries, typeIndex);
         // 循环执行方法
         for (int i = offset; i < processors.length; i++) {
-            // 获取检验方法
-            ChainMethodList methodList = getMatchMethodList(i, secondaries, typeIndex);
-            if (methodList == null) {
-                // 没有可用调用方法
+            // 获取链方法
+            ChainMethod method = getChainMethod(i, secondaries, typeIndex);
+            if (method == null) {
                 continue;
             }
-            // 获取index
-            int index = (i - methodList.offsets[typeIndex]);
-            // 执行检验方法
-            Method method = methodList.processMethods[typeIndex][index];
-            if (invokeProcessMethod(processors[i], method, allArguments, totalArgumentFlags, methodList.argumentHashArray[typeIndex][index])) {
-                // 如果是继续时执行下一个方法
+            // 执行方法
+            if (method.invoke(processors[i], allArguments, totalArgumentFlags)) {
                 continue;
             }
             // 中断校验方法的执行
             if (log.isDebugEnabled()) {
-                log.debug("执行方法[{}]返回false结果, 直接跳过后续的所有处理器处理", toShortName(method, null));
+                log.debug("执行方法[{}]返回false结果, 直接跳过后续的所有处理器处理", method.getMethodRefName());
             }
             return false;
         }
@@ -571,168 +443,51 @@ class ChainMethodList {
      * @param secondaries 次要方法列表
      */
     void doSave(Object[][] allArguments, int totalArgumentFlags, ChainMethodList[] secondaries) {
-        // 处理次要方法列表对象
         int saveIndex = ProcessType.SAVE.ordinal();
         // 获取起始位置
         int offset = getOffset(secondaries, saveIndex);
         // 循环执行方法
         for (int i = offset; i < processors.length; i++) {
-            // 获取检验方法
-            ChainMethodList methodList = getMatchMethodList(i, secondaries, saveIndex);
-            if (methodList != null) {
-                // 获取index
-                int index = (i - methodList.offsets[saveIndex]);
-                // 获取保存方法
-                Method saveMethod = methodList.processMethods[saveIndex][index];
+            // 获取链方法
+            ChainMethod chainMethod = getChainMethod(i, secondaries, saveIndex);
+            if (chainMethod != null) {
                 // 执行保存方法
-                invokeProcessMethod(processors[i], saveMethod, allArguments, totalArgumentFlags, methodList.argumentHashArray[saveIndex][index]);
+                chainMethod.invoke(processors[i], allArguments, totalArgumentFlags);
             }
         }
-    }
-
-    private boolean invokeProcessMethod(Object processor, Method processMethod, Object[][] allArguments, int totalArgumentFlags, int hash) {
-        if (processMethod == null || processMethod == INVALID_METHOD) {
-            // 返回是否继续
-            return true;
-        }
-        if (log.isDebugEnabled()) {
-            log.debug("执行方法[{}]", toShortName(processMethod, null));
-        }
-        try {
-            Object result = processMethod.invoke(processor, getMethodActualArguments(processMethod, allArguments, totalArgumentFlags, hash));
-            if (Boolean.TYPE.equals(processMethod.getReturnType())) {
-                //校验时返回是否继续下一步的处理
-                return (Boolean) result;
-            } else if (result instanceof Future) {
-                // 等待结果
-                ((Future<?>) result).get();
-            }
-        } catch (InvocationTargetException e) {
-            Throwable t = e.getTargetException();
-            if (t instanceof RuntimeException) {
-                // 如果是运行时异常则直接抛出
-                throw (RuntimeException) t;
-            } else if (t != null) {
-                // 非运行时异常值包装成运行时异常抛出
-                throw new RuntimeException(t.getMessage(), t);
-            } else {
-                // 其他异常
-                throw new RuntimeException(e.getMessage(), e);
-            }
-        } catch (Exception e) {
-            // 其他异常
-            throw new RuntimeException(e.getMessage(), e);
-        }
-        return true;
     }
 
     /**
-     * 获取方法实际参数
-     * @param processMethod 方法
-     * @param allArguments 所有参数
-     * @param totalArgumentFlags 全参数标识
-     * @param hash 方法参数
-     * @return 返回方法的实际参数
-     */
-    private Object[] getMethodActualArguments(Method processMethod, Object[][] allArguments, int totalArgumentFlags, int hash) {
-        // 参数数量
-        int parameterCount = processMethod.getParameterCount();
-        // 不需要参数
-        if (allArguments == null || parameterCount == 0) {
-            return ArrayConstants.EMPTY_OBJECT_ARRAY;
-        }
-        // 获取参数位置
-        int index = getArgumentIndex(totalArgumentFlags, hash, allArguments.length);
-        // 获取参数
-        Object[] args = allArguments[index];
-        if (args == null) {
-            // 创建
-            args = initActualArguments(allArguments[allArguments.length - 1], hash, parameterCount);
-            // 放入缓存
-            allArguments[index] = args;
-        }
-        return args;
-    }
-
-    private Object[] initActualArguments(Object[] maxArguments, int hash, int count) {
-        // 获取参数标识
-        // 初始化参数
-        Object[] args = new Object[count];
-        for (int i = maxArguments.length - 1; i >= 0 && count > 0; i--) {
-            if ((hash & (1 << i)) != 0) {
-                // 设置参数
-                args[--count] = maxArguments[i];
-            }
-        }
-        return args;
-    }
-
-    private int getArgumentIndex(int totalFlags, int hash, int len) {
-        if (len == 1 || hash == 1) {
-            return 0;
-        }
-	    int flag = 1 << --hash;
-        // 只取小于的部分
-        int flags = totalFlags & (flag - 1);
-        if (flags == 0) {
-            return 0;
-        }
-        if (len == 2) {
-            return 1;
-        }
-        if (len == 3) {
-            return (flag | flags) == totalFlags ? 2 : 1;
-        }
-        //
-        for (int i = hash - 1; i >= 0; --i) {
-            // 如果头位为空位(0)
-            if ((flags & 1) == 0) {
-                // 位置减1
-                --hash;
-            }
-            if (i > 0 && (flags >>>= 1) == 0) {
-                // 如果剩余全部为0，减去剩余数量
-                hash -= i;
-                break;
-            }
-        }
-        return hash;
-    }
-
-    /**
-     * 获取方法
+     * 获取链方法
      * @param index 处理器索引
      * @param secondaries 次要方法列表
      * @param typeIndex 操作类型索引
-     * @return 返回保存方法
+     * @return 返回链方法, 不存在返回null
      */
-    private ChainMethodList getMatchMethodList(int index, ChainMethodList[] secondaries, int typeIndex) {
+    private ChainMethod getChainMethod(int index, ChainMethodList[] secondaries, int typeIndex) {
         // 匹配主链方法
-        if (matchMethod(index, this, typeIndex)) {
-            // 返回主链对象
-            return this;
+        ChainMethod cm = matchChainMethod(index, this, typeIndex);
+        if (cm != null) {
+            return cm;
         }
         if (secondaries != null) {
             for (ChainMethodList secondary : secondaries) {
-                // 匹配辅链方法
-                if (matchMethod(index, secondary, typeIndex)) {
-                    return secondary;
+                if ((cm = matchChainMethod(index, secondary, typeIndex)) != null) {
+                    return cm;
                 }
             }
         }
         // 匹配默认链方法
-        return matchMethod(index, defaultMethodList, typeIndex) ? defaultMethodList : null;
+        return matchChainMethod(index, defaultMethodList, typeIndex);
     }
 
-
-    private boolean matchMethod(int index, ChainMethodList methodList, int typeIndex) {
-        Method[] methods;
+    private ChainMethod matchChainMethod(int index, ChainMethodList methodList, int typeIndex) {
+        ChainMethod[] methods;
         int offset;
-        if (existsList(methodList, typeIndex) && index >= (offset = methodList.offsets[typeIndex]) && index < offset + (methods = methodList.processMethods[typeIndex]).length) {
-            // 是否匹配到类型
-            return methods[index - offset] != null;
+        if (existsList(methodList, typeIndex) && index >= (offset = methodList.offsets[typeIndex]) && index < offset + (methods = methodList.chainMethods[typeIndex]).length) {
+            return methods[index - offset];
         }
-        return false;
+        return null;
     }
 
     /**
@@ -815,21 +570,38 @@ class ChainMethodList {
     }
 
     private boolean existsList(ChainMethodList methodList, int typeIndex) {
-        return methodList != null && typeIndex < methodList.offsets.length && methodList.processMethods[typeIndex] != null;
+        return methodList != null && typeIndex < methodList.offsets.length && methodList.chainMethods[typeIndex] != null;
+    }
+
+    /**
+     * 判断该链的所有方法是否都为可选方法
+     * @return true表示所有方法都是可选的
+     */
+    boolean isAllOptional() {
+        for (ChainMethod[] methods : chainMethods) {
+            if (methods != null) {
+                for (ChainMethod method : methods) {
+                    if (method != null && !method.isOptional()) {
+                        // 存在一个非可选方法，返回false
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
     }
 
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        for (Method[] methods : processMethods) {
+        for (ChainMethod[] methods : chainMethods) {
             if (methods == null) {
                 continue;
             }
-            for (Method method : methods) {
-                if (method == null || method == INVALID_METHOD) {
-                    continue;
+            for (ChainMethod cm : methods) {
+                if (cm != null && cm.isValid()) {
+                    builder.append(" ==> ").append(cm).append("\n");
                 }
-                builder.append(" ==> ").append(toShortName(method, null)).append("\n");
             }
         }
         return builder.toString();
