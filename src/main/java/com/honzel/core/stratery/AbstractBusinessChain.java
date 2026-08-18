@@ -9,10 +9,7 @@ import org.springframework.core.GenericTypeResolver;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.BiConsumer;
 
 import static com.honzel.core.constant.NumberConstants.INTEGER_ONE;
@@ -93,12 +90,12 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 	 */
 	private void addProcessors0(boolean maskIfNecessary, Object[] processors) {
 		this.maskIfNecessary = maskIfNecessary;
-		// 安类型解析业务链
-		Map<Integer, ChainMethodList> chainMethodMap = new HashMap<>();
+		// 按类型解析业务链(需要key从大到小排序)
+		Map<Integer, ChainMethodList> chainMethodMap = new TreeMap<>(Comparator.reverseOrder());
 		// 默认处理链
-		this.defaultMethodList = parseChainMethodList(processors, chainMethodMap);
-		// 其他业务链方法
-		this.specifiedChainMethodMap = chainMethodMap.isEmpty() ? Collections.emptyMap() : chainMethodMap;
+		this.defaultMethodList = parseChainMethodList(processors, chainMethodMap, maskIfNecessary);
+		// 其他业务链方法,使用HashMap存储方便查找
+		this.specifiedChainMethodMap = chainMethodMap.isEmpty() ? Collections.emptyMap() : new HashMap<>(chainMethodMap);
 	}
 
 	/**
@@ -111,11 +108,13 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 
 	/**
 	 * 解析所有业务链类型方法
-	 * @param processors 处理器
-	 * @param chainMethodMap 业务链方法map
+	 *
+	 * @param processors      处理器
+	 * @param chainMethodMap  业务链方法map
+	 * @param maskIfNecessary 是否需要时使用掩码, true-是;false-否
 	 * @return 返回默认的业务链方法
 	 */
-	private ChainMethodList parseChainMethodList(Object[] processors, Map<Integer, ChainMethodList> chainMethodMap) {
+	private ChainMethodList parseChainMethodList(Object[] processors, Map<Integer, ChainMethodList> chainMethodMap, boolean maskIfNecessary) {
 		// 参数格式
 		Class<?>[] allArgumentTypes = {paramClass, resultClass, Integer.TYPE};
 		// 本类型
@@ -160,23 +159,92 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 			defaultResult.finish(allArgumentTypes);
 		}
 		// 移除全部方法都是可选的链
-		chainMethodMap.values().removeIf(ChainMethodList::isAllOptional);
-		// 使用final变量传递给lambda
-		chainMethodMap.forEach((chainType, methodList) -> {
-			// 设置默认链方法
-			methodList.setDefaultMethodList(defaultResult);
-			// 完成解析
-			methodList.finish(allArgumentTypes);
-		});
+		removeOptionalIfNecessary(chainMethodMap, allArgumentTypes, defaultResult, maskIfNecessary);
+		// 返回默认业务链
 		return defaultResult;
 	}
+
+	private static void removeOptionalIfNecessary(Map<Integer, ChainMethodList> chainMethodMap, Class<?>[] allArgumentTypes, ChainMethodList defaultResult, boolean maskIfNecessary) {
+		if (chainMethodMap.isEmpty()) {
+			// 没有其他业务链
+			return;
+		}
+		// 遍历所有链方法(已从大到小排序)
+		Iterator<Map.Entry<Integer, ChainMethodList>> iterator = chainMethodMap.entrySet().iterator();
+		if (maskIfNecessary) {
+			// 已使用的父类型标识
+			Set<Integer> usedParentKeys = new HashSet<>();
+			while (iterator.hasNext()) {
+				Map.Entry<Integer, ChainMethodList> entry = iterator.next();
+				ChainMethodList methodList = entry.getValue();
+				if (entry.getKey() < 0) {
+					if (methodList.isAllOptional()) {
+						// 移除全部方法都是可选的链
+						iterator.remove();
+						continue;
+					}
+				} else {
+					int maskHigh = getMaskHigh(entry.getKey());
+					int maskLow = getMaskLow(entry.getKey());
+					if (maskLow != CHAIN_TYPE_DEFAULT && maskHigh != CHAIN_TYPE_DEFAULT) {
+						// 子类型
+						// 判断是否可移除
+						if (methodList.isAllOptional()) {
+							// 移除全部方法都是可选的链
+							iterator.remove();
+							continue;
+						} else if (entry.getKey() > 0) {
+							// 添加已使用父类型标识
+							usedParentKeys.add(maskHigh);
+							usedParentKeys.add(MASK_LOW_FLAG | maskLow);
+						}
+					} else {
+						// 父类型
+						int key = maskLow != CHAIN_TYPE_DEFAULT ? MASK_LOW_FLAG | maskLow : maskHigh;
+						// 判断是否可移除，已被父类型使用的标识不移除
+						if (methodList.isAllOptional() && !usedParentKeys.contains(key)) {
+							// 移除全部方法都是可选的链
+							iterator.remove();
+							continue;
+						}
+					}
+				}
+				// 设置默认链方法
+				methodList.setDefaultMethodList(defaultResult);
+				// 完成解析
+				methodList.finish(allArgumentTypes);
+			}
+		} else {
+			// 遍历所有链方法
+			while (iterator.hasNext()) {
+				// 获取链方法
+				Map.Entry<Integer, ChainMethodList> entry = iterator.next();
+				// 判断是否可移除
+				ChainMethodList methodList = entry.getValue();
+				if (methodList.isAllOptional()) {
+					// 移除全部方法都是可选的链
+					iterator.remove();
+					continue;
+				}
+				// 设置默认链方法
+				methodList.setDefaultMethodList(defaultResult);
+				// 完成解析
+				methodList.finish(allArgumentTypes);
+			}
+		}
+	}
+
 
 	private boolean addChainMethod(int index, Method method, BusinessProcessor annotation, Class<?>[] argumentTypes, Object[] processors, Map<Integer, ChainMethodList> chainMethodMap, boolean isDefault) {
 		// 按业务链类型解析
 		boolean match = false;
+		// 获取处理类型
 		ProcessType processType = annotation.processType();
+		// 获取是否future等待
 		boolean futureWait = annotation.futureWait();
+		// 获取是否可选
 		boolean optional = annotation.optional();
+		// 遍历业务链类型
 		for (int chainType : annotation.chainType()) {
 			// 获取之前解析的对象
 			ChainMethodList chainMethodList = chainMethodMap.get(chainType);
@@ -188,6 +256,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 			}
 			// 添加入方法
 			if (chainMethodList.addMethod(index, method, argumentTypes, processType, isDefault, futureWait, optional) && !match) {
+				// 标记已匹配
 				match = true;
 			}
 		}
@@ -464,6 +533,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 		// 执行处理
 		return doCheck(param, getDefaultChainType(param));
 	}
+
 	/**
 	 * 执行校验处理(包括业务链预处理及处理器校验处理)
 	 * @param param 参数
@@ -492,6 +562,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 		// 执行处理
 		return doCheck(param, processResult, getDefaultChainType(param));
 	}
+
 	/**
 	 * 执行校验处理(包括业务链预处理及处理器校验处理)
 	 * @param param 参数
@@ -505,6 +576,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 		// 执行
 		return doProcess0(main, lookupSecondaries(main, chainType), param, processResult, chainType, ProcessType.CHECK);
 	}
+
 	/**
 	 * 执行处理器保存处理
 	 * @param param 参数
@@ -517,6 +589,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 		// 执行
 		doProcess0(main, lookupSecondaries(main, chainType), param, processResult, chainType, ProcessType.SAVE);
 	}
+
 	/**
 	 * 执行处理器保存处理, 使用默认链类型
 	 * @param param 参数
@@ -525,6 +598,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 	public void doSave(P param, R processResult) {
 		doSave(param, processResult, getDefaultChainType(param));
 	}
+
 	/**
 	 * 执行后处理(包括处理器后处理及链后处理)
 	 * @param param 参数
@@ -538,6 +612,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 		// 执行
 		return doProcess0(main, lookupSecondaries(main, chainType), param, processResult, chainType, ProcessType.AFTER);
 	}
+
 	/**
 	 * 执行后处理(包括处理器后处理及链后处理), 使用默认链类型
 	 * @param param 参数

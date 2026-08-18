@@ -18,7 +18,7 @@ public interface ChainConstants {
     /**
      * 低位掩码
      */
-    int CHAIN_MASK_LOW = (1 << CHAIN_MASK_BITS) - 1;
+    int CHAIN_MASK_LOW = ~(-1 << CHAIN_MASK_BITS);
 
     /**
      * 低位类型标识
