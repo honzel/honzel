@@ -36,4 +36,16 @@ public @interface MaskBusinessProcessor {
      */
     int[] low() default ChainConstants.CHAIN_TYPE_DEFAULT;
 
+    /**
+     * 方法返回值为Future时是否等待结果
+     * @return true代表调用Future.get()等待结果, false代表不等待
+     */
+    boolean futureWait() default false;
+
+    /**
+     * 是否为可选方法
+     * @return true代表该方法是可选的
+     */
+    boolean optional() default false;
+
 }
