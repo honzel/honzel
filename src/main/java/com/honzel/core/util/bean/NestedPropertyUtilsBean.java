@@ -1,11 +1,11 @@
 package com.honzel.core.util.bean;
 
-import com.honzel.core.util.lambda.LambdaUtils;
-import com.honzel.core.util.resolver.ResolverUtils;
 import com.honzel.core.util.converter.AbstractConverter;
 import com.honzel.core.util.converter.Converter;
 import com.honzel.core.util.converter.TypeConverter;
+import com.honzel.core.util.lambda.TiPredicate;
 import com.honzel.core.util.resolver.Resolver;
+import com.honzel.core.util.resolver.ResolverUtils;
 
 import java.beans.PropertyDescriptor;
 import java.lang.reflect.*;
@@ -523,7 +523,7 @@ public class NestedPropertyUtilsBean {
 		return propertyUtilsBean.copyToMapOnCondition(source, target, condition);
 	}
 
-	public boolean copyToMapOnCondition(Object source, Object target, LambdaUtils.TiPredicate<String, Object, Object> condition) {
+	public boolean copyToMapOnCondition(Object source, Object target, TiPredicate<String, Object, Object> condition) {
 		return propertyUtilsBean.copyToMapOnCondition(source, (Map) target, condition);
 	}
 
@@ -531,7 +531,7 @@ public class NestedPropertyUtilsBean {
 		return propertyUtilsBean.copyToBeanOnCondition(source, target, condition);
 	}
 
-	public boolean copyToBeanOnCondition(Object source, Object target, LambdaUtils.TiPredicate<String, Object, Object> condition) {
+	public boolean copyToBeanOnCondition(Object source, Object target, TiPredicate<String, Object, Object> condition) {
 		return propertyUtilsBean.copyToBeanOnCondition(source, target, condition);
 	}
 

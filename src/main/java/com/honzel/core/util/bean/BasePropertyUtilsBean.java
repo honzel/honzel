@@ -3,7 +3,7 @@ package com.honzel.core.util.bean;
 import com.honzel.core.constant.ArrayConstants;
 import com.honzel.core.util.converter.TypeConverter;
 import com.honzel.core.util.exception.PropertyException;
-import com.honzel.core.util.lambda.LambdaUtils;
+import com.honzel.core.util.lambda.TiPredicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -579,7 +579,7 @@ abstract class BasePropertyUtilsBean<G, S, F> {
 		return result;
 	}
 	//	@SuppressWarnings("unchecked")
-	public boolean copyToBeanOnCondition(Object source, Object target, LambdaUtils.TiPredicate<String, Object, Object> condition) {
+	public boolean copyToBeanOnCondition(Object source, Object target, TiPredicate<String, Object, Object> condition) {
 		if (source == null || target == null) {
 			return false;
 		}
@@ -674,7 +674,7 @@ abstract class BasePropertyUtilsBean<G, S, F> {
 	 * @return 如果所有属性都没进行复制操作则返回false, 否则返回true
 	 */
 //	@SuppressWarnings("unchecked")
-	public boolean copyToMapOnCondition(Object source, Map<String, Object> target, LambdaUtils.TiPredicate<String, Object, Object> condition) {
+	public boolean copyToMapOnCondition(Object source, Map<String, Object> target, TiPredicate<String, Object, Object> condition) {
 		if (source == null || target == null) {
 			return false;
 		}

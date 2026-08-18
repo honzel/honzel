@@ -25,8 +25,8 @@ public class LambdaUtils {
     public static final MethodType METHOD_TYPE_CONSUMER = MethodType.methodType(Consumer.class);
     public static final MethodType METHOD_TYPE_BI_FUNCTION = MethodType.methodType(BiFunction.class);
     public static final MethodType METHOD_TYPE_BI_CONSUMER = MethodType.methodType(BiConsumer.class);
-    public static final MethodType METHOD_TYPE_TI_FUNCTION = MethodType.methodType(TiFunction.class);
-    public static final MethodType METHOD_TYPE_TI_CONSUMER = MethodType.methodType(TiConsumer.class);
+    public static final MethodType METHOD_TYPE_TI_FUNCTION = MethodType.methodType(com.honzel.core.util.lambda.TiFunction.class);
+    public static final MethodType METHOD_TYPE_TI_CONSUMER = MethodType.methodType(com.honzel.core.util.lambda.TiConsumer.class);
 
     protected LambdaUtils() {
     }
@@ -107,7 +107,8 @@ public class LambdaUtils {
      * @param <R> 返回类型
      */
     @FunctionalInterface
-    public interface SerializeSupplier<R> extends Supplier<R>, Serializable {}
+    @Deprecated
+    public interface SerializeSupplier<R> extends SSupplier<R> {}
 
     /**
      * 单参数
@@ -115,7 +116,8 @@ public class LambdaUtils {
      * @param <R> 返回类型
      */
     @FunctionalInterface
-    public interface SerializeFunction<T, R> extends Function<T, R>, Serializable {}
+    @Deprecated
+    public interface SerializeFunction<T, R> extends SFunction<T, R> {}
 
     /**
      * 二参数
@@ -124,14 +126,16 @@ public class LambdaUtils {
      * @param <R> 返回类型
      */
     @FunctionalInterface
-    public interface SerializeBiFunction<T, U, R> extends BiFunction<T, U, R>, Serializable {}
+    @Deprecated
+    public interface SerializeBiFunction<T, U, R> extends SBiFunction<T, U, R> {}
 
     /**
      * 单参数
      * @param <T> 参数类型
      */
     @FunctionalInterface
-    public interface SerializeConsumer<T> extends Consumer<T>, Serializable {}
+    @Deprecated
+    public interface SerializeConsumer<T> extends SConsumer<T> {}
 
     /**
      * 二参数
@@ -139,7 +143,8 @@ public class LambdaUtils {
      * @param <R> 返回类型
      */
     @FunctionalInterface
-    public interface SerializeBiConsumer<T, R> extends BiConsumer<T, R>, Serializable {}
+    @Deprecated
+    public interface SerializeBiConsumer<T, R> extends SBiConsumer<T, R> {}
 
     /**
      * 三参数
@@ -149,9 +154,8 @@ public class LambdaUtils {
      * @param <R> 返回类型
      */
     @FunctionalInterface
-    public interface TiFunction<T, U, P, R> {
-        R apply(T t, U u, P p);
-    }
+    @Deprecated
+    public interface TiFunction<T, U, P, R> extends com.honzel.core.util.lambda.TiFunction<T, U, P, R> {}
     /**
      * 三参数
      * @param <T> 参数1类型
@@ -159,9 +163,8 @@ public class LambdaUtils {
      * @param <P> 参数3类型
      */
     @FunctionalInterface
-    public interface TiPredicate<T, U, P>  {
-        boolean test(T t, U u, P p);
-    }
+    @Deprecated
+    public interface TiPredicate<T, U, P> extends com.honzel.core.util.lambda.TiPredicate<T, U, P> {}
 
 
     /**
@@ -171,9 +174,8 @@ public class LambdaUtils {
      * @param <P> 参数3类型
      */
     @FunctionalInterface
-    public interface TiConsumer<T, U, P> {
-        void accept(T t, U u, P p);
-    }
+    @Deprecated
+    public interface TiConsumer<T, U, P> extends com.honzel.core.util.lambda.TiConsumer<T, U, P> {}
     /**
      * 三参数
      * @param <T> 参数1类型
@@ -182,7 +184,8 @@ public class LambdaUtils {
      * @param <R> 返回类型
      */
     @FunctionalInterface
-    public interface SerializeTiFunction<T, U, P, R>  extends TiFunction<T, U, P, R>, Serializable {}
+    @Deprecated
+    public interface SerializeTiFunction<T, U, P, R>  extends STiFunction<T, U, P, R> {}
     /**
      * 三参数
      * @param <T> 参数1类型
@@ -190,7 +193,8 @@ public class LambdaUtils {
      * @param <P> 参数3类型
      */
     @FunctionalInterface
-    public interface SerializeTiConsumer<T, U, P>  extends TiConsumer<T, U, P>, Serializable {}
+    @Deprecated
+    public interface SerializeTiConsumer<T, U, P>  extends STiConsumer<T, U, P> {}
     /**
      * 三参数
      * @param <T> 参数1类型
@@ -198,7 +202,8 @@ public class LambdaUtils {
      * @param <P> 参数3类型
      */
     @FunctionalInterface
-    public interface SerializeTiPredicate<T, U, P>  extends TiPredicate<T, U, P>, Serializable {}
+    @Deprecated
+    public interface SerializeTiPredicate<T, U, P>  extends STiPredicate<T, U, P> {}
 
 
 }

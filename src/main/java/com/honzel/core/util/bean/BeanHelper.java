@@ -5,6 +5,8 @@ import com.honzel.core.util.converter.Converter;
 import com.honzel.core.util.converter.TypeConverter;
 import com.honzel.core.util.lambda.LambdaUtils;
 import com.honzel.core.util.lambda.MethodHandleUtils;
+import com.honzel.core.util.lambda.SFunction;
+import com.honzel.core.util.lambda.TiPredicate;
 import com.honzel.core.util.text.TextUtils;
 
 import java.beans.PropertyDescriptor;
@@ -417,7 +419,7 @@ public class BeanHelper {
 	 * @param condition the condition
 	 * @return returns false when none property is copied, otherwise returns true
 	 */
-	public static boolean copyOnCondition(Object source, Object target, LambdaUtils.TiPredicate<String, Object, Object> condition) {
+	public static boolean copyOnCondition(Object source, Object target, TiPredicate<String, Object, Object> condition) {
 		if (target instanceof Map) {
 			return source != null && NestedPropertyUtilsBean.getInstance(source.getClass()).copyToMapOnCondition(source, target, condition);
 		} else {
@@ -487,7 +489,7 @@ public class BeanHelper {
 	 * @param <T> the destination bean type
 	 */
 	@SafeVarargs
-	public static <T> boolean copyOnCondition(Object origin, T target, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
+	public static <T> boolean copyOnCondition(Object origin, T target, Predicate<Object> valueCondition, SFunction<T, ?>... ignoreProperties) {
 		String[] names = parseGetterOrSetterNames(ignoreProperties);
 		if (names.length == 0 && valueCondition == null) {
 			// 没有条件
@@ -516,7 +518,7 @@ public class BeanHelper {
 	 * @param <T> the destination bean type
 	 */
 	@SafeVarargs
-	public static <T> boolean copyOnPreValueCondition(Object origin, T target, Predicate<Object> preValueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
+	public static <T> boolean copyOnPreValueCondition(Object origin, T target, Predicate<Object> preValueCondition, SFunction<T, ?>... ignoreProperties) {
 		if (target == null) {
 			return false;
 		}
@@ -568,7 +570,7 @@ public class BeanHelper {
 	 * @param <T> the origin bean type
 	 */
 	@SafeVarargs
-	public static <T> boolean copyToMapOnCondition(T origin, Map<String, Object> target, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
+	public static <T> boolean copyToMapOnCondition(T origin, Map<String, Object> target, Predicate<Object> valueCondition, SFunction<T, ?>... ignoreProperties) {
 		if (origin == null) {
 			return false;
 		}
@@ -596,7 +598,7 @@ public class BeanHelper {
 	 * @param <T> the origin bean type
 	 */
 	@SafeVarargs
-	public static <T> boolean copyChangeOnCondition(Object origin, T target, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
+	public static <T> boolean copyChangeOnCondition(Object origin, T target, Predicate<Object> valueCondition, SFunction<T, ?>... ignoreProperties) {
 		if (target == null) {
 			return false;
 		}
@@ -626,7 +628,7 @@ public class BeanHelper {
 	 * @param <T> the origin bean type
 	 */
 	@SafeVarargs
-	public static <T> boolean copyChangeToMapOnCondition(T origin, Map<String, Object> target, Predicate<Object> valueCondition, LambdaUtils.SerializeFunction<T, ?>... ignoreProperties) {
+	public static <T> boolean copyChangeToMapOnCondition(T origin, Map<String, Object> target, Predicate<Object> valueCondition, SFunction<T, ?>... ignoreProperties) {
 		if (origin == null) {
 			return false;
 		}
@@ -656,9 +658,9 @@ public class BeanHelper {
 	@SuppressWarnings("unchecked")
 	public static boolean copyChangeOnCondition(Object origin, Object target, Predicate<Object> valueCondition) {
 		if (target instanceof Map) {
-			return copyChangeToMapOnCondition(origin, (Map<String, Object>) target, valueCondition, (LambdaUtils.SerializeFunction<Object, ?>[]) null);
+			return copyChangeToMapOnCondition(origin, (Map<String, Object>) target, valueCondition, (SFunction<Object, ?>[]) null);
 		} else {
-			return copyChangeOnCondition(origin, target, valueCondition, (LambdaUtils.SerializeFunction<Object, ?>[]) null);
+			return copyChangeOnCondition(origin, target, valueCondition, (SFunction<Object, ?>[]) null);
 		}
 	}
 
@@ -688,7 +690,7 @@ public class BeanHelper {
 	}
 
 
-	private static String[] parseGetterOrSetterNames(LambdaUtils.SerializeFunction[] properties) {
+	private static String[] parseGetterOrSetterNames(SFunction[] properties) {
 		if (properties == null || properties.length == 0) {
 			return ArrayConstants.EMPTY_STRING_ARRAY;
 		}
