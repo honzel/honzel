@@ -198,11 +198,11 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 							usedParentKeys.add(maskHigh);
 							usedParentKeys.add(MASK_LOW_FLAG | maskLow);
 						}
-					} else {
+					} else if (methodList.isAllOptional()) {
 						// 父类型
 						int key = maskLow != CHAIN_TYPE_DEFAULT ? MASK_LOW_FLAG | maskLow : maskHigh;
 						// 判断是否可移除，已被父类型使用的标识不移除
-						if (methodList.isAllOptional() && !usedParentKeys.contains(key)) {
+						if (!usedParentKeys.contains(key)) {
 							// 移除全部方法都是可选的链
 							iterator.remove();
 							continue;
