@@ -37,4 +37,12 @@ public interface ChainConstants {
      * 属性处理类型
      */
     String ATTRIBUTE_PROCESS_TYPE = "processType";
+    /**
+     * 属性Future时是否等待结果
+     */
+    String ATTRIBUTE_FUTURE_WAIT = "futureWait";
+    /**
+     * 属性是否为可选方法
+     */
+    String ATTRIBUTE_PROCESS_OPTIONAL = "optional";
 }
