@@ -193,7 +193,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 							// 移除全部方法都是可选的链
 							iterator.remove();
 							continue;
-						} else if (entry.getKey() > 0) {
+						} else {
 							// 添加已使用父类型标识
 							usedParentKeys.add(maskHigh);
 							usedParentKeys.add(MASK_LOW_FLAG | maskLow);
