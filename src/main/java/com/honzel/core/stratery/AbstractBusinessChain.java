@@ -177,36 +177,28 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 			while (iterator.hasNext()) {
 				Map.Entry<Integer, ChainMethodList> entry = iterator.next();
 				ChainMethodList methodList = entry.getValue();
-				if (entry.getKey() < 0) {
+				int maskHigh = getMaskHigh(entry.getKey());
+				int maskLow = getMaskLow(entry.getKey());
+				if (maskLow != CHAIN_TYPE_DEFAULT && maskHigh != CHAIN_TYPE_DEFAULT) {
+					// 子类型
+					// 判断是否可移除
 					if (methodList.isAllOptional()) {
 						// 移除全部方法都是可选的链
 						iterator.remove();
 						continue;
+					} else {
+						// 添加已使用父类型标识
+						usedParentKeys.add(maskHigh);
+						usedParentKeys.add(MASK_LOW_FLAG | maskLow);
 					}
-				} else {
-					int maskHigh = getMaskHigh(entry.getKey());
-					int maskLow = getMaskLow(entry.getKey());
-					if (maskLow != CHAIN_TYPE_DEFAULT && maskHigh != CHAIN_TYPE_DEFAULT) {
-						// 子类型
-						// 判断是否可移除
-						if (methodList.isAllOptional()) {
-							// 移除全部方法都是可选的链
-							iterator.remove();
-							continue;
-						} else {
-							// 添加已使用父类型标识
-							usedParentKeys.add(maskHigh);
-							usedParentKeys.add(MASK_LOW_FLAG | maskLow);
-						}
-					} else if (methodList.isAllOptional()) {
-						// 父类型
-						int key = maskLow != CHAIN_TYPE_DEFAULT ? MASK_LOW_FLAG | maskLow : maskHigh;
-						// 判断是否可移除，已被父类型使用的标识不移除
-						if (!usedParentKeys.contains(key)) {
-							// 移除全部方法都是可选的链
-							iterator.remove();
-							continue;
-						}
+				} else if (methodList.isAllOptional()) {
+					// 父类型
+					int key = maskLow != CHAIN_TYPE_DEFAULT ? MASK_LOW_FLAG | maskLow : maskHigh;
+					// 判断是否可移除，已被父类型使用的标识不移除
+					if (!usedParentKeys.contains(key)) {
+						// 移除全部方法都是可选的链
+						iterator.remove();
+						continue;
 					}
 				}
 				// 设置默认链方法
@@ -238,14 +230,12 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 	private boolean addChainMethod(int index, Method method, BusinessProcessor annotation, Class<?>[] argumentTypes, Object[] processors, Map<Integer, ChainMethodList> chainMethodMap, boolean isDefault) {
 		// 按业务链类型解析
 		boolean match = false;
-		// 获取处理类型
-		ProcessType processType = annotation.processType();
-		// 获取是否future等待
-		boolean futureWait = annotation.futureWait();
-		// 获取是否可选
-		boolean optional = annotation.optional();
 		// 遍历业务链类型
 		for (int chainType : annotation.chainType()) {
+			boolean exclude = chainType < 0;
+			if (exclude) {
+				chainType = -chainType;
+			}
 			// 获取之前解析的对象
 			ChainMethodList chainMethodList = chainMethodMap.get(chainType);
 			if (chainMethodList == null) {
@@ -255,7 +245,7 @@ public abstract class AbstractBusinessChain<P, R extends ProcessResult> {
 				chainMethodMap.put(chainType, chainMethodList);
 			}
 			// 添加入方法
-			if (chainMethodList.addMethod(index, method, argumentTypes, processType, isDefault, futureWait, optional) && !match) {
+			if (chainMethodList.addMethod(index, method, argumentTypes, annotation, isDefault, exclude) && !match) {
 				// 标记已匹配
 				match = true;
 			}

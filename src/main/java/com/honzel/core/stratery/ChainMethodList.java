@@ -79,6 +79,7 @@ class ChainMethodList {
      */
     private ChainMethodList defaultMethodList;
 
+
     ChainMethodList(Object[] processors, Logger log) {
         this.processors = processors;
         this.log = log;
@@ -89,16 +90,15 @@ class ChainMethodList {
      * @param index 第几个处理器
      * @param method 方法
      * @param allArgumentTypes 所有方法
-     * @param processType 处理类型
+     * @param businessProcessor 处理标签
      * @param isDefault 是否是默认链的方法
-     * @param futureWait 返回值为Future时是否等待结果
-     * @param optional 是否为可选方法
+     * @param exclude 是否排除当前方法
      */
-    boolean addMethod(int index, Method method, Class<?>[] allArgumentTypes, ProcessType processType, boolean isDefault, boolean futureWait, boolean optional) {
+    boolean addMethod(int index, Method method, Class<?>[] allArgumentTypes, BusinessProcessor businessProcessor, boolean isDefault, boolean exclude) {
         // 校验上一个方法结果如果需要
         checkTopIndex(index, allArgumentTypes);
         // 方法类型
-        final int typeIndex = processType.ordinal();
+        final int typeIndex = businessProcessor.processType().ordinal();
         // 如果为空时初始化
         ChainMethod[] methods = chainMethods[typeIndex];
         int offset;
@@ -112,16 +112,32 @@ class ChainMethodList {
             offset = index - offsets[typeIndex];
         }
         if (methods[offset] != null) {
-            boolean topDefault;
-            if ((topDefault = topDefaults[typeIndex]) == isDefault) {
-                if (log.isWarnEnabled()) {
-                    log.warn("同一处理器下对应相同的链类型有重复的处理方法, 后面一个将被忽略掉: [{}]<==>[{}]", methods[offset].getMethodRefName(), method);
+            if (methods[offset].isValid() == exclude) {
+                // 新老方法exclude类型不相同
+                if (exclude) {
+                    // 新方法是exclude方法, 老方法不是exclude方法, 跳过新方法
+                    return false;
                 }
-                return false;
+            } else {
+                // 新老方法exclude类型相同
+                if (topDefaults[typeIndex] == isDefault) {
+                    // 新老方法isDefault方式相同
+                    if (!exclude && log.isWarnEnabled()) {
+                        log.warn("同一处理器下对应相同的链类型有重复的处理方法, 后面一个将被忽略掉: [{}]<==>[{}]", methods[offset].getMethodRefName(), method);
+                    }
+                    return false;
+                }
+                if (isDefault) {
+                    return false;
+                }
             }
-            if (!topDefault) {
-                return false;
-            }
+        }
+        if (exclude) {
+            // 没有其他的处理方法时, 创建一个空的ChainMethod对象(无处理方法)
+            methods[offset] = new ChainMethod(null, log);
+            methods[offset].setOptional(businessProcessor.optional());
+            topDefaults[typeIndex] = isDefault;
+            return true;
         }
         // 创建链方法对象
         ChainMethod chainMethod = new ChainMethod(method, log);
@@ -144,8 +160,8 @@ class ChainMethodList {
             }
         }
         // 设置futureWait和optional属性
-        chainMethod.setFutureWait(futureWait);
-        chainMethod.setOptional(optional);
+        chainMethod.setFutureWait(businessProcessor.futureWait());
+        chainMethod.setOptional(businessProcessor.optional());
         // 设置是否默认标识
         topDefaults[typeIndex] = isDefault;
         // 设置为可访问
