@@ -2,6 +2,7 @@ package com.honzel.core.util.time;
 
 import java.io.Serializable;
 import java.time.LocalTime;
+import java.util.Objects;
 
 /**
  * time range
@@ -48,5 +49,18 @@ public class TimeRange implements Serializable {
     @Override
     public String toString() {
         return startTime + "-" + endTime;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (other instanceof TimeRange) {
+            if (this == other) {
+                return true;
+            }
+            if (Objects.equals(startTime, ((TimeRange) other).startTime)) {
+                return Objects.equals(endTime, ((TimeRange) other).endTime);
+            }
+        }
+        return false;
     }
 }
