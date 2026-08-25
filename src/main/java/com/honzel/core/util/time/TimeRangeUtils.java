@@ -605,7 +605,7 @@ public class TimeRangeUtils {
     }
 
     private static LocalTime parseTime(int seq) {
-        return LocalTime.MIN.plusMinutes(seq * TIME_UNIT_IN_MINUTES);
+        return LocalTime.MIN.plusMinutes((long) seq * TIME_UNIT_IN_MINUTES);
     }
 
     /**
