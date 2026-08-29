@@ -17,7 +17,7 @@ public interface SFunction<T, R> extends Function<T, R>, Serializable {
      * 获取Iterable的第一个元素
      * @return 返回Iterable的第一个元素
      */
-    default SFunction<Iterable<T>, T> first() {
+    static<T> SFunction<Iterable<T>, T> first() {
         return t -> {
             if (t instanceof Queue) {
                 return ((Queue<T>) t).isEmpty() ? null : ((Queue<T>) t).peek();
@@ -33,17 +33,27 @@ public interface SFunction<T, R> extends Function<T, R>, Serializable {
      * 获取Iterable的最后一个元素
      * @return 获取Iterable的最后一个元素
      */
-    default SFunction<List<T>, T> last() {
+    static<T> SFunction<Collection<T>, T> last() {
         return t -> {
-            if (t instanceof Stack || t instanceof Deque) {
-                return t.isEmpty() ? null : ((Deque<T>) t).peek();
+            int size = t.size();
+            if (size == 0) {
+                return null;
+            }
+            if (t instanceof Deque) {
+                return ((Deque<T>) t).peekLast();
             }
             if (t instanceof List<?>) {
-                int size = ((List<T>) t).size();
-                return ((List<T>) t).isEmpty() ? null : ((List<T>) t).get(size - 1);
+                return ((List<T>) t).get(size - 1);
+            }
+            if (size == 1) {
+                return t.iterator().next();
             }
             Iterator<T> iterator = t.iterator();
-            return iterator.hasNext() ? iterator.next() : null;
+            T next = null;
+            while (iterator.hasNext()) {
+                next = iterator.next();
+            }
+            return next;
         };
     }
 }
