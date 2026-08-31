@@ -11,6 +11,7 @@ import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -433,7 +434,7 @@ public class TimeRangeUtils {
         }
         long result = NONE;
         for (int i = 0; i < WEEKDAY_BITS; i ++) {
-            if (TextUtils.containsValue(weekdays, i + 1)) {
+            if (TextUtils.containsValue(weekdays, utils.weekDayName(i + 1))) {
                 result |= (FIRST_BIT << i);
             }
         }
@@ -511,6 +512,10 @@ public class TimeRangeUtils {
         }
         // 调整值
         boolean hasMinuteTimes = minuteTime != null;
+        if (hasMinuteTimes) {
+            timeRanges = new ArrayList<>(timeRanges);
+            timeRanges.sort(Comparator.comparing(TimeRange::getStartTime));
+        }
         int adjustOffset;
         if (hasMinuteTimes && minuteTime.length() > 0) {
             minuteTime.append(TIME_ENTRY_SEPARATOR);
