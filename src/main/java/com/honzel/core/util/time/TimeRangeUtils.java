@@ -22,62 +22,36 @@ import java.util.List;
 @SuppressWarnings("unchecked")
 public class TimeRangeUtils {
     /**
-     * 全部时间
-     */
-    public static final long ALL_TIMES;
-
-    /**
-     * 全部日期
-     */
-    public static final long ALL_WEEKDAYS;
-    /**
-     * 班次时间标识
-     */
-    public static final long SHIFT_TIME_FLAG;
-    /**
      * 无设置值
      */
     public static final long NONE = 0L;
-    /**
-     * 日期开始时间
-     */
-    private static final long DATE_START_TIME;
-
-    private static final int TIME_BITS = 48;
-
-    private static final int START_TIME_BITS = 6;
-
-    private static final int WEEKDAY_BITS = 7;
-
-    private static final int TIME_UNIT_IN_MINUTES = 30;
-
 
     private static final long FIRST_BIT = 1L;
 
 
-    static {
-        // 时间位
-        long result = NONE;
-        for (int i = 0; i < TIME_BITS; i ++) {
-            result |= (FIRST_BIT << i);
-        }
-        ALL_TIMES = result;
-        // 开始位置位
-        result = NONE;
-        for (int i = TIME_BITS; i < TIME_BITS + START_TIME_BITS; i ++) {
-            result |= (FIRST_BIT << i);
-        }
-        DATE_START_TIME = result;
-        // 日期位
-        result = NONE;
-        for (int i = TIME_BITS + START_TIME_BITS; i < TIME_BITS + START_TIME_BITS + WEEKDAY_BITS; i ++) {
-            result |= (FIRST_BIT << i);
-        }
-        ALL_WEEKDAYS = result;
-        // 班次时间标识
-        SHIFT_TIME_FLAG = FIRST_BIT << (TIME_BITS + START_TIME_BITS + WEEKDAY_BITS);
-    }
+    /**
+     * 全部时间
+     */
+    private static final int TIME_BITS = 48;
+    public static final long ALL_TIMES = ~(-FIRST_BIT << TIME_BITS);
 
+    /**
+     * 日期开始时间
+     */
+    private static final int START_TIME_BITS = 6;
+    private static final long DATE_START_TIME = ~(-FIRST_BIT << START_TIME_BITS) << TIME_BITS;
+
+    /**
+     * 全部日期
+     */
+    private static final int WEEKDAY_BITS = 7;
+    public static final long ALL_WEEKDAYS = ~(-FIRST_BIT << WEEKDAY_BITS) << (TIME_BITS + START_TIME_BITS);
+    /**
+     * 班次时间标识
+     */
+    public static final long SHIFT_TIME_FLAG = FIRST_BIT << (TIME_BITS + START_TIME_BITS + WEEKDAY_BITS);
+
+    private static final int TIME_UNIT_IN_MINUTES = 30;
 
     private static volatile TimeRangeUtils utils;
 
@@ -140,6 +114,7 @@ public class TimeRangeUtils {
         if (offset > 0) {
             times = (times >>> offset) | ((~(-FIRST_BIT << offset) & times) << (TIME_BITS - offset));
         }
+        int adjIndex = 0;
         for (int i = 0; i < TIME_BITS; i ++, times >>>= 1) {
             if ((times & FIRST_BIT) == NONE) {
                 if (timeRange != null) {
@@ -177,7 +152,6 @@ public class TimeRangeUtils {
         }
         return timeRangeList;
     }
-
 
 
     protected TimeRange newTimeRange() {
@@ -227,7 +201,7 @@ public class TimeRangeUtils {
             // 子时间段
             T subRange = (T) getInstance().newTimeRange();
             // 计算开始时间
-            subRange.setStartTime(startTime.plusMinutes(i * stepDuration));
+            subRange.setStartTime(startTime.plusMinutes((long) i * stepDuration));
             if (halfDivisionDurationEnabled) {
                 // 结束时间按切割时长处理
                 prevRange.setEndTime(prevRange.getStartTime().plusMinutes(divisionDuration));
@@ -471,7 +445,16 @@ public class TimeRangeUtils {
      * @return 时间段值
      */
     public static long fromTimeRanges(List<? extends TimeRange> timeRanges) {
-        return fromTimeRanges0(timeRanges, false);
+        return fromTimeRanges0(timeRanges, false, null, false);
+    }
+    /**
+     * 获取时间段值
+     * @param timeRanges 时间范围列表
+     * @param minuteTime 分钟精度时间段值
+     * @return 时间段值
+     */
+    public static long fromTimeRanges(List<? extends TimeRange> timeRanges, StringBuilder minuteTime) {
+        return fromTimeRanges0(timeRanges, false, minuteTime, true);
     }
     /**
      * 获取班次时间段值
@@ -479,7 +462,7 @@ public class TimeRangeUtils {
      * @return 时间段值
      */
     public static long fromShiftTimeRanges(List<? extends TimeRange> timeRanges) {
-        return fromTimeRanges0(timeRanges, true);
+        return fromTimeRanges0(timeRanges, true, null, false);
     }
 
     /**
@@ -495,44 +478,167 @@ public class TimeRangeUtils {
             if (timeRange.getStartTime() == null) {
                 throw new DateTimeException("开始时间不能为空");
             }
-            if (timeRange.getEndTime() == null) {
+            LocalTime endTime = timeRange.getEndTime();
+            if (endTime == null) {
                 throw new DateTimeException("结束时间不能为空");
             }
-            long time = fromTimeRange0(timeRange.getStartTime(), timeRange.getEndTime(), true, false);
+            long time = fromTimeRange0(timeRange.getStartTime(), endTime, true, false);
             if (time == NONE) {
                 throw new DateTimeException("时间段长度必须都大于" + TIME_UNIT_IN_MINUTES + "分钟");
             }
             if ((time & result) != NONE) {
                 throw new DateTimeException("时间段不能出现重叠");
             }
-            long end = FIRST_BIT << (getIndexByTime(timeRange.getEndTime(), true) - 1);
+            int minuteOfDay = endTime.get(ChronoField.MINUTE_OF_DAY);
+            long end = FIRST_BIT << (getEndIndex0(endTime.getSecond() > 0 ? minuteOfDay + 1 : minuteOfDay) - 1);
             if ((end & result) != NONE) {
                 throw new DateTimeException("时间段不能出现重叠");
             }
             result = result | time | end;
         }
     }
+
     /**
      * 获取时间段值
      * @param timeRanges 时间范围列表
      * @param forceShift 是否强制分隔班次
+     * @param minuteTime 分钟精度时间值
      * @return 时间段值
      */
-    private static long fromTimeRanges0(List<? extends TimeRange> timeRanges, boolean forceShift) {
+    private static long fromTimeRanges0(List<? extends TimeRange> timeRanges, boolean forceShift, StringBuilder minuteTime, boolean appendTime) {
         if (timeRanges == null || timeRanges.isEmpty()) {
             return NONE;
         }
+        // 调整值
+        boolean hasMinuteTimes = minuteTime != null;
+        int adjustOffset;
+        if (hasMinuteTimes && minuteTime.length() > 0) {
+            minuteTime.append(TIME_ENTRY_SEPARATOR);
+            adjustOffset = minuteTime.length();
+        } else {
+            adjustOffset = 0;
+        }
+        // 是否需要获取跨天位置
         boolean fetchOffset = true;
+        // 时间段值
         long result = NONE;
         for (TimeRange timeRange : timeRanges) {
+            LocalTime startTime = timeRange.getStartTime();
+            LocalTime endTime = timeRange.getEndTime();
+            if (startTime == null || endTime == null) {
+               continue;
+            }
+            int startMinutes = startTime.get(ChronoField.MINUTE_OF_DAY);
+            int endMinutes = endTime.getSecond() > 0 ? endTime.get(ChronoField.MINUTE_OF_DAY) : endTime.get(ChronoField.MINUTE_OF_DAY) + 1;
             // 获取时间段
-            long range = fromTimeRange0(timeRange.getStartTime(), timeRange.getEndTime(), forceShift, fetchOffset);
+            long range = fromTimeRange0(startMinutes, endMinutes, forceShift, fetchOffset);
+            if (hasMinuteTimes) {
+                // 需要调整值
+                if (result != NONE && (result & range) != NONE) {
+                    // 时间段有交集，实现调整值的合并
+                    updateAdjustments(minuteTime, adjustOffset, result, startMinutes, endMinutes);
+                } else {
+                    // 时间没交集
+                    appendAdjustments(minuteTime, adjustOffset, startMinutes, endMinutes);
+                }
+            }
             // 只获取第一次的跨天位置
-            fetchOffset = fetchOffset && (range & START_TIME_BITS) == NONE;
+            fetchOffset = fetchOffset && (range & DATE_START_TIME) == NONE;
             // 并入时段
             result |= range;
         }
+        if (hasMinuteTimes) {
+            if (appendTime) {
+                if (minuteTime.length() != adjustOffset) {
+                    minuteTime.append(ADJ_TIME_SEPARATOR);
+                }
+                minuteTime.append(Long.toUnsignedString(result, TIME_RANGE_RADIX));
+            } else {
+                if (minuteTime.length() == adjustOffset) {
+                    minuteTime.setLength(adjustOffset - TIME_ENTRY_SEPARATOR.length());
+                }
+            }
+        }
         return (forceShift && result != NONE) ? result | SHIFT_TIME_FLAG : result;
+    }
+    private static final String ADJ_TIME_SEPARATOR = "x";
+    private static final String ADJ_ITEMS_SEPARATOR = "y";
+    private static final String TIME_ENTRY_SEPARATOR = "z";
+    private static final char END_TIME_FLAG = 't';
+
+    private static final int ADJ_RADIX = 30;
+    private static final int TIME_RANGE_RADIX = 32;
+    private static final int INVALID = -1;
+
+    private static void updateAdjustments(StringBuilder minuteTime, int adjustOffset, long result, int startMinutes, int endMinutes) {
+        // 扫描之前的调整值，移除落在新时间范围内的调整点（合并后成为内部边界）
+        int pos = adjustOffset;
+        int deleteStart = INVALID;
+        int startSlot = getStartIndex0(startMinutes);
+        int endSlot = getEndIndex0(endMinutes);
+        while (pos < minuteTime.length()) {
+            // 定位当前值的范围 [valueEnd, pos)
+            int valueEnd = minuteTime.indexOf(ADJ_ITEMS_SEPARATOR, pos);
+            if (valueEnd == -1) {
+                valueEnd = minuteTime.length();
+            }
+            // 解析调整值的分钟数
+            boolean end = minuteTime.charAt(pos) == END_TIME_FLAG;
+            int minutes = parseInt0(minuteTime, (end ? pos + 1 : pos), valueEnd, ADJ_RADIX);
+            if (minutes == INVALID) {
+                // 无效数字
+                continue;
+            }
+            // 判断该调整点是否落在新时间范围内（内部边界，需要移除）
+            boolean inside;
+            if (startMinutes < endMinutes || endMinutes == 0) {
+                // 非跨天
+                inside = minutes >= startMinutes && (endMinutes == 0 || minutes < endMinutes);
+            } else {
+                // 跨天：start > end，范围是 [start, 24:00) + [0, end)
+                inside = minutes >= startMinutes || minutes < endMinutes;
+            }
+            if (inside) {
+                if (deleteStart == INVALID) {
+                    deleteStart = pos;
+                }
+            } else {
+                if (deleteStart != INVALID) {
+                    // 移除该调整值（含后导分隔符）
+                    minuteTime.delete(deleteStart, pos);
+                }
+                deleteStart = INVALID;
+                if (end) {
+                    if (endSlot != INVALID && (endSlot == TIME_BITS || Math.abs(endMinutes - minutes) < TIME_UNIT_IN_MINUTES) && getEndIndex0(minutes) == endSlot) {
+                        endSlot = INVALID;
+                    }
+                } else {
+                    if (startSlot != INVALID && Math.abs(minutes - startMinutes) < TIME_UNIT_IN_MINUTES && getStartIndex0(minutes) == startSlot) {
+                        startSlot = INVALID;
+                    }
+                }
+            }
+            pos = valueEnd + 1;
+        }
+        if (deleteStart != INVALID) {
+            minuteTime.delete(deleteStart, minuteTime.length());
+        }
+        // 开始时间不在之前的覆盖范围内 → 外部边界，追加开始调整值
+        if (startSlot != INVALID && startMinutes % TIME_UNIT_IN_MINUTES != 0 && (result & (FIRST_BIT << startSlot)) == NONE) {
+            if (minuteTime.length() > adjustOffset) {
+                minuteTime.append(ADJ_ITEMS_SEPARATOR);
+            }
+            minuteTime.append(startMinutes);
+        }
+        // 结束时间不在之前的覆盖范围内 → 外部边界，追加结束调整值
+        if (endSlot != INVALID && endMinutes % TIME_UNIT_IN_MINUTES != 0 && (result & (FIRST_BIT << (endSlot > 0 ? endSlot - 1 : 0))) == NONE) {
+            if (minuteTime.length() > adjustOffset) {
+                minuteTime.append(ADJ_ITEMS_SEPARATOR + END_TIME_FLAG);
+            } else {
+                minuteTime.append(END_TIME_FLAG);
+            }
+            minuteTime.append(Integer.toUnsignedString(endMinutes, ADJ_RADIX));
+        }
     }
 
 
@@ -543,7 +649,26 @@ public class TimeRangeUtils {
      * @return 时间段值
      */
     public static long from(String weekdays, List<? extends TimeRange> timeRanges) {
-        return fromWeekDays(weekdays) | fromTimeRanges(timeRanges);
+        return fromWeekDays(weekdays) | fromTimeRanges0(timeRanges, false, null, false);
+    }
+    /**
+     * 获取时间段值
+     * @param weekdays 星期(周一为1;周二为2;...), 多个用英文逗号(,)分隔
+     * @param timeRanges 时间范围列表
+     * @param minuteTime 分钟精度的时间段值
+     * @return 时间段值
+     */
+    public static long from(String weekdays, List<? extends TimeRange> timeRanges, StringBuilder minuteTime) {
+        int offset = minuteTime.length();
+        // 获取时间段值
+        long timestamp = fromWeekDays(weekdays) | fromTimeRanges0(timeRanges, false, minuteTime, false);
+        if (minuteTime.length() != offset) {
+            minuteTime.append(ADJ_TIME_SEPARATOR);
+        } else if (offset > 0) {
+            minuteTime.append(TIME_ENTRY_SEPARATOR);
+        }
+        minuteTime.append(Long.toUnsignedString(timestamp, TIME_RANGE_RADIX));
+        return timestamp;
     }
 
 
@@ -564,7 +689,7 @@ public class TimeRangeUtils {
      * @return 时间段值
      */
     public static long fromTime(LocalTime time) {
-        return time != null ? FIRST_BIT << getIndexByTime(time, false) : NONE;
+        return time != null ? FIRST_BIT << getStartIndex0(time.get(ChronoField.MINUTE_OF_DAY)) : NONE;
     }
 
     /**
@@ -579,10 +704,23 @@ public class TimeRangeUtils {
         if (startTime == null || endTime == null) {
             return NONE;
         }
-        int start = getIndexByTime(startTime, false);
-        int end = getIndexByTime(endTime, true);
+        int startMinutes = startTime.get(ChronoField.MINUTE_OF_DAY);
+        int endMinutes = endTime.getSecond() > 0 ? endTime.get(ChronoField.MINUTE_OF_DAY) : endTime.get(ChronoField.MINUTE_OF_DAY) + 1;
+        return fromTimeRange0(startMinutes, endMinutes, forceShift, fetchOffset);
+    }
+
+
+    /**
+     * 获取时间范围对应的段值
+     * @param forceShift 是否强制分隔班次
+     * @param fetchOffset 是否解析营业天开始时间
+     * @return 时间段值
+     */
+    private static long fromTimeRange0(int startMinutes, int endMinutes, boolean forceShift, boolean fetchOffset) {
+        int start = getStartIndex0(startMinutes);
+        int end = getEndIndex0(endMinutes);
         long startValue = FIRST_BIT << start;
-        if (end == TIME_BITS || start < end && startTime.isBefore(endTime)) {
+        if (end == TIME_BITS || startMinutes < endMinutes) {
             // 非跨天
             return (FIRST_BIT << (forceShift ? end - 1 : end)) - startValue;
         }
@@ -599,6 +737,25 @@ public class TimeRangeUtils {
         return result;
     }
 
+    private static void appendAdjustments(StringBuilder minuteTime, int adjustOffset, int startMinutes, int endMinutes) {
+        if (minuteTime != null) {
+            if (startMinutes % TIME_UNIT_IN_MINUTES != 0) {
+                if (minuteTime.length() > adjustOffset) {
+                    minuteTime.append(ADJ_ITEMS_SEPARATOR);
+                }
+                minuteTime.append(Integer.toUnsignedString(startMinutes, ADJ_RADIX));
+            }
+            if (endMinutes % TIME_UNIT_IN_MINUTES != 0) {
+                if (minuteTime.length() > adjustOffset) {
+                    minuteTime.append(ADJ_ITEMS_SEPARATOR + END_TIME_FLAG);
+                } else {
+                    minuteTime.append(END_TIME_FLAG);
+                }
+                minuteTime.append(Integer.toUnsignedString(endMinutes, ADJ_RADIX));
+            }
+        }
+    }
+
 
     private static int getOffsetIndex(long timeRangeStamp) {
         return (int) ((timeRangeStamp & DATE_START_TIME) >>> TIME_BITS);
@@ -610,19 +767,32 @@ public class TimeRangeUtils {
 
     /**
      * 获取时间对应的段值
-     * @param time 时间
-     * @param isEnd 是否是时间段的结束点
+     * @param startMinutes 时间
      * @return 返回时间index
      */
-    private static int getIndexByTime(LocalTime time, boolean isEnd) {
-        int minutes = time.get(ChronoField.MINUTE_OF_DAY);
-        if (isEnd) {
-            // 如果结束时间为零，可以认为是24:00
-            return minutes == 0 ? TIME_BITS : (minutes - 1) / TIME_UNIT_IN_MINUTES + 1;
-        }
-        return minutes / TIME_UNIT_IN_MINUTES;
+    private static int getStartIndex0(int startMinutes) {
+        return startMinutes / TIME_UNIT_IN_MINUTES;
+    }
+    /**
+     * 获取时间对应的段值
+     * @param endMinutes 时间
+     * @return 返回时间index
+     */
+    private static int getEndIndex0(int endMinutes) {
+        // 如果结束时间为零，可以认为是24:00
+        return endMinutes == 0 ? TIME_BITS : (endMinutes - 1) / TIME_UNIT_IN_MINUTES + 1;
     }
 
-
+    private static int parseInt0(CharSequence s, int i, int endIndex, int radix) throws NumberFormatException {
+        int result = 0;
+        while (i < endIndex) {
+            int digit = Character.digit(s.charAt(i++), radix);
+            if (digit < 0) {
+                return -1;
+            }
+            result = result * radix + digit;
+        }
+        return result;
+    }
 
 }
