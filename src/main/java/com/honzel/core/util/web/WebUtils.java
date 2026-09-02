@@ -38,6 +38,7 @@ public class WebUtils {
 
     protected HostnameVerifier verifier;
     protected SSLSocketFactory socketFactory;
+    protected TrustManager trustManager;
     protected CookieHandler cookieHandler;
     private static class DefaultTrustManager implements X509TrustManager {
         private static final X509Certificate[] EMPTY_CERTIFICATES = {};
@@ -82,11 +83,14 @@ public class WebUtils {
     private void initSSLContext() {
         try {
             socketFactory = initSSLSocketFactory();
-            verifier = initHostnameVerifier();
             if (socketFactory == null) {
                 SSLContext ctx = SSLContext.getInstance("TLS");
                 KeyManager[] km = new KeyManager[0];
-                TrustManager[] tm = new TrustManager[]{new DefaultTrustManager()};
+                TrustManager trust = initTrustManager();
+                if (trust == null) {
+                    trust = new DefaultTrustManager();
+                }
+                TrustManager[] tm = new TrustManager[]{trust};
                 ctx.init(km, tm, new SecureRandom());
                 // 初始化客户端
                 SSLSessionContext context = ctx.getClientSessionContext();
@@ -94,7 +98,9 @@ public class WebUtils {
                 context.setSessionCacheSize(1000);
                 // 初始化参数
                 socketFactory = ctx.getSocketFactory();
+                trustManager = trust;
             }
+            verifier = initHostnameVerifier();
         } catch (Exception e) {
             LOG.error("initialize SSL SSLContext fail: {}", e.getMessage(), e);
         }
@@ -110,6 +116,9 @@ public class WebUtils {
         return null;
     }
     protected SSLSocketFactory initSSLSocketFactory() {
+        return null;
+    }
+    protected TrustManager initTrustManager() {
         return null;
     }
     protected CookieHandler initDefaultCookieHandler() {
@@ -628,6 +637,8 @@ public class WebUtils {
         // 获取连接
         return getInstance().buildConnection(url, method, contentType, connectTimeout, readTimeout, headerMap);
     }
+
+
     /**
      * 获取连接
      * @param url 请求url
