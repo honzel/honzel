@@ -552,7 +552,7 @@ public class TimeRangeUtils {
                 }
             }
         }
-        return result << WEEKDAY_SHIFT;
+        return result != NONE ? result << WEEKDAY_SHIFT : NONE;
     }
     /**
      * 获取时间段值
