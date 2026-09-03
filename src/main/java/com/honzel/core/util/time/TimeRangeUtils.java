@@ -299,7 +299,7 @@ public class TimeRangeUtils {
      * @return 返回最起始时间点
      */
     public static LocalTime getFirstStartTime(String minuteTime, DayOfWeek dayOfWeek) {
-        return dayOfWeek != null ? getMinOrMaxTime0(minuteTime, FIRST_BIT << (WEEKDAY_SHIFT + dayOfWeek.ordinal()), false) : null;
+        return dayOfWeek != null ? getFirstOrLastTime0(minuteTime, FIRST_BIT << (WEEKDAY_SHIFT + dayOfWeek.ordinal()), false) : null;
     }
 
 
@@ -319,7 +319,7 @@ public class TimeRangeUtils {
      * @return 返回最后结束时间点
      */
     public static LocalTime getLastEndTime(String minuteTime, DayOfWeek dayOfWeek) {
-        return dayOfWeek != null ? getMinOrMaxTime0(minuteTime, FIRST_BIT << (WEEKDAY_SHIFT + dayOfWeek.ordinal()), true) : null;
+        return dayOfWeek != null ? getFirstOrLastTime0(minuteTime, FIRST_BIT << (WEEKDAY_SHIFT + dayOfWeek.ordinal()), true) : null;
     }
     /**
      * 获取最后结束时间点
@@ -341,7 +341,7 @@ public class TimeRangeUtils {
     }
 
 
-    public static LocalTime getMinOrMaxTime0(String minuteTime, long timeRangeMask, boolean end) {
+    public static LocalTime getFirstOrLastTime0(String minuteTime, long timeRangeMask, boolean last) {
         // 获取指定天的起始时间位置
         int pos = matchMinuteTime0(minuteTime, timeRangeMask, null, null);
         if (pos == INVALID) {
@@ -362,7 +362,7 @@ public class TimeRangeUtils {
             return null;
         }
         // 解析调整值的分钟数
-        if (end) {
+        if (last) {
             int index = getLastEndTimeIndex(time);
             if (index == INVALID) {
                 return null;
