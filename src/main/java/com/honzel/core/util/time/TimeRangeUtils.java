@@ -353,11 +353,11 @@ public class TimeRangeUtils {
         int adjustmentEnd = getAdjustmentEnd(minuteTime, pos, entryEnd);
         if (adjustmentEnd == INVALID) {
             // 没有调整值
-            long time = parseTimeRangeStamp(minuteTime, pos, entryEnd);
+            long time = parseTimeValue(minuteTime, pos, entryEnd);
             return time == INVALID ? null : getFirstStartTime(time);
         }
         // 获取调整值的时间段值
-        long time = parseTimeRangeStamp(minuteTime, adjustmentEnd + 1, entryEnd);
+        long time = parseTimeValue(minuteTime, adjustmentEnd + 1, entryEnd);
         if (time == INVALID) {
             return null;
         }
@@ -923,7 +923,7 @@ public class TimeRangeUtils {
             // weekday 区域为 0 表示适用所有日期，否则检查对应日期位
             if (weekdays != INVALID && (weekdays == 0 || days == 0 || (weekdays & days) != 0)) {
                 // 时间戳
-                long stamp = parseTimeRangeStamp(minuteTime, timeStart, entryEnd);
+                long stamp = parseTimeValue(minuteTime, timeStart, entryEnd);
                 if (stamp != INVALID) {
                     long time;
                     if (timeRangeMask != NONE) {
@@ -1005,7 +1005,7 @@ public class TimeRangeUtils {
             // weekday 区域为 0 表示适用所有日期，否则检查对应日期位
             if (weekdays != INVALID && (weekdays == 0 || days == 0 || (weekdays & days) != 0)) {
                 // 时间戳
-                long stamp = parseTimeRangeStamp(minuteTime, timeStart, entryEnd);
+                long stamp = parseTimeValue(minuteTime, timeStart, entryEnd);
                 if (stamp != INVALID) {
                     if (timeRangeMask != NONE) {
                         long shiftFlag = stamp & SHIFT_TIME_FLAG;
@@ -1165,8 +1165,10 @@ public class TimeRangeUtils {
     private static final char END_TIME_FLAG = 'w';
 
     private static final int ADJ_RADIX = 30;
+    private static final int ADJ_MAX_LIMIT = TIME_BITS;
     private static final int TIME_RANGE_BITS = 5;
     private static final int TIME_RANGE_RADIX = 1 << TIME_RANGE_BITS;
+    private static final long TIME_RANGE_MAX_LIMIT = Long.MAX_VALUE >>> TIME_RANGE_BITS;
     private static final int INVALID = -1;
 
 
@@ -1218,7 +1220,7 @@ public class TimeRangeUtils {
             }
             // 解析调整值的分钟数
             boolean end = minuteTime.charAt(pos) == END_TIME_FLAG;
-            int minutes = parseAdj(minuteTime, (end ? pos + 1 : pos), valueEnd);
+            int minutes = parseAdjValue(minuteTime, (end ? pos + 1 : pos), valueEnd);
             if (minutes == INVALID) {
                 // 无效数字
                 continue;
@@ -1282,11 +1284,11 @@ public class TimeRangeUtils {
         }
     }
 
-    private static int parseAdj(CharSequence minuteTime, int start, int end) {
+    private static int parseAdjValue(CharSequence minuteTime, int start, int end) {
         int result = 0;
         while (start < end) {
             int digit = Character.digit(minuteTime.charAt(start++), ADJ_RADIX);
-            if (digit < 0) {
+            if (digit < 0 || result >= ADJ_MAX_LIMIT) {
                 return INVALID;
             }
             result = result * ADJ_RADIX + digit;
@@ -1294,14 +1296,14 @@ public class TimeRangeUtils {
         return result;
     }
 
-    private static long parseTimeRangeStamp(CharSequence minuteTime, int start, int end) {
+    private static long parseTimeValue(CharSequence minuteTime, int start, int end) {
         long result = NONE;
         while (start < end) {
             int digit = Character.digit(minuteTime.charAt(start++), TIME_RANGE_RADIX);
-            if (digit < 0) {
+            if (digit < 0 || result >= TIME_RANGE_MAX_LIMIT) {
                 return INVALID;
             }
-            result = result * TIME_RANGE_RADIX + digit;
+            result = (result << TIME_RANGE_BITS) | digit;
         }
         return result;
     }
