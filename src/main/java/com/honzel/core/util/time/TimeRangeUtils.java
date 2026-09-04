@@ -934,7 +934,7 @@ public class TimeRangeUtils {
                     // 从时间戳获取基础时间范围
                     boolean result = time != NONE && (startTime == null
                             || (endTime != null ? containsTimeRange(time, startTime, endTime) : containsTime(time, startTime))
-                            && (pos >= timeSep || containsMinuteRange0(minuteTime, pos, timeSep, startTime, endTime)));
+                            && (pos >= timeSep || containsMinuteRange0(time, minuteTime, pos, timeSep, startTime, endTime)));
                     if (result || weekdays == 0 || (weekdays & days) == days) {
                         return result ? pos : INVALID;
                     }
@@ -961,7 +961,7 @@ public class TimeRangeUtils {
         return entryEnd;
     }
 
-    private static boolean containsMinuteRange0(String minuteTime, int adjStart, int adjEnd, LocalTime startTime, LocalTime endTime) {
+    private static boolean containsMinuteRange0(long time, String minuteTime, int adjStart, int adjEnd, LocalTime startTime, LocalTime endTime) {
         //TODO 实现 containsMinuteRange
         return true;
     }
