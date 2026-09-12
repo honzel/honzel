@@ -131,7 +131,11 @@ public class TimeRangeUtils {
         if (offset > 0) {
             times = (times >>> offset) | ((~(-FIRST_BIT << offset) & times) << (TIME_BITS - offset));
         }
-        for (int i = 0; i < TIME_BITS; i ++, times >>>= 1) {
+        int shift = Long.numberOfTrailingZeros(times);
+        if (shift != 0) {
+            times >>>= shift;
+        }
+        for (int i = shift; i < TIME_BITS; i ++, times >>>= 1) {
             if ((times & FIRST_BIT) == NONE) {
                 if (timeRange != null) {
                     int seq = (offset + i) % TIME_BITS;
@@ -280,12 +284,13 @@ public class TimeRangeUtils {
     private static int getFirstStartIndex(long timeRangeStamp) {
         if (timeRangeStamp != NONE) {
             int offset = getOffsetIndex(timeRangeStamp);
-            for (int i = 0; i < TIME_BITS; i ++) {
-                int seq = (offset + i) % TIME_BITS;
-                if ((timeRangeStamp & (FIRST_BIT << seq)) != NONE) {
-                    return seq;
-                }
+            int start;
+            if (offset != 0) {
+                start = Long.numberOfTrailingZeros(timeRangeStamp & (-FIRST_BIT << offset));
+            } else {
+                start = Long.numberOfTrailingZeros(timeRangeStamp);
             }
+            return start >= TIME_BITS ? INVALID : start;
         }
         return INVALID;
     }
@@ -330,18 +335,22 @@ public class TimeRangeUtils {
         if (timeRangeStamp != NONE) {
             // 开始时间位置
             int offset = getOffsetIndex(timeRangeStamp);
-            for (int i = TIME_BITS - 1; i >= 0; i --) {
-                int seq = (offset + i) % TIME_BITS;
-                if ((timeRangeStamp & (FIRST_BIT << seq)) != NONE) {
-                    return (timeRangeStamp & SHIFT_TIME_FLAG) != NONE ? (seq + 2) % TIME_BITS : seq + 1;
-                }
+            if (offset != 0) {
+                // 跨天时，返回当日的最后一段的结束位置
+                return offset;
             }
+            int index = Long.SIZE - Long.numberOfLeadingZeros(timeRangeStamp & ALL_TIMES);
+            if ((timeRangeStamp & SHIFT_TIME_FLAG) != NONE) {
+                // 是班次时间
+                index ++;
+            }
+            return index == TIME_BITS ? 0 : index;
         }
         return INVALID;
     }
 
 
-    public static LocalTime getFirstOrLastTime0(String minuteTime, long timeRangeMask, boolean last) {
+    private static LocalTime getFirstOrLastTime0(String minuteTime, long timeRangeMask, boolean last) {
         // 获取指定天的起始时间位置
         int pos = matchMinuteTime0(minuteTime, timeRangeMask, null, null);
         if (pos == INVALID) {
@@ -489,14 +498,16 @@ public class TimeRangeUtils {
         }
         if ((timeRangeStamp & range) == range) {
             // 如果范围是重合时，是否跨天时间点, 如果跨天时间点在时间段范围内
-            boolean containsInRange;
-            LocalTime offsetTime = parseTime(getOffsetIndex(timeRangeStamp));
+            int offsetMinutes = getOffsetIndex(timeRangeStamp) * TIME_UNIT_IN_MINUTES;
+            int startMinutes = getTimeMinutes(startTime, false);
+            int endMinutes = getTimeMinutes(endTime, true);
+            boolean offsetInRange;
             if (startTime.isBefore(endTime)) {
-                containsInRange = offsetTime.isAfter(startTime) && offsetTime.isBefore(endTime);
+                offsetInRange = offsetMinutes > startMinutes && offsetMinutes < endMinutes;
             } else {
-                containsInRange = offsetTime.isAfter(startTime) || offsetTime.isBefore(endTime);
+                offsetInRange = offsetMinutes > startMinutes || offsetMinutes < endMinutes;
             }
-            return !containsInRange;
+            return !offsetInRange;
         }
         return false;
     }
@@ -608,8 +619,8 @@ public class TimeRangeUtils {
             if (endTime == null) {
                 throw new DateTimeException("结束时间不能为空");
             }
-            int startMinutes = startTime.get(ChronoField.MINUTE_OF_DAY);
-            int endMinutes = endTime.getSecond() > 0 ? endTime.get(ChronoField.MINUTE_OF_DAY) : endTime.get(ChronoField.MINUTE_OF_DAY) + 1;
+            int startMinutes = getTimeMinutes(startTime, false);
+            int endMinutes = getTimeMinutes(endTime, true);
             if (startMinutes < endMinutes && endMinutes - startMinutes <= TIME_UNIT_IN_MINUTES) {
                 throw new DateTimeException("时间段长度必须都大于" + TIME_UNIT_IN_MINUTES + "分钟");
             }
@@ -678,8 +689,8 @@ public class TimeRangeUtils {
             if (startTime == null || endTime == null) {
                continue;
             }
-            int startMinutes = startTime.get(ChronoField.MINUTE_OF_DAY);
-            int endMinutes = endTime.getSecond() > 0 ? endTime.get(ChronoField.MINUTE_OF_DAY) : endTime.get(ChronoField.MINUTE_OF_DAY) + 1;
+            int startMinutes = getTimeMinutes(startTime, false);
+            int endMinutes = getTimeMinutes(endTime, true);
             // 获取时间段
             long range = fromTimeRange0(startMinutes, endMinutes, forceShift, fetchOffset);
             if (hasMinuteTimes) {
@@ -962,7 +973,51 @@ public class TimeRangeUtils {
     }
 
     private static boolean containsMinuteRange0(long time, String minuteTime, int adjStart, int adjEnd, LocalTime startTime, LocalTime endTime) {
-        //TODO 实现 containsMinuteRange
+        int startMinutes = getTimeMinutes(startTime, false);
+        int endMinutes = getTimeMinutes(endTime != null ? endTime : startTime, true);
+        int queryStartSlot = getStartIndex0(startMinutes);
+        int queryEndSlot = getEndIndex0(endMinutes) - 1;
+        int pos = adjStart;
+        boolean mayHaveGap = false;
+        while (pos < adjEnd) {
+            boolean isEnd = minuteTime.charAt(pos) == END_TIME_FLAG;
+            int valueStart = isEnd ? pos + 1 : pos;
+            int valueEnd = minuteTime.indexOf(ADJ_ITEMS_SEPARATOR, pos);
+            if (valueEnd == INVALID || valueEnd > adjEnd) {
+                valueEnd = adjEnd;
+            }
+            int minutes = parseAdjValue(minuteTime, valueStart, valueEnd);
+            if (minutes != INVALID) {
+                // 判断该调整点是否落在新时间范围内（内部边界，需要移除）
+                boolean inside;
+                if (startMinutes < endMinutes || endMinutes == 0) {
+                    // 非跨天并且在边界内
+                    inside = minutes > startMinutes && (endMinutes == 0 || minutes < endMinutes);
+                } else {
+                    // 跨天并且在边界内：start > end，范围是 [start, 24:00) + [0, end)
+                    inside = minutes > startMinutes || minutes < endMinutes;
+                }
+                if (inside) {
+                    // 如果有调整值在查询服务内，则一定有间隙
+                    return false;
+                }
+                // 检查在查询边界所在 slot 上但在查询范围外的调整值是否表明存在间隙
+                if (isEnd) {
+                    // 如果是结束调整值，在同slot上如果后面有开始调整值，则[结束调整值, 开始调整值)之间为间隙,如果不存在开始调整值，则[结束调整值, slotEnd)为间隙
+                    if (getEndIndex0(minutes) - 1 == queryStartSlot && minutes <= startMinutes) {
+                        mayHaveGap = true;
+                    }
+                } else {
+                    // 如果是开始调整值，则开始调整值前面有结束调整值，则[结束调整值，开始调整值)之间为间隙,如果不存在结束调整值，则[slotStart, 开始调整值)为间隙
+                    if (getStartIndex0(minutes) == queryEndSlot - 1 && minutes >= endMinutes) {
+                        // start 调整值在查询结束所在的 slot 上，且向上偏移到查询结束之后 → 间隙
+                        return false;
+                    }
+                    mayHaveGap = false;
+                }
+            }
+            pos = valueEnd + ADJ_ITEMS_SEPARATOR.length();
+        }
         return true;
     }
 
@@ -1097,9 +1152,11 @@ public class TimeRangeUtils {
         if (startTime == null || endTime == null) {
             return NONE;
         }
-        int startMinutes = startTime.get(ChronoField.MINUTE_OF_DAY);
-        int endMinutes = endTime.getSecond() > 0 ? endTime.get(ChronoField.MINUTE_OF_DAY) : endTime.get(ChronoField.MINUTE_OF_DAY) + 1;
-        return fromTimeRange0(startMinutes, endMinutes, forceShift, fetchOffset);
+        return fromTimeRange0(getTimeMinutes(startTime, false), getTimeMinutes(endTime, true), forceShift, fetchOffset);
+    }
+
+    private static int getTimeMinutes(LocalTime time, boolean isEnd) {
+        return isEnd && time.getSecond() > 0 ? time.get(ChronoField.MINUTE_OF_DAY) + 1 : time.get(ChronoField.MINUTE_OF_DAY);
     }
 
 
@@ -1211,7 +1268,11 @@ public class TimeRangeUtils {
         int pos = adjustOffset;
         int deleteStart = INVALID;
         int startSlot = getStartIndex0(startMinutes);
-        int endSlot = getEndIndex0(endMinutes);
+        int endSlot = getEndIndex0(endMinutes) - 1;
+
+        int timeStart = INVALID;
+        int timeEnd = INVALID;
+
         while (pos < minuteTime.length()) {
             // 定位当前值的范围 [valueEnd, pos)
             int valueEnd = minuteTime.indexOf(ADJ_ITEMS_SEPARATOR, pos);
@@ -1234,6 +1295,7 @@ public class TimeRangeUtils {
                 // 跨天并且不是正好边界：start > end，范围是 [start, 24:00) + [0, end)
                 inside = minutes > startMinutes || minutes < endMinutes;
             }
+            int timeSlot = end ? getEndIndex0(minutes) - 1 : getStartIndex0(minutes);
             if (inside) {
                 if (deleteStart == INVALID) {
                     deleteStart = pos;
@@ -1247,15 +1309,16 @@ public class TimeRangeUtils {
                     deleteStart = INVALID;
                 }
                 if (end) {
-                    if (endSlot != INVALID && Math.abs(endMinutes - minutes) < TIME_UNIT_IN_MINUTES && getEndIndex0(minutes) == endSlot) {
+                    if (endSlot != INVALID && timeSlot == endSlot) {
                         endSlot = INVALID;
                     }
                 } else {
-                    if (startSlot != INVALID && Math.abs(minutes - startMinutes) < TIME_UNIT_IN_MINUTES && getStartIndex0(minutes) == startSlot) {
+                    if (startSlot != INVALID && timeSlot == startSlot) {
                         startSlot = INVALID;
                     }
                 }
             }
+
             pos = valueEnd + 1;
         }
         if (deleteStart != INVALID) {
