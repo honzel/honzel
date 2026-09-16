@@ -1256,47 +1256,61 @@ public class TimeRangeUtils {
     }
 
     /**
-     * 更新调整值
-     * @param minuteTime 分钟精度时间段字符串
-     * @param adjustOffset 调整值偏移量
-     * @param result 时间范围结果
-     * @param startMinutes 开始分钟
-     * @param endMinutes 结束分钟
+     * 更新调整值（合并调整值，保持成对特性且不相互覆盖）
+     * <p>扫描已有的调整值对，将落在 [startMinutes, endMinutes) 内的内部边界移除，
+     * 并根据相邻调整值类型决定是否补充新的开始/结束调整值。</p>
+     *
+     * @param minuteTime     分钟精度时间段字符串
+     * @param adjustOffset   调整值偏移量
+     * @param timestamp
+     * @param startMinutes   开始分钟
+     * @param endMinutes     结束分钟
      */
-    private static void updateAdjustments(StringBuilder minuteTime, int adjustOffset, long result, int startMinutes, int endMinutes) {
-        // 扫描之前的调整值，移除落在新时间范围内的调整点（合并后成为内部边界）
+    private static void updateAdjustments(StringBuilder minuteTime, int adjustOffset, long timestamp, int startMinutes, int endMinutes) {
+        // 不在范围内最接近 startMinutes/endMinutes 的调整值（正数=start类型，负数=end类型，INVALID=不存在）
+        int nearlyStart = INVALID;
+        int nearlyEnd = INVALID;
+        boolean addStart = false, addEnd = false;
+        boolean suppressStart = false, suppressEnd = false; // 规则2/3的抑制标记
+
         int pos = adjustOffset;
         int deleteStart = INVALID;
-        int startSlot = getStartIndex0(startMinutes);
-        int endSlot = getEndIndex0(endMinutes) - 1;
-
-        int timeStart = INVALID;
-        int timeEnd = INVALID;
 
         while (pos < minuteTime.length()) {
-            // 定位当前值的范围 [valueEnd, pos)
             int valueEnd = minuteTime.indexOf(ADJ_ITEMS_SEPARATOR, pos);
             if (valueEnd == -1) {
                 valueEnd = minuteTime.length();
             }
-            // 解析调整值的分钟数
-            boolean end = minuteTime.charAt(pos) == END_TIME_FLAG;
-            int minutes = parseAdjValue(minuteTime, (end ? pos + 1 : pos), valueEnd);
+            boolean isEnd = minuteTime.charAt(pos) == END_TIME_FLAG;
+            int minutes = parseAdjValue(minuteTime, (isEnd ? pos + 1 : pos), valueEnd);
             if (minutes == INVALID) {
-                // 无效数字
+                pos = valueEnd + 1;
                 continue;
             }
-            // 判断该调整点是否落在新时间范围内（内部边界，需要移除）
+
+            boolean shouldDelete = false;
             boolean inside;
-            if (startMinutes < endMinutes || endMinutes == 0) {
-                // 非跨天并且不是正好边界
-                inside = minutes > startMinutes && (endMinutes == 0 || minutes < endMinutes);
-            } else {
-                // 跨天并且不是正好边界：start > end，范围是 [start, 24:00) + [0, end)
+            if (startMinutes < endMinutes) {
+                // 非跨天：范围是 (startMinutes, endMinutes)
+                inside = minutes > startMinutes && minutes < endMinutes;
+            } else  {
+                // 跨天：范围是 (startMinutes, 1440) + [0, endMinutes)
                 inside = minutes > startMinutes || minutes < endMinutes;
             }
-            int timeSlot = end ? getEndIndex0(minutes) - 1 : getStartIndex0(minutes);
             if (inside) {
+                // 规则1：严格在时间范围内
+                shouldDelete = true;
+            } else if (!isEnd && minutes == endMinutes) {
+                // 规则3：开始调整值 == endMinutes
+                shouldDelete = true;
+                suppressEnd = true;
+            } else if (isEnd && minutes == startMinutes) {
+                // 规则2：结束调整值 == startMinutes
+                shouldDelete = true;
+                suppressStart = true;
+            }
+
+            if (shouldDelete) {
                 if (deleteStart == INVALID) {
                     deleteStart = pos;
                 }
@@ -1308,19 +1322,18 @@ public class TimeRangeUtils {
                     valueEnd -= (pos - deleteStart);
                     deleteStart = INVALID;
                 }
-                if (end) {
-                    if (endSlot != INVALID && timeSlot == endSlot) {
-                        endSlot = INVALID;
-                    }
-                } else {
-                    if (startSlot != INVALID && timeSlot == startSlot) {
-                        startSlot = INVALID;
-                    }
+                // 所有非删除项都参与 nearlyStart/nearlyEnd 的比较
+                int diff = startMinutes - minutes;
+                if (nearlyStart == INVALID || (diff = minutes - nearlyStart) < 0 ? diff < nearlyStart - startMinutes : diff < nearlyStart) {
+                    nearlyStart = minutes;
+                }
+                if (nearlyEnd == INVALID || Math.abs(minutes - endMinutes) < Math.abs(nearlyEnd - endMinutes)) {
+                    nearlyEnd = minutes;
                 }
             }
-
             pos = valueEnd + 1;
         }
+        // 处理末尾连续的删除区域
         if (deleteStart != INVALID) {
             if (deleteStart != adjustOffset) {
                 // 如果不是从头开始删除，则删除的起始位置需要减最后一个分隔符
@@ -1329,15 +1342,23 @@ public class TimeRangeUtils {
             // 移除剩余的调整值
             minuteTime.delete(deleteStart, minuteTime.length());
         }
-        // 开始时间不在之前的覆盖范围内 → 外部边界，追加开始调整值
-        if (startSlot != INVALID && startMinutes % TIME_UNIT_IN_MINUTES != 0 && (result & (FIRST_BIT << startSlot)) == NONE) {
+        // 规则4：根据相邻调整值类型决定是否补充（不受规则2/3抑制的影响）
+        if (!suppressStart && (nearlyStart == INVALID || nearlyStart < 0)) {
+            // 离 startMinutes 最近的为结束调整值或不存在 → 需要加入
+            addStart = true;
+        }
+        if (!suppressEnd && (nearlyEnd == INVALID || nearlyEnd > 0)) {
+            // 离 endMinutes 最近的为开始调整值或不存在 → 需要加入
+            addEnd = true;
+        }
+        // 新调整值追加到末尾
+        if (addStart) {
             if (minuteTime.length() > adjustOffset) {
                 minuteTime.append(ADJ_ITEMS_SEPARATOR);
             }
-            minuteTime.append(startMinutes);
+            minuteTime.append(Integer.toUnsignedString(startMinutes, ADJ_RADIX));
         }
-        // 结束时间不在之前的覆盖范围内 → 外部边界，追加结束调整值
-        if (endSlot != INVALID && endMinutes % TIME_UNIT_IN_MINUTES != 0 && (result & (FIRST_BIT << (endSlot > 0 ? endSlot - 1 : 0))) == NONE) {
+        if (addEnd) {
             if (minuteTime.length() > adjustOffset) {
                 minuteTime.append(ADJ_ITEMS_SEPARATOR + END_TIME_FLAG);
             } else {
