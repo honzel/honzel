@@ -139,7 +139,7 @@ public class TimeRangeUtils {
         T firstRange = (T) getInstance().newTimeRange();
         firstRange.setStartTime(parseTime((offset + firstStart) % TIME_BITS));
         // 获取第一个结束位
-        int firstBits = Long.numberOfLeadingZeros(~times);
+        int firstBits = Long.numberOfTrailingZeros(~times);
         if ((times >>>= firstBits) == NONE) {
             // 只有一个时间段
             addEndTimeAndDivision(timeRangeList, firstRange, adjTime, adjStart, adjEnd, divisionDuration, halfDivisionDurationEnabled, shiftFlag, offset, firstStart + firstBits);
