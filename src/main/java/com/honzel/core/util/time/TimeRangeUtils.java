@@ -1,5 +1,6 @@
 package com.honzel.core.util.time;
 
+import com.honzel.core.constant.NumberConstants;
 import com.honzel.core.util.text.TextUtils;
 
 import javax.annotation.PostConstruct;
@@ -82,7 +83,7 @@ public class TimeRangeUtils {
      * @param timeRangeStamp 时间段值
      * @return 返回时间段列表
      */
-    public static<TimeRange extends com.honzel.core.util.time.TimeRange> List<TimeRange> getTimeRanges(long timeRangeStamp) {
+    public static<T extends TimeRange> List<T> getTimeRanges(long timeRangeStamp) {
         return getTimeRanges(timeRangeStamp, 0, false);
     }
     /**
@@ -91,7 +92,7 @@ public class TimeRangeUtils {
      * @param divisionDuration 切割时长（单位为分钟)
      * @return 返回拆分后的时间段列表
      */
-    public static<TimeRange extends com.honzel.core.util.time.TimeRange> List<TimeRange> getTimeRanges(long timeRangeStamp, int divisionDuration) {
+    public static<T extends TimeRange> List<T> getTimeRanges(long timeRangeStamp, int divisionDuration) {
         return getTimeRanges(timeRangeStamp, divisionDuration, false);
     }
 
@@ -102,7 +103,7 @@ public class TimeRangeUtils {
      * @param halfDivisionDurationEnabled 是否步长为一半切割时长, true-步长为切割时长的一半, false-步长与切割时长相等
      * @return 返回拆分后的时间段列表
      */
-    public static<TimeRange extends com.honzel.core.util.time.TimeRange> List<TimeRange> getTimeRanges(long timeRangeStamp, int divisionDuration, boolean halfDivisionDurationEnabled) {
+    public static<T extends TimeRange> List<T> getTimeRanges(long timeRangeStamp, int divisionDuration, boolean halfDivisionDurationEnabled) {
         return getTimeRanges0(timeRangeStamp, null, 0, 0, divisionDuration, halfDivisionDurationEnabled);
     }
 
@@ -115,16 +116,16 @@ public class TimeRangeUtils {
      * @param divisionDuration 切割时长（单位为分钟), 0为不切割
      * @param halfDivisionDurationEnabled 是否步长为一半切割时长, true-步长为切割时长的一半, false-步长与切割时长相等
      * @return 返回时间段列表
-     * @param <TimeRange> 时间段类型
+     * @param <T> 时间段类型
      */
-    public static<TimeRange extends com.honzel.core.util.time.TimeRange> List<TimeRange> getTimeRanges0(long timeRangeStamp, String adjTime, int adjStart, int adjEnd, int divisionDuration, boolean halfDivisionDurationEnabled) {
+    private static<T extends TimeRange> List<T> getTimeRanges0(long timeRangeStamp, String adjTime, int adjStart, int adjEnd, int divisionDuration, boolean halfDivisionDurationEnabled) {
         long times;
         if (timeRangeStamp == NONE || (times = timeRangeStamp & ALL_TIMES) == NONE) {
             return Collections.emptyList();
         }
         //是否班次时间
         boolean shiftFlag = (timeRangeStamp & SHIFT_TIME_FLAG) != NONE;
-        List<TimeRange> timeRangeList = new ArrayList<>();
+        List<T> timeRangeList = new ArrayList<>();
         // 日期起始位
         int offset = getOffsetIndex(timeRangeStamp);
         if (offset > 0) {
@@ -135,7 +136,7 @@ public class TimeRangeUtils {
         if (firstStart != 0) {
             times >>>= firstStart;
         }
-        TimeRange firstRange = (TimeRange) getInstance().newTimeRange();
+        T firstRange = (T) getInstance().newTimeRange();
         firstRange.setStartTime(parseTime((offset + firstStart) % TIME_BITS));
         // 获取第一个结束位
         int firstBits = Long.numberOfLeadingZeros(~times);
@@ -144,7 +145,7 @@ public class TimeRangeUtils {
             addEndTimeAndDivision(timeRangeList, firstRange, adjTime, adjStart, adjEnd, divisionDuration, halfDivisionDurationEnabled, shiftFlag, offset, firstStart + firstBits);
             return timeRangeList;
         }
-        TimeRange timeRange = null;
+        T timeRange = null;
         for (int i = firstStart + firstBits; i < TIME_BITS; i ++, times >>>= 1) {
             if (times == NONE) {
                 break;
@@ -156,7 +157,7 @@ public class TimeRangeUtils {
                 }
             } else {
                 if (timeRange == null) {
-                    timeRange = (TimeRange) getInstance().newTimeRange();
+                    timeRange = (T) getInstance().newTimeRange();
                     timeRange.setStartTime(parseTime((offset + i) % TIME_BITS));
                 }
             }
@@ -168,17 +169,17 @@ public class TimeRangeUtils {
         return timeRangeList;
     }
 
-    private static <TimeRange extends com.honzel.core.util.time.TimeRange> void addEndTimeAndDivision(List<TimeRange> timeRangeList, TimeRange timeRange, String adjTime, int adjStart, int adjEnd, int divisionDuration, boolean halfDivisionDurationEnabled, boolean shiftFlag, int offset, int end) {
+    private static <T extends TimeRange> void addEndTimeAndDivision(List<T> timeRangeList, T timeRange, String adjTime, int adjStart, int adjEnd, int divisionDuration, boolean halfDivisionDurationEnabled, boolean shiftFlag, int offset, int end) {
         if (shiftFlag) {
             timeRange.setEndTime(end == TIME_BITS - 1 && offset == 0 ? LocalTime.MAX : parseTime((offset + end) % TIME_BITS + 1));
         } else {
             timeRange.setEndTime(end == TIME_BITS && offset == 0 ? LocalTime.MAX : parseTime((offset + end) % TIME_BITS));
         }
         // 应用调整值
-        List<TimeRange> subRanges = applyAdjustments(timeRange, adjTime, adjStart, adjEnd);
+        List<T> subRanges = applyAdjustments(timeRange, adjTime, adjStart, adjEnd);
         if (subRanges != null) {
             // 如果有拆分成多个时间段则遍历子时间段
-            for (TimeRange subRange : subRanges) {
+            for (T subRange : subRanges) {
                 // 按切割时长拆分时间段
                 addDivideTimeRange(subRange, timeRangeList, divisionDuration, halfDivisionDurationEnabled);
             }
@@ -1120,12 +1121,152 @@ public class TimeRangeUtils {
      * @param adjStart  调整值起始位置
      * @param adjEnd    调整值结束位置
      */
-    private static<T extends TimeRange> List<T> applyAdjustments(TimeRange timeRange, String adjustmentTime, int adjStart, int adjEnd) {
+//    private static<T extends TimeRange> List<T> applyAdjustments(TimeRange timeRange, String adjustmentTime, int adjStart, int adjEnd) {
+//        if (TextUtils.isEmpty(adjustmentTime) || adjStart >= adjEnd) {
+//            return null;
+//        }
+//        //TODO 按调整值字符串解析并应用到时间范围为分钟精度的时间范围，如果需要从一个时间范围拆分出多个时间范围时，返回调整后的时间范围列表，如果不需要拆分返回null
+//        return null;
+//    }
+
+    /**
+     * 应用调整值到时间范围列表，还原分钟精度的边界
+     * <p>规则：</p>
+     * <ul>
+     *   <li>位图内没有调整值命中的 slot 表示完整覆盖 [slotStart, slotEnd)</li>
+     *   <li>slot 内首个调整值决定该 slot 起始状态：END 表示从 slot 边界起被覆盖，START 表示 slot 边界起未被覆盖</li>
+     *   <li>slot 内末个调整值决定该 slot 结束状态：START 表示覆盖延伸到 slot 边界，END 表示不延伸</li>
+     *   <li>调整值成对交替出现，START 触发 outside→inside，END 触发 inside→outside</li>
+     * </ul>
+     *
+     * @param timeRange  基础时间范围（30分钟精度，方法可能就地修改其 startTime/endTime）
+     * @param adjustmentTime  调整值字符串
+     * @param adjStart  调整值起始位置
+     * @param adjEnd    调整值结束位置
+     * @return 若拆分为多个子时间段则返回列表；未拆分（含无调整值命中或仅得到单一子段）则返回 null，
+     *         其中单一子段的情形下已就地修改 {@code timeRange} 的 startTime/endTime
+     */
+    private static<T extends TimeRange> List<T> applyAdjustments(T timeRange, String adjustmentTime, int adjStart, int adjEnd) {
         if (TextUtils.isEmpty(adjustmentTime) || adjStart >= adjEnd) {
             return null;
         }
-        //TODO 按调整值字符串解析并应用到时间范围为分钟精度的时间范围，如果需要从一个时间范围拆分出多个时间范围时，返回调整后的时间范围列表，如果不需要拆分返回null
-        return null;
+        LocalTime startTime = timeRange.getStartTime();
+        int startMinutes = getTimeMinutes(startTime, false);
+        LocalTime endTime = timeRange.getEndTime();
+        int endMinutes = getTimeMinutes(endTime, true);
+        // 跨天
+        boolean crossing = startMinutes >= endMinutes;
+        List<T> subRanges = null;
+
+        int minStart = INVALID;
+        int maxEnd = INVALID;
+
+        int sepLen = ADJ_ITEMS_SEPARATOR.length();
+        int pos = adjStart;
+        while (pos < adjEnd) {
+            boolean isEnd = adjustmentTime.charAt(pos) == END_TIME_FLAG;
+            int valueStart = isEnd ? pos + 1 : pos;
+            int valueEnd = adjustmentTime.indexOf(ADJ_ITEMS_SEPARATOR, valueStart);
+            if (valueEnd == INVALID || valueEnd > adjEnd) {
+                valueEnd = adjEnd;
+            }
+            int minutes = parseAdjValue(adjustmentTime, valueStart, valueEnd);
+            if (minutes == INVALID) {
+                pos = valueEnd + sepLen;
+                continue;
+            }
+            if (crossing) {
+                if (minutes <= startMinutes || minutes >= endMinutes) {
+                    continue;
+                }
+            } else {
+                if (minutes <= startMinutes && minutes >= endMinutes) {
+                    continue;
+                }
+            }
+            if (isEnd) {
+                if (minutes > endMinutes - TIME_UNIT_IN_MINUTES) { //同一endSlot
+                    if (maxEnd == INVALID) {
+                        maxEnd = minutes;
+                    } else {
+                        if (minutes > maxEnd) {
+                            int t = maxEnd; maxEnd = minutes; minutes = t;
+                        }
+                        subRanges = splitTimeRanges(subRanges, timeRange, minutes, true);
+                    }
+                    continue;
+                }
+            } else {
+                if (minutes < startMinutes + TIME_UNIT_IN_MINUTES) { //同一startSlot
+                    if (minStart == INVALID) {
+                        minStart = minutes;
+                    } else {
+                        if (minutes < minStart) {
+                            int t = minStart; minStart = minutes; minutes = t;
+                        }
+                        subRanges = splitTimeRanges(subRanges, timeRange, minutes, false);
+                    }
+                    continue;
+                }
+            }
+            subRanges = splitTimeRanges(subRanges, timeRange, minutes, isEnd);
+            pos = valueEnd + sepLen;
+        }
+        return resetStartEndTime(subRanges, timeRange, minStart, maxEnd);
+    }
+
+    private static <T extends TimeRange> List<T> resetStartEndTime(List<T> subRanges, T timeRange, int minStart, int maxEnd) {
+        if (subRanges == null) {
+            // 不需要拆分
+            if (minStart < maxEnd) {
+                if (minStart != INVALID) {
+                    timeRange.setStartTime(LocalTime.MIN.plusMinutes(minStart));
+                }
+                timeRange.setEndTime(LocalTime.MIN.plusMinutes(maxEnd));
+            } else {
+                if (maxEnd != INVALID) {
+                    // 创建新的时间范围
+                    T nextRange = createTimeRange(LocalTime.MIN.plusMinutes(minStart), timeRange.getEndTime());
+                    // 调整结束时间
+                    timeRange.setEndTime(LocalTime.MIN.plusMinutes(maxEnd));
+                    List<T> subRangesList = new ArrayList<>(NumberConstants.INTEGER_TWO);
+                    subRangesList.add(timeRange);
+                    subRangesList.add(nextRange);
+                    return subRangesList;
+                } else {
+                    if (minStart != INVALID) {
+                        // 调整开始时间
+                        timeRange.setStartTime(LocalTime.MIN.plusMinutes(minStart));
+                    }
+                }
+            }
+            return null;
+        }
+        if (minStart != INVALID) {
+            T first = subRanges.get(0);
+            if (getTimeMinutes(first.getEndTime(), false) < minStart) {
+                // 需要拆分
+                subRanges = splitTimeRanges(subRanges, timeRange, minStart, false);
+            } else {
+                first.setStartTime(LocalTime.MIN.plusMinutes(minStart));
+            }
+        }
+        if (maxEnd != INVALID) {
+            T last = subRanges.get(subRanges.size() - 1);
+            if (getTimeMinutes(last.getStartTime(), false) > maxEnd) {
+                // 需要拆分
+                subRanges = splitTimeRanges(subRanges, timeRange, maxEnd, true);
+            } else {
+                last.setEndTime(LocalTime.MIN.plusMinutes(maxEnd));
+            }
+        }
+        return subRanges;
+    }
+
+
+    private static <T extends TimeRange> List<T> splitTimeRanges(List<T> subRanges, T timeRange, int minutes, boolean isEnd) {
+        //TODO 实现时间范围拆分逻辑
+        return subRanges;
     }
 
     /**
