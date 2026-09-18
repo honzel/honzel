@@ -125,41 +125,35 @@ public class TimeRangeUtils {
         //是否班次时间
         boolean shiftFlag = (timeRangeStamp & SHIFT_TIME_FLAG) != NONE;
         List<TimeRange> timeRangeList = new ArrayList<>();
-        TimeRange timeRange = null;
         // 日期起始位
         int offset = getOffsetIndex(timeRangeStamp);
         if (offset > 0) {
             times = (times >>> offset) | ((~(-FIRST_BIT << offset) & times) << (TIME_BITS - offset));
         }
-        int shift = Long.numberOfTrailingZeros(times);
-        if (shift != 0) {
-            times >>>= shift;
+        // 获取第一个开始位
+        int firstStart = Long.numberOfTrailingZeros(times);
+        if (firstStart != 0) {
+            times >>>= firstStart;
         }
-        for (int i = shift; i < TIME_BITS; i ++, times >>>= 1) {
+        TimeRange firstRange = (TimeRange) getInstance().newTimeRange();
+        firstRange.setStartTime(parseTime((offset + firstStart) % TIME_BITS));
+        // 获取第一个结束位
+        int firstBits = Long.numberOfLeadingZeros(~times);
+        int firstEnd = firstStart + firstBits;
+        if ((times >>>= firstBits) == NONE) {
+            // 只有一个时间段
+            addEndTimeAndDivision(timeRangeList, firstRange, adjTime, adjStart, adjEnd, divisionDuration, halfDivisionDurationEnabled, shiftFlag, offset, firstEnd);
+            return timeRangeList;
+        }
+        TimeRange timeRange = null;
+        for (int i = firstEnd; i < TIME_BITS; i ++, times >>>= 1) {
+            if (times == NONE) {
+                break;
+            }
             if ((times & FIRST_BIT) == NONE) {
                 if (timeRange != null) {
-                    int seq = (offset + i) % TIME_BITS;
-                    if (shiftFlag) {
-                        timeRange.setEndTime(i == TIME_BITS - 1 && seq == i ? LocalTime.MAX : parseTime(seq + 1));
-                    } else {
-                        timeRange.setEndTime(parseTime(seq));
-                    }
-                    // 应用调整值
-                    List<TimeRange> subRanges = applyAdjustments(timeRange, adjTime, adjStart, adjEnd);
-                    if (subRanges != null) {
-                        // 如果有拆分成多个时间段则遍历子时间段
-                        for (TimeRange subRange : subRanges) {
-                            // 按切割时长拆分时间段
-                            addDivideTimeRange(subRange, timeRangeList, divisionDuration, halfDivisionDurationEnabled);
-                        }
-                    } else {
-                        // 按切割时长拆分时间段
-                        addDivideTimeRange(timeRange, timeRangeList, divisionDuration, halfDivisionDurationEnabled);
-                    }
+                    addEndTimeAndDivision(timeRangeList, timeRange, adjTime, adjStart, adjEnd, divisionDuration, halfDivisionDurationEnabled, shiftFlag, offset, i);
                     timeRange = null;
-                }
-                if (times == NONE) {
-                    break;
                 }
             } else {
                 if (timeRange == null) {
@@ -169,17 +163,30 @@ public class TimeRangeUtils {
             }
         }
         if (timeRange != null) {
-            if (offset == 0) {
-                // 如果结束时间为一天的最后，则设置当天最大值
-                timeRange.setEndTime(LocalTime.MAX);
-            } else {
-                // 跨天时
-                timeRange.setEndTime(parseTime(offset));
+            // 添加最后一个时间段
+            addEndTimeAndDivision(timeRangeList, timeRange, adjTime, adjStart, adjEnd, divisionDuration, halfDivisionDurationEnabled, shiftFlag, offset, TIME_BITS);
+        }
+        return timeRangeList;
+    }
+
+    private static <TimeRange extends com.honzel.core.util.time.TimeRange> void addEndTimeAndDivision(List<TimeRange> timeRangeList, TimeRange timeRange, String adjTime, int adjStart, int adjEnd, int divisionDuration, boolean halfDivisionDurationEnabled, boolean shiftFlag, int offset, int end) {
+        if (shiftFlag) {
+            timeRange.setEndTime(end == TIME_BITS - 1 && offset == 0 ? LocalTime.MAX : parseTime((offset + end) % TIME_BITS + 1));
+        } else {
+            timeRange.setEndTime(end == TIME_BITS && offset == 0 ? LocalTime.MAX : parseTime((offset + end) % TIME_BITS));
+        }
+        // 应用调整值
+        List<TimeRange> subRanges = applyAdjustments(timeRange, adjTime, adjStart, adjEnd);
+        if (subRanges != null) {
+            // 如果有拆分成多个时间段则遍历子时间段
+            for (TimeRange subRange : subRanges) {
+                // 按切割时长拆分时间段
+                addDivideTimeRange(subRange, timeRangeList, divisionDuration, halfDivisionDurationEnabled);
             }
+        } else {
             // 按切割时长拆分时间段
             addDivideTimeRange(timeRange, timeRangeList, divisionDuration, halfDivisionDurationEnabled);
         }
-        return timeRangeList;
     }
 
 
@@ -664,9 +671,10 @@ public class TimeRangeUtils {
      * @param timeRanges 时间范围列表
      * @param forceShift 是否强制分隔班次
      * @param minuteTime 分钟精度时间值
+     * @param appendTimestamp 附加时间位图
      * @return 时间段值
      */
-    private static long fromTimeRanges0(List<? extends TimeRange> timeRanges, boolean forceShift, StringBuilder minuteTime, boolean appendTime) {
+    private static long fromTimeRanges0(List<? extends TimeRange> timeRanges, boolean forceShift, StringBuilder minuteTime, boolean appendTimestamp) {
         if (timeRanges == null || timeRanges.isEmpty()) {
             return NONE;
         }
@@ -712,7 +720,7 @@ public class TimeRangeUtils {
             result |= range;
         }
         if (hasMinuteTimes) {
-            if (appendTime) {
+            if (appendTimestamp) {
                 if (minuteTime.length() != adjustOffset) {
                     minuteTime.append(ADJ_TIME_SEPARATOR);
                 }
