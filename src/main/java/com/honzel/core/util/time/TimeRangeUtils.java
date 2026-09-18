@@ -707,6 +707,9 @@ public class TimeRangeUtils {
             // 并入时段
             result |= range;
         }
+        if (forceShift && result != NONE) {
+            result |= SHIFT_TIME_FLAG;
+        }
         if (hasMinuteTimes) {
             if (appendTimestamp) {
                 if (minuteTime.length() != adjustOffset) {
@@ -719,7 +722,7 @@ public class TimeRangeUtils {
                 }
             }
         }
-        return (forceShift && result != NONE) ? (result | SHIFT_TIME_FLAG) : result;
+        return result;
     }
 
 
