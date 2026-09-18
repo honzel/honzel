@@ -504,20 +504,7 @@ public class TimeRangeUtils {
         if (range == NONE) {
             return containsTime(timeRangeStamp, startTime);
         }
-        if ((timeRangeStamp & range) == range) {
-            // 如果范围是重合时，是否跨天时间点, 如果跨天时间点在时间段范围内
-            int offsetMinutes = getOffsetIndex(timeRangeStamp) * TIME_UNIT_IN_MINUTES;
-            int startMinutes = getTimeMinutes(startTime, false);
-            int endMinutes = getTimeMinutes(endTime, true);
-            boolean offsetInRange;
-            if (startTime.isBefore(endTime)) {
-                offsetInRange = offsetMinutes > startMinutes && offsetMinutes < endMinutes;
-            } else {
-                offsetInRange = offsetMinutes > startMinutes || offsetMinutes < endMinutes;
-            }
-            return !offsetInRange;
-        }
-        return false;
+        return (timeRangeStamp & range) == range;
     }
     /**
      * 获取日期范围列表，周一为1,周二为2,...多个用英文逗号分隔
@@ -922,9 +909,7 @@ public class TimeRangeUtils {
             return INVALID;
         }
         int days = timeRangeMask == NONE ? 0 : (int)((timeRangeMask & ALL_WEEKDAYS) >>> WEEKDAY_SHIFT);
-        if (days != 0) {
-            timeRangeMask &= ~ALL_WEEKDAYS;
-        }
+        timeRangeMask &= ALL_TIMES;
         // weekday 位在 base-32 时间戳中从末尾向前定位
         int pos = 0;
         int len = minuteTime.length();
@@ -945,12 +930,8 @@ public class TimeRangeUtils {
                 // 时间戳
                 long stamp = parseTimeValue(minuteTime, timeStart, entryEnd);
                 if (stamp != INVALID) {
-                    long time;
-                    if (timeRangeMask != NONE) {
-                        time = ALL_TIMES & nonShift(stamp) & nonShift(timeRangeMask);
-                    } else {
-                        time = ALL_TIMES & nonShift(stamp);
-                    }
+                    // 获取时间戳对应的时间范围
+                    long time = timeRangeMask != NONE ? nonShift(stamp) & timeRangeMask : nonShift(stamp);
                     // 从时间戳获取基础时间范围
                     boolean result = time != NONE && (startTime == null
                             || (endTime != null ? containsTimeRange(time, startTime, endTime) : containsTime(time, startTime))
