@@ -139,14 +139,13 @@ public class TimeRangeUtils {
         firstRange.setStartTime(parseTime((offset + firstStart) % TIME_BITS));
         // 获取第一个结束位
         int firstBits = Long.numberOfLeadingZeros(~times);
-        int firstEnd = firstStart + firstBits;
         if ((times >>>= firstBits) == NONE) {
             // 只有一个时间段
-            addEndTimeAndDivision(timeRangeList, firstRange, adjTime, adjStart, adjEnd, divisionDuration, halfDivisionDurationEnabled, shiftFlag, offset, firstEnd);
+            addEndTimeAndDivision(timeRangeList, firstRange, adjTime, adjStart, adjEnd, divisionDuration, halfDivisionDurationEnabled, shiftFlag, offset, firstStart + firstBits);
             return timeRangeList;
         }
         TimeRange timeRange = null;
-        for (int i = firstEnd; i < TIME_BITS; i ++, times >>>= 1) {
+        for (int i = firstStart + firstBits; i < TIME_BITS; i ++, times >>>= 1) {
             if (times == NONE) {
                 break;
             }
