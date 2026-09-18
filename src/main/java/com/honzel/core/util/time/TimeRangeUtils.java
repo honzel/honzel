@@ -321,7 +321,7 @@ public class TimeRangeUtils {
      */
     public static LocalTime getLastEndTime(long timeRangeStamp) {
         int index = getLastEndTimeIndex(timeRangeStamp);
-        return index != INVALID ? (index == TIME_BITS || index == 0) ? LocalTime.MAX : parseTime(index) : null;
+        return index != INVALID ? (index == TIME_BITS ? LocalTime.MAX : parseTime(index)) : null;
     }
 
     /**
@@ -350,7 +350,7 @@ public class TimeRangeUtils {
                 // 是班次时间
                 index ++;
             }
-            return index == TIME_BITS ? 0 : index;
+            return index == 0 ? TIME_BITS : index;
         }
         return INVALID;
     }
@@ -384,7 +384,7 @@ public class TimeRangeUtils {
             }
             // 调整值的分钟数
             int minutes = endOfAdjustment(minuteTime, pos, adjustmentEnd, index);
-            return minutes != INVALID ? LocalTime.MIN.plusMinutes(minutes) : (index == TIME_BITS || index == 0) ? LocalTime.MAX : parseTime(index);
+            return minutes != INVALID ? LocalTime.MIN.plusMinutes(minutes) : index == TIME_BITS ? LocalTime.MAX : parseTime(index);
         } else {
             int index = getFirstStartIndex(time);
             if (index == INVALID) {
@@ -1124,7 +1124,7 @@ public class TimeRangeUtils {
         if (TextUtils.isEmpty(adjustmentTime) || adjStart >= adjEnd) {
             return null;
         }
-        //TODO 按调整值字符串解析并应用到时间范围，如果需要从一个时间范围拆分出多个时间范围时，返回调整后的时间范围列表，否则返回null
+        //TODO 按调整值字符串解析并应用到时间范围为分钟精度的时间范围，如果需要从一个时间范围拆分出多个时间范围时，返回调整后的时间范围列表，如果不需要拆分返回null
         return null;
     }
 
