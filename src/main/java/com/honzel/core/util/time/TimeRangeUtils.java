@@ -1238,17 +1238,41 @@ public class TimeRangeUtils {
         }
         if (maxEnd != INVALID) {
             T last = subRanges.get(subRanges.size() - 1);
-            if (getTimeMinutes(last.getStartTime(), false) > maxEnd) {
+            if (last.getEndTime() == null || getTimeMinutes(last.getStartTime(), false) <= maxEnd) {
+                last.setEndTime(LocalTime.MIN.plusMinutes(maxEnd));
+            } else {
                 // 需要拆分
                 subRanges = splitTimeRanges(subRanges, timeRange, maxEnd, true);
-            } else {
-                last.setEndTime(LocalTime.MIN.plusMinutes(maxEnd));
+            }
+        } else {
+            // 无 endSlot 调整值时，若最后一个子范围仍打开，用 timeRange.endTime 闭合
+            T last = subRanges.get(subRanges.size() - 1);
+            if (last.getEndTime() == null) {
+                last.setEndTime(timeRange.getEndTime());
             }
         }
         return subRanges;
     }
 
 
+    /**
+     * 拆分时间范围（根据调整值拆分或开启/闭合子范围）
+     * <p>subRanges 按时间顺序排列，但 minutes 插入位置不一定在末尾（startSlot/endSlot 交换或跨天场景），
+     * 因此需要先定位 minutes 所在的子范围或插入点，再对对应时段做拆分处理。</p>
+     * <p>规则：</p>
+     * <ul>
+     *   <li>{@code isEnd=true} (END 调整值)：定位包含 minutes 的子范围并截断其 endTime；若不在任何子范围内，则在插入点新建以 timeRange.startTime 或前一子范围 endTime 开始的子范围。</li>
+     *   <li>{@code isEnd=false} (START 调整值)：定位包含 minutes 的子范围并将其 startTime 后移至 minutes；若不在任何子范围内，则在插入点新建打开的子范围 [minutes, null)，并在需要时补充隐式覆盖段或闭合前一个打开的子范围到 slot 边界。</li>
+     * </ul>
+     * <p>打开状态以 {@code endTime == null} 表示，由后续 END 调整值或 timeRange.endTime 闭合。</p>
+     * <p>跨天场景下使用相对于 timeRange.startTime 的位置进行比较。</p>
+     *
+     * @param subRanges  当前已拆分的子范围列表（按时间顺序），null 表示尚未拆分
+     * @param timeRange  原始时间范围
+     * @param minutes    调整值分钟数
+     * @param isEnd      true 表示 END 调整值，false 表示 START 调整值
+     * @return 更新后的子范围列表
+     */
     private static <T extends TimeRange> List<T> splitTimeRanges(List<T> subRanges, T timeRange, int minutes, boolean isEnd) {
         //TODO 实现时间范围拆分逻辑
         return subRanges;
