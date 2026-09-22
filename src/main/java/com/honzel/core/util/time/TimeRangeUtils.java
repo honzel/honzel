@@ -148,13 +148,13 @@ public class TimeRangeUtils {
         }
         T timeRange = null;
         for (int i = firstEnd; i < TIME_BITS; i ++, times >>>= 1) {
-            if (times == NONE) {
-                break;
-            }
             if ((times & FIRST_BIT) == NONE) {
                 if (timeRange != null) {
                     addEndTimeAndDivision(timeRangeList, timeRange, adjTime, adjStart, adjEnd, divisionDuration, halfDivisionDurationEnabled, shiftFlag, offset, i);
                     timeRange = null;
+                }
+                if (times == NONE) {
+                    break;
                 }
             } else {
                 if (timeRange == null) {
@@ -1358,16 +1358,11 @@ public class TimeRangeUtils {
                 if (i > 0) {
                     LocalTime preEndTime = subRanges.get(i - 1).getEndTime();
                     if (preEndTime == null) {
+                        // 前段结束时间为空，用前段开始时间所在 slot 的开始位置替代,即两段合并
                         seg.setStartTime(subRanges.remove(--i).getStartTime());
                     } else {
                         LocalTime startTime = parseTime(getEndIndex0(getTimeMinutes(preEndTime, true)));
-                        if (startTime.isBefore(seg.getEndTime())) {
-                            // 该段开始时间在当前段结束时间之前
-                            seg.setStartTime(startTime);
-                        } else {
-                            // 该段开始时间在当前段结束时间或之后
-                            seg.setStartTime(preEndTime);
-                        }
+                        seg.setStartTime(startTime);
                     }
                 } else {
                     seg.setStartTime(timeRange.getStartTime());
@@ -1378,13 +1373,7 @@ public class TimeRangeUtils {
                 if (i < subRanges.size() - 1) {
                     LocalTime nextStartTime = subRanges.get(i + 1).getStartTime();
                     LocalTime endTime = parseTime(getStartIndex0(getTimeMinutes(nextStartTime, false)));
-                    if (endTime.isAfter(seg.getStartTime())) {
-                        // 该段结束时间在当前段开始时间之后
-                        seg.setEndTime(endTime);
-                    } else {
-                        // 该段结束时间在当前段开始时间或之前
-                        seg.setEndTime(nextStartTime);
-                    }
+                    seg.setEndTime(endTime);
                 } else {
                     seg.setEndTime(timeRange.getEndTime());
                 }
