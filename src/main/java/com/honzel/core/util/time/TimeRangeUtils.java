@@ -789,7 +789,8 @@ public class TimeRangeUtils {
                 }
                 minuteTime.append(Long.toUnsignedString(result, TIME_RANGE_RADIX));
             } else {
-                if (minuteTime.length() == adjustOffset) {
+                // 仅当本次确实前置过条目分隔符（adjustOffset > 0）且未追加任何调整值时才回退分隔符；
+                if (adjustOffset > 0 && minuteTime.length() == adjustOffset) {
                     minuteTime.setLength(adjustOffset - TIME_ENTRY_SEPARATOR.length());
                 }
             }
