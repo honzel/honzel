@@ -75,32 +75,19 @@ public class TimeRangeTester {
 	}
 
 	private void testTimeRange() {
-		List<TimeRange> timeRanges = TimeRangeUtils.getTimeRanges(2287833007744090096L);
-		System.out.println(TextUtils.toString(timeRanges));
-//
-//		List<TimeRange> timeRangeList = new ArrayList<>();
-//		timeRangeList.add(new TimeRange(LocalTime.parse("04:30"), LocalTime.parse("12:00")));
-//		timeRangeList.add(new TimeRange(LocalTime.parse("12:00"), LocalTime.parse("16:00")));
-//		timeRangeList.add(new TimeRange(LocalTime.parse("18:00"), LocalTime.parse("02:30")));
-//		System.out.println("getTimeRanges:------------------------------------------");
-//		System.out.println(TextUtils.toString(TimeRangeUtils1.getTimeRanges(TimeRangeUtils.fromTimeRanges(timeRangeList), 60, true)));
-//		System.out.println("getTimeRanges:------------------------------------------");
-//		System.out.println(TextUtils.toString(TimeRangeUtils.getTimeRanges(TimeRangeUtils.fromTimeRanges(timeRangeList), 60, false)));
-//		System.out.println("getTimeRanges:------------------------------------------");
-//		System.out.println(TextUtils.toString(TimeRangeUtils.getTimeRanges(TimeRangeUtils.fromTimeRanges(timeRangeList))));
-//		System.out.println("getTimeRanges:------------------------------------------");
-//		System.out.println(TextUtils.toString(TimeRangeUtils.getTimeRanges(TimeRangeUtils.fromTimeRanges(timeRangeList), 30)));
-//
-//		System.out.println("getShiftTimeRanges:------------------------------------------");
-//		System.out.println(TextUtils.toString(TimeRangeUtils.getTimeRanges(TimeRangeUtils.fromShiftTimeRanges(timeRangeList), 60, true)));
-//		System.out.println("getShiftTimeRanges:------------------------------------------");
-//		System.out.println(TextUtils.toString(TimeRangeUtils.getTimeRanges(TimeRangeUtils.fromShiftTimeRanges(timeRangeList), 60, false)));
-//		System.out.println("getShiftTimeRanges:------------------------------------------");
-//		System.out.println(TextUtils.toString(TimeRangeUtils.getTimeRanges(TimeRangeUtils.fromShiftTimeRanges(timeRangeList), 30)));
-//		System.out.println("getShiftTimeRanges:------------------------------------------");
-//		System.out.println(TextUtils.toString(TimeRangeUtils.getTimeRanges(TimeRangeUtils.fromShiftTimeRanges(timeRangeList))));
-//		System.out.println("nonShift:------------------------------------------");
-//		System.out.println(TextUtils.toString(TimeRangeUtils.getTimeRanges(TimeRangeUtils.nonShift(TimeRangeUtils.fromShiftTimeRanges(timeRangeList)))));
+
+		List<TimeRange> timeRangeList = new ArrayList<>();
+		timeRangeList.add(new TimeRange(LocalTime.parse("12:20"), LocalTime.parse("16:00")));
+		timeRangeList.add(new TimeRange(LocalTime.parse("04:15"), LocalTime.parse("12:25")));
+		timeRangeList.add(new TimeRange(LocalTime.parse("18:15"), LocalTime.parse("02:16")));
+
+		StringBuilder minuteTime = new StringBuilder();
+		long timestamp = TimeRangeUtils.fromTimeRanges(timeRangeList, minuteTime);
+		System.out.println("结果:" + minuteTime + "-------" + timestamp);
+
+		System.out.println("getTimeRanges:" + TimeRangeUtils.getTimeRanges(timestamp));
+		System.out.println("getMinuteTimeRanges:" + TimeRangeUtils.getMinuteTimeRanges(minuteTime.toString(), DayOfWeek.MONDAY));
+
 	}
 
 }

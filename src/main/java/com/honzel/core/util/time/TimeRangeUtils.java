@@ -979,6 +979,8 @@ public class TimeRangeUtils {
             if (valueEnd == INVALID || valueEnd > adjEnd) {
                 valueEnd = adjEnd;
             }
+            pos = valueEnd + ADJ_ITEMS_SEPARATOR.length();
+
             int minutes = parseAdjValue(minuteTime, valueStart, valueEnd);
             if (minutes != INVALID) {
                 // 判断该调整点是否落在新时间范围内（内部边界，需要移除）
@@ -1009,7 +1011,7 @@ public class TimeRangeUtils {
                     mayHaveGap = false;
                 }
             }
-            pos = valueEnd + ADJ_ITEMS_SEPARATOR.length();
+
         }
         return true;
     }
