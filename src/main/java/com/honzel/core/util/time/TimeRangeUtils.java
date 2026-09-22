@@ -437,9 +437,47 @@ public class TimeRangeUtils {
         // 最早调整值为 START 才表示覆盖从该分钟开始；为 END 或无调整值时从 slot 边界对齐开始
         return firstIsEnd ? INVALID : first;
     }
+    /**
+     * 获取分钟精度下实际的最晚结束时间点
+     * <p>{@code timeIndex} 为位图的排他结束 slot 下标，故最后覆盖 slot 为 {@code timeIndex - 1}。
+     * 在该 slot 内查找调整值，根据分钟值最大（即时间上最晚）的调整值判定结束状态：</p>
+     * <ul>
+     *   <li>最晚调整值为 END：覆盖不延伸到 slot 边界，在该 END 分钟结束，返回其分钟值</li>
+     *   <li>最晚调整值为 START 或该 slot 无调整值：覆盖延伸到 slot 边界（{@code timeIndex * 30}），返回 {@link #INVALID} 由调用方回退到边界值</li>
+     * </ul>
+     *
+     * @param minuteTime      分钟精度时间段字符串
+     * @param adjustmentStart 调整值区域起始位置
+     * @param adjustmentEnd   调整值区域结束位置
+     * @param timeIndex       位图排他结束的 slot 下标
+     * @return 实际最晚结束的分钟数（minute-of-day）；若延伸到 slot 边界对齐结束则返回 {@link #INVALID}
+     */
     private static int endOfAdjustment(String minuteTime, int adjustmentStart, int adjustmentEnd, int timeIndex) {
-        //TODO 需要根据具体需求实现
-        return INVALID;
+        // 最后覆盖 slot 为排他结束下标的前一个 slot
+        int lastSlot = timeIndex - 1;
+        // 记录最后覆盖 slot 内分钟值最大（时间最晚）的调整值及其类型
+        int last = INVALID;
+        boolean lastIsEnd = false;
+        int pos = adjustmentStart;
+        while (pos < adjustmentEnd) {
+            boolean isEnd = minuteTime.charAt(pos) == END_TIME_FLAG;
+            int valueStart = isEnd ? pos + 1 : pos;
+            int valueEnd = minuteTime.indexOf(ADJ_ITEMS_SEPARATOR, pos);
+            if (valueEnd == INVALID || valueEnd > adjustmentEnd) {
+                valueEnd = adjustmentEnd;
+            }
+            pos = valueEnd + ADJ_ITEMS_SEPARATOR.length();
+            int minutes = parseAdjValue(minuteTime, valueStart, valueEnd);
+            if (minutes == INVALID || getStartIndex0(minutes) != lastSlot) {
+                continue;
+            }
+            if (last == INVALID || minutes > last) {
+                last = minutes;
+                lastIsEnd = isEnd;
+            }
+        }
+        // 最晚调整值为 END 才表示覆盖在该分钟结束；为 START 或无调整值时延伸到 slot 边界对齐结束
+        return lastIsEnd ? last : INVALID;
     }
     /**
      * 是否时间有跨天
