@@ -1139,8 +1139,11 @@ public class TimeRangeUtils {
         int startMinutes = getTimeMinutes(startTime, false);
         LocalTime endTime = timeRange.getEndTime();
         int endMinutes = getTimeMinutes(endTime, true);
+        if (endMinutes == 0) {
+            endMinutes = TIME_BITS * TIME_UNIT_IN_MINUTES;
+        }
         // 跨天
-        boolean crossing = startMinutes >= endMinutes;
+        boolean crossing = startMinutes > endMinutes;
         List<T> subRanges = null;
 
         int minStart = INVALID;
@@ -1170,14 +1173,14 @@ public class TimeRangeUtils {
                 }
             }
             if (isEnd) {
-                if (minutes > endMinutes - TIME_UNIT_IN_MINUTES) { //同一endSlot
+                if (minutes >= endMinutes - TIME_UNIT_IN_MINUTES) { //同一endSlot
                     if (maxEnd == INVALID) {
                         maxEnd = minutes;
                     } else {
                         if (minutes > maxEnd) {
                             int t = maxEnd; maxEnd = minutes; minutes = t;
                         }
-                        subRanges = splitTimeRanges(subRanges, timeRange, minutes, true);
+                        subRanges = splitTimeRanges(subRanges, timeRange, startMinutes, crossing, minutes, true);
                     }
                     continue;
                 }
@@ -1189,69 +1192,57 @@ public class TimeRangeUtils {
                         if (minutes < minStart) {
                             int t = minStart; minStart = minutes; minutes = t;
                         }
-                        subRanges = splitTimeRanges(subRanges, timeRange, minutes, false);
+                        subRanges = splitTimeRanges(subRanges, timeRange, startMinutes, crossing, minutes, false);
                     }
                     continue;
                 }
             }
-            subRanges = splitTimeRanges(subRanges, timeRange, minutes, isEnd);
+            subRanges = splitTimeRanges(subRanges, timeRange, startMinutes, crossing, minutes, isEnd);
             pos = valueEnd + sepLen;
         }
-        return resetStartEndTime(subRanges, timeRange, minStart, maxEnd);
-    }
-
-    private static <T extends TimeRange> List<T> resetStartEndTime(List<T> subRanges, T timeRange, int minStart, int maxEnd) {
         if (subRanges == null) {
             // 不需要拆分
-            if (minStart < maxEnd) {
-                if (minStart != INVALID) {
-                    timeRange.setStartTime(LocalTime.MIN.plusMinutes(minStart));
-                }
-                timeRange.setEndTime(LocalTime.MIN.plusMinutes(maxEnd));
-            } else {
-                if (maxEnd != INVALID) {
-                    // 创建新的时间范围
-                    T nextRange = createTimeRange(LocalTime.MIN.plusMinutes(minStart), timeRange.getEndTime());
-                    // 调整结束时间
-                    timeRange.setEndTime(LocalTime.MIN.plusMinutes(maxEnd));
-                    List<T> subRangesList = new ArrayList<>(NumberConstants.INTEGER_TWO);
-                    subRangesList.add(timeRange);
-                    subRangesList.add(nextRange);
-                    return subRangesList;
-                } else {
-                    if (minStart != INVALID) {
-                        // 调整开始时间
-                        timeRange.setStartTime(LocalTime.MIN.plusMinutes(minStart));
-                    }
-                }
-            }
-            return null;
+            return resetStartEndTime(timeRange, minStart, maxEnd, endMinutes - TIME_UNIT_IN_MINUTES <= startMinutes);
         }
         if (minStart != INVALID) {
-            T first = subRanges.get(0);
-            if (getTimeMinutes(first.getEndTime(), false) < minStart) {
-                // 需要拆分
-                subRanges = splitTimeRanges(subRanges, timeRange, minStart, false);
-            } else {
-                first.setStartTime(LocalTime.MIN.plusMinutes(minStart));
-            }
+            subRanges = splitTimeRanges(subRanges, timeRange, startMinutes, crossing, minStart, false);
         }
         if (maxEnd != INVALID) {
-            T last = subRanges.get(subRanges.size() - 1);
-            if (last.getEndTime() == null || getTimeMinutes(last.getStartTime(), false) <= maxEnd) {
-                last.setEndTime(LocalTime.MIN.plusMinutes(maxEnd));
-            } else {
-                // 需要拆分
-                subRanges = splitTimeRanges(subRanges, timeRange, maxEnd, true);
+            subRanges = splitTimeRanges(subRanges, timeRange, startMinutes, crossing, maxEnd, true);
+        }
+        // 处理拆分后的子范围null的值
+        resolveNullEnds(subRanges, timeRange);
+        return subRanges;
+    }
+
+    private static <T extends TimeRange> List<T> resetStartEndTime(T timeRange, int minStart, int maxEnd, boolean sameSlot) {
+        if (minStart < maxEnd) {
+            if (minStart != INVALID) {
+                timeRange.setStartTime(LocalTime.MIN.plusMinutes(minStart));
             }
+            timeRange.setEndTime(LocalTime.MIN.plusMinutes(maxEnd));
         } else {
-            // 无 endSlot 调整值时，若最后一个子范围仍打开，用 timeRange.endTime 闭合
-            T last = subRanges.get(subRanges.size() - 1);
-            if (last.getEndTime() == null) {
-                last.setEndTime(timeRange.getEndTime());
+            if (sameSlot && maxEnd != INVALID) {
+                // 创建新的时间范围
+                T nextRange = createTimeRange(LocalTime.MIN.plusMinutes(minStart), timeRange.getEndTime());
+                // 调整结束时间
+                timeRange.setEndTime(LocalTime.MIN.plusMinutes(maxEnd));
+                List<T> subRangesList = new ArrayList<>(NumberConstants.INTEGER_TWO);
+                subRangesList.add(timeRange);
+                subRangesList.add(nextRange);
+                return subRangesList;
+            } else {
+                if (minStart != INVALID) {
+                    // 调整开始时间
+                    timeRange.setStartTime(LocalTime.MIN.plusMinutes(minStart));
+                }
+                if (maxEnd != INVALID) {
+                    // 调整结束时间
+                    timeRange.setEndTime(LocalTime.MIN.plusMinutes(maxEnd));
+                }
             }
         }
-        return subRanges;
+        return null;
     }
 
 
@@ -1261,21 +1252,153 @@ public class TimeRangeUtils {
      * 因此需要先定位 minutes 所在的子范围或插入点，再对对应时段做拆分处理。</p>
      * <p>规则：</p>
      * <ul>
-     *   <li>{@code isEnd=true} (END 调整值)：定位包含 minutes 的子范围并截断其 endTime；若不在任何子范围内，则在插入点新建以 timeRange.startTime 或前一子范围 endTime 开始的子范围。</li>
-     *   <li>{@code isEnd=false} (START 调整值)：定位包含 minutes 的子范围并将其 startTime 后移至 minutes；若不在任何子范围内，则在插入点新建打开的子范围 [minutes, null)，并在需要时补充隐式覆盖段或闭合前一个打开的子范围到 slot 边界。</li>
+     *   <li>{@code isEnd=true} 确认在subRanges的哪一段[start, end)，end!=null拆成[start, minutes), [null, end);
+     *     如果end==null合并为[start, minutes)</li>
+     *   <li>{@code isEnd=false} 确认在subRanges的哪一段[start, end)，start!=null拆成[start, null), [minutes, end);
+     *      *     start==null合并为[minutes, end)</li>
      * </ul>
-     * <p>打开状态以 {@code endTime == null} 表示，由后续 END 调整值或 timeRange.endTime 闭合。</p>
-     * <p>跨天场景下使用相对于 timeRange.startTime 的位置进行比较。</p>
      *
-     * @param subRanges  当前已拆分的子范围列表（按时间顺序），null 表示尚未拆分
-     * @param timeRange  原始时间范围
-     * @param minutes    调整值分钟数
-     * @param isEnd      true 表示 END 调整值，false 表示 START 调整值
+     * @param subRanges 当前已拆分的子范围列表（按时间顺序），null 表示尚未拆分
+     * @param minutes   调整值分钟数
+     * @param isEnd     true 表示 END 调整值，false 表示 START 调整值
      * @return 更新后的子范围列表
      */
-    private static <T extends TimeRange> List<T> splitTimeRanges(List<T> subRanges, T timeRange, int minutes, boolean isEnd) {
-        //TODO 实现时间范围拆分逻辑
+    private static <T extends TimeRange> List<T> splitTimeRanges(List<T> subRanges, T timeRange, int startMinutes, boolean crossing, int minutes, boolean isEnd) {
+        boolean beforeStart = false;
+        int insertIndex;
+        if (subRanges == null) {
+            // 初始为完整覆盖段 [timeRange.start, timeRange.end]
+            subRanges = new ArrayList<>(NumberConstants.INTEGER_TWO);
+            subRanges.add(createTimeRange(timeRange.getStartTime(), timeRange.getEndTime()));
+            insertIndex = 0;
+        } else {
+            // 遍历已拆分的子范围，定位 minutes 所在的子范围或插入点
+            insertIndex = INVALID;
+            int pos = relativePos(startMinutes, minutes, crossing);
+            for (int i = subRanges.size() - 1; i >= 0; i--) {
+                T seg = subRanges.get(i);
+                if (seg.getStartTime() != null) {
+                    // 有开始时间
+                    if (pos < relativePos(startMinutes, getTimeMinutes(seg.getStartTime(), false), crossing)) {
+                        // 如果在当前段开始时间之前，则继续检查前一段
+                        beforeStart = true;
+                        continue;
+                    }
+                    // 匹配到时间段
+                    insertIndex = i;
+                    beforeStart = false;
+                    break;
+                }
+                // 没有开始时间必然有结束时间
+                if (pos >= relativePos(startMinutes, getTimeMinutes(seg.getEndTime(), true), crossing)) {
+                    // 如果在当前段结束时间之后，则认为在后一段
+                    insertIndex = i + 1;
+                } else {
+                    // 如果在当前段结束时间之前，则认为在当前段
+                    insertIndex = i;
+                    beforeStart = false;
+                }
+                break;
+            }
+            // 如果 insertIndex 未更新，则返回原列表
+            if (insertIndex == INVALID || insertIndex == subRanges.size()) {
+                return subRanges;
+            }
+        }
+        // 获取插入位置的子范围
+        T seg = subRanges.get(insertIndex);
+        LocalTime minuteTime = LocalTime.MIN.plusMinutes(minutes);
+        if (isEnd) {
+            if (beforeStart) {
+                // 在当前段开始时间之前，插入 [null, minutes)
+                subRanges.add(insertIndex, createTimeRange(null, minuteTime));
+            } else if (seg.getEndTime() != null) {
+                // [start, end) 拆成 [start, minutes), [null, end)
+                LocalTime oldEnd = seg.getEndTime();
+                seg.setEndTime(minuteTime);
+                subRanges.add(insertIndex + 1, createTimeRange(null, oldEnd));
+            } else {
+                // end==null 合并为 [start, minutes)
+                seg.setEndTime(minuteTime);
+            }
+        } else {
+            if (seg.getStartTime() != null) {
+                if (beforeStart) {
+                    // 在当前段开始时间之前，插入 [null, minutes)
+                    subRanges.add(insertIndex, createTimeRange(minuteTime, null));
+                } else {
+                    // [start, end) 拆成 [start, null), [minutes, end)
+                    LocalTime oldEnd = seg.getEndTime();
+                    seg.setEndTime(null);
+                    subRanges.add(insertIndex + 1, createTimeRange(minuteTime, oldEnd));
+                }
+            } else {
+                // start==null 合并为 [minutes, end)
+                seg.setStartTime(minuteTime);
+            }
+        }
         return subRanges;
+    }
+
+    /**
+     * 所有调整值处理完毕后，将 subRanges 中为 null 的端用另一端相邻值所在 slot 的开始/结束位置替代：
+     * <ul>
+     *   <li>{@code [start, null)}：null end 用后一段 start 值所在 slot 的开始位置替代（无后段则用 timeRange.end）</li>
+     *   <li>{@code [null, end)}：null start 用前一段 end 值所在 slot 的结束位置替代（无前段则用 timeRange.start）</li>
+     * </ul>
+     */
+    private static <T extends TimeRange> void resolveNullEnds(List<T> subRanges, T timeRange) {
+        if (subRanges == null) {
+            return;
+        }
+        for (int i = subRanges.size() - 1; i >= 0; i--) {
+            T seg = subRanges.get(i);
+            if (seg.getStartTime() == null) {
+                if (i > 0) {
+                    LocalTime preEndTime = subRanges.get(i - 1).getEndTime();
+                    if (preEndTime == null) {
+                        seg.setStartTime(subRanges.remove(--i).getStartTime());
+                    } else {
+                        LocalTime startTime = parseTime(getEndIndex0(getTimeMinutes(preEndTime, true)));
+                        if (startTime.isBefore(seg.getEndTime())) {
+                            // 该段开始时间在当前段结束时间之前
+                            seg.setStartTime(startTime);
+                        } else {
+                            // 该段开始时间在当前段结束时间或之后
+                            seg.setStartTime(preEndTime);
+                        }
+                    }
+                } else {
+                    seg.setStartTime(timeRange.getStartTime());
+                }
+                continue;
+            }
+            if (seg.getEndTime() == null) {
+                if (i < subRanges.size() - 1) {
+                    LocalTime nextStartTime = subRanges.get(i + 1).getStartTime();
+                    LocalTime endTime = parseTime(getTimeMinutes(nextStartTime, false));
+                    if (endTime.isAfter(seg.getStartTime())) {
+                        // 该段结束时间在当前段开始时间之后
+                        seg.setEndTime(endTime);
+                    } else {
+                        // 该段结束时间在当前段开始时间或之前
+                        seg.setEndTime(nextStartTime);
+                    }
+                } else {
+                    seg.setEndTime(timeRange.getEndTime());
+                }
+            }
+        }
+    }
+
+    /**
+     * 计算 minute 相对于 timeRange.startTime 的位置（用于跨天场景下的顺序比较）
+     */
+    private static int relativePos(int startMinutes, int minute, boolean crossing) {
+        if (crossing) {
+            return minute >= startMinutes ? minute - startMinutes : minute + (TIME_BITS * TIME_UNIT_IN_MINUTES) - startMinutes;
+        }
+        return minute - startMinutes;
     }
 
     /**
