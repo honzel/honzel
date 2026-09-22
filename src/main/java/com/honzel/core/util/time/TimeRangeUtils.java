@@ -938,7 +938,7 @@ public class TimeRangeUtils {
                     // 从时间戳获取基础时间范围
                     boolean result = time != NONE && (startTime == null
                             || (endTime != null ? containsTimeRange(time, startTime, endTime) : containsTime(time, startTime))
-                            && (pos >= timeSep || containsMinuteRange0(time, minuteTime, pos, timeSep, startTime, endTime)));
+                            && (pos >= timeSep || containsMinuteRange0(minuteTime, pos, timeSep, startTime, endTime)));
                     if (result || weekdays == 0 || (weekdays & days) == days) {
                         return result ? pos : INVALID;
                     }
@@ -965,13 +965,30 @@ public class TimeRangeUtils {
         return entryEnd;
     }
 
-    private static boolean containsMinuteRange0(long time, String minuteTime, int adjStart, int adjEnd, LocalTime startTime, LocalTime endTime) {
+    private static boolean containsMinuteRange0(String minuteTime, int adjStart, int adjEnd, LocalTime startTime, LocalTime endTime) {
         int startMinutes = getTimeMinutes(startTime, false);
-        int endMinutes = getTimeMinutes(endTime != null ? endTime : startTime, true);
+        int endMinutes;
+        if (endTime != null) {
+            int rawEnd = getTimeMinutes(endTime, true);
+            // 结束分钟为 0（24:00）时按一天末尾 1440 处理，便于统一的边界比较
+            endMinutes = rawEnd == 0 ? TIME_BITS * TIME_UNIT_IN_MINUTES : rawEnd;
+        } else {
+            // endTime 为 null 表示点查询：判断 startMinutes 这一点是否被覆盖，等价于查询 1 分钟区间 [startMinutes, startMinutes+1)。
+            // 这样可保证 queryEndSlot 与 queryStartSlot 落在同一 slot（避免对齐点/00:00 时 getEndIndex0 把点当作排他结束而错位到前一 slot），
+            // 且点恰好命中 START 调整值时（minutes == startMinutes）视为已覆盖（endGap 要求 minutes >= startMinutes+1 才判间隙）。
+            endMinutes = startMinutes + 1;
+        }
+        // 跨天：开始分钟 > 结束分钟，查询范围为 [start, 24:00) + [0, end)
+        boolean crossing = startMinutes > endMinutes;
         int queryStartSlot = getStartIndex0(startMinutes);
         int queryEndSlot = getEndIndex0(endMinutes) - 1;
         int pos = adjStart;
-        boolean mayHaveGap = false;
+        // 查询起点所在 slot：记录 <= startMinutes 的最大调整值，若为结束调整值则起点落在间隙
+        int startBnd = INVALID;
+        boolean startGap = false;
+        // 查询终点所在 slot：记录 >= endMinutes 的最小调整值，若为开始调整值则终点前落在间隙
+        int endBnd = Integer.MAX_VALUE;
+        boolean endGap = false;
         while (pos < adjEnd) {
             boolean isEnd = minuteTime.charAt(pos) == END_TIME_FLAG;
             int valueStart = isEnd ? pos + 1 : pos;
@@ -980,40 +997,30 @@ public class TimeRangeUtils {
                 valueEnd = adjEnd;
             }
             pos = valueEnd + ADJ_ITEMS_SEPARATOR.length();
-
             int minutes = parseAdjValue(minuteTime, valueStart, valueEnd);
-            if (minutes != INVALID) {
-                // 判断该调整点是否落在新时间范围内（内部边界，需要移除）
-                boolean inside;
-                if (startMinutes < endMinutes || endMinutes == 0) {
-                    // 非跨天并且在边界内
-                    inside = minutes > startMinutes && (endMinutes == 0 || minutes < endMinutes);
-                } else {
-                    // 跨天并且在边界内：start > end，范围是 [start, 24:00) + [0, end)
-                    inside = minutes > startMinutes || minutes < endMinutes;
-                }
-                if (inside) {
-                    // 如果有调整值在查询服务内，则一定有间隙
-                    return false;
-                }
-                // 检查在查询边界所在 slot 上但在查询范围外的调整值是否表明存在间隙
-                if (isEnd) {
-                    // 如果是结束调整值，在同slot上如果后面有开始调整值，则[结束调整值, 开始调整值)之间为间隙,如果不存在开始调整值，则[结束调整值, slotEnd)为间隙
-                    if (getEndIndex0(minutes) - 1 == queryStartSlot && minutes <= startMinutes) {
-                        mayHaveGap = true;
-                    }
-                } else {
-                    // 如果是开始调整值，则开始调整值前面有结束调整值，则[结束调整值，开始调整值)之间为间隙,如果不存在结束调整值，则[slotStart, 开始调整值)为间隙
-                    if (getStartIndex0(minutes) == queryEndSlot - 1 && minutes >= endMinutes) {
-                        // start 调整值在查询结束所在的 slot 上，且向上偏移到查询结束之后 → 间隙
-                        return false;
-                    }
-                    mayHaveGap = false;
-                }
+            if (minutes == INVALID) {
+                continue;
             }
-
+            // 一、调整值落在查询范围内部：内部边界必然把查询范围切开 → 存在间隙
+            boolean inside = crossing ? (minutes > startMinutes || minutes < endMinutes)
+                    : (minutes > startMinutes && minutes < endMinutes);
+            if (inside) {
+                return false;
+            }
+            // 二、调整值在查询范围外，只可能出现在查询起点/终点所在的 slot 上，判断边界是否落在间隙
+            int slot = getStartIndex0(minutes);
+            if (slot == queryStartSlot && minutes <= startMinutes && minutes > startBnd) {
+                // 起点侧最近的边界：结束调整值→起点未覆盖；开始调整值→起点已覆盖
+                startBnd = minutes;
+                startGap = isEnd;
+            }
+            if (slot == queryEndSlot && minutes >= endMinutes && minutes < endBnd) {
+                // 终点侧最近的边界：开始调整值→终点前未覆盖；结束调整值→终点前已覆盖
+                endBnd = minutes;
+                endGap = !isEnd;
+            }
         }
-        return true;
+        return !startGap && !endGap;
     }
 
     /**
