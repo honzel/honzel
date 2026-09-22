@@ -1203,7 +1203,7 @@ public class TimeRangeUtils {
         }
         if (subRanges == null) {
             // 不需要拆分
-            return resetStartEndTime(timeRange, minStart, maxEnd, endMinutes - TIME_UNIT_IN_MINUTES <= startMinutes);
+            return resetStartEndTime(timeRange, minStart, maxEnd, endMinutes - TIME_UNIT_IN_MINUTES == startMinutes);
         }
         if (minStart != INVALID) {
             subRanges = splitTimeRanges(subRanges, timeRange, startMinutes, crossing, minStart, false);
@@ -1377,7 +1377,7 @@ public class TimeRangeUtils {
             if (seg.getEndTime() == null) {
                 if (i < subRanges.size() - 1) {
                     LocalTime nextStartTime = subRanges.get(i + 1).getStartTime();
-                    LocalTime endTime = parseTime(getTimeMinutes(nextStartTime, false));
+                    LocalTime endTime = parseTime(getStartIndex0(getTimeMinutes(nextStartTime, false)));
                     if (endTime.isAfter(seg.getStartTime())) {
                         // 该段结束时间在当前段开始时间之后
                         seg.setEndTime(endTime);
