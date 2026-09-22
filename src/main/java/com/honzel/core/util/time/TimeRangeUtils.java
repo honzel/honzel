@@ -1159,8 +1159,8 @@ public class TimeRangeUtils {
                 valueEnd = adjEnd;
             }
             int minutes = parseAdjValue(adjustmentTime, valueStart, valueEnd);
+            pos = valueEnd + sepLen;
             if (minutes == INVALID) {
-                pos = valueEnd + sepLen;
                 continue;
             }
             if (crossing) {
@@ -1198,7 +1198,6 @@ public class TimeRangeUtils {
                 }
             }
             subRanges = splitTimeRanges(subRanges, timeRange, startMinutes, crossing, minutes, isEnd);
-            pos = valueEnd + sepLen;
         }
         if (subRanges == null) {
             // 不需要拆分
