@@ -1206,10 +1206,22 @@ public class TimeRangeUtils {
             return resetStartEndTime(timeRange, minStart, maxEnd, endMinutes - TIME_UNIT_IN_MINUTES == startMinutes);
         }
         if (minStart != INVALID) {
-            subRanges = splitTimeRanges(subRanges, timeRange, startMinutes, crossing, minStart, false);
+            T firstRange = subRanges.get(0);
+            if (firstRange.getEndTime() != null
+                    && (relativePos(startMinutes, getTimeMinutes(firstRange.getEndTime(), true), crossing) >= relativePos(startMinutes, minStart, crossing))) {
+                firstRange.setStartTime(LocalTime.MIN.plusMinutes(minStart));
+            } else {
+                subRanges = splitTimeRanges(subRanges, timeRange, startMinutes, crossing, minStart, false);
+            }
         }
         if (maxEnd != INVALID) {
-            subRanges = splitTimeRanges(subRanges, timeRange, startMinutes, crossing, maxEnd, true);
+            T lastRange = subRanges.get(subRanges.size() - 1);
+            if (lastRange.getStartTime() != null
+                    && (relativePos(startMinutes, getTimeMinutes(lastRange.getStartTime(), false), crossing) < relativePos(startMinutes, maxEnd, crossing))) {
+                lastRange.setEndTime(LocalTime.MIN.plusMinutes(maxEnd));
+            } else {
+                subRanges = splitTimeRanges(subRanges, timeRange, startMinutes, crossing, maxEnd, true);
+            }
         }
         // 处理拆分后的子范围null的值
         resolveNullEnds(subRanges, timeRange);
