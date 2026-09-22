@@ -1164,12 +1164,12 @@ public class TimeRangeUtils {
                 continue;
             }
             if (crossing) {
-                if (minutes > startMinutes && minutes < endMinutes) {
+                if (minutes >= endMinutes && minutes < startMinutes) {
                     // 调整值在时间范围之外忽略
                     continue;
                 }
             } else {
-                if (minutes > startMinutes || minutes < endMinutes) {
+                if (minutes >= endMinutes || minutes < startMinutes) {
                     // 调整值在时间范围之外忽略
                     continue;
                 }
