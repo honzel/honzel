@@ -263,7 +263,7 @@ public class TimeRangeUtils {
         int maxDuration = (int) ChronoUnit.MINUTES.between(startTime, endTime);
         if (maxDuration <= 0) {
             // 跨天时
-            maxDuration = TIME_BITS * TIME_UNIT_IN_MINUTES + maxDuration;
+            maxDuration = ONE_DAY_MINUTES + maxDuration;
         }
         // 计算总时间段数
         int count = maxDuration / stepDuration;
@@ -1115,7 +1115,7 @@ public class TimeRangeUtils {
         if (endTime != null) {
             int rawEnd = getTimeMinutes(endTime, true);
             // 结束分钟为 0（24:00）时按一天末尾 1440 处理，便于统一的边界比较
-            endMinutes = rawEnd == 0 ? TIME_BITS * TIME_UNIT_IN_MINUTES : rawEnd;
+            endMinutes = rawEnd == 0 ? ONE_DAY_MINUTES : rawEnd;
         } else {
             // endTime 为 null 表示点查询：判断 startMinutes 这一点是否被覆盖，等价于查询 1 分钟区间 [startMinutes, startMinutes+1)。
             // 这样可保证 queryEndSlot 与 queryStartSlot 落在同一 slot（避免对齐点/00:00 时 getEndIndex0 把点当作排他结束而错位到前一 slot），
@@ -1274,7 +1274,7 @@ public class TimeRangeUtils {
         LocalTime endTime = timeRange.getEndTime();
         int endMinutes = getTimeMinutes(endTime, true);
         if (endMinutes == 0) {
-            endMinutes = TIME_BITS * TIME_UNIT_IN_MINUTES;
+            endMinutes = ONE_DAY_MINUTES;
         }
         // 跨天
         boolean crossing = startMinutes > endMinutes;
@@ -1545,7 +1545,7 @@ public class TimeRangeUtils {
      */
     private static int relativePos(int startMinutes, int minute, boolean crossing) {
         if (crossing) {
-            return minute >= startMinutes ? minute - startMinutes : minute + (TIME_BITS * TIME_UNIT_IN_MINUTES) - startMinutes;
+            return minute >= startMinutes ? minute - startMinutes : ONE_DAY_MINUTES + minute - startMinutes;
         }
         return minute - startMinutes;
     }
@@ -1650,12 +1650,31 @@ public class TimeRangeUtils {
     private static final String TIME_ENTRY_SEPARATOR = "z";
     private static final char END_TIME_FLAG = 'w';
 
+    /**
+     * 一天的分钟数
+     */
+    private static final int ONE_DAY_MINUTES = TIME_BITS * TIME_UNIT_IN_MINUTES;
+
+    /**
+     * 调整值进制
+     */
     private static final int ADJ_RADIX = TIME_UNIT_IN_MINUTES;
+    /**
+     * 调整值最大限制
+     */
     private static final int ADJ_MAX_LIMIT = TIME_BITS;
+    /**
+     * 时间段位数
+     */
     private static final int TIME_RANGE_BITS = 5;
+    /**
+     * 时间段进制
+     */
     private static final int TIME_RANGE_RADIX = 1 << TIME_RANGE_BITS;
-    private static final long TIME_RANGE_MAX_LIMIT = Long.MAX_VALUE >>> TIME_RANGE_BITS;
-    private static final int INVALID = -1;
+    /**
+     * 无效值
+     */
+    private static final int INVALID = -1; // 无效值
 
 
     /**
