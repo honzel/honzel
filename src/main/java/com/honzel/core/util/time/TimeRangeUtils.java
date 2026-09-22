@@ -398,9 +398,44 @@ public class TimeRangeUtils {
         }
     }
 
+    /**
+     * 获取分钟精度下实际的最早开始时间点
+     * <p>在位图首个覆盖 slot（{@code timeIndex}）内查找调整值，根据该 slot 内分钟值最小（即时间上最早）的调整值判定起始状态：</p>
+     * <ul>
+     *   <li>最早调整值为 START：slot 边界未被覆盖，覆盖从该 START 分钟开始，返回其分钟值</li>
+     *   <li>最早调整值为 END 或该 slot 无调整值：覆盖从 slot 边界（{@code timeIndex * 30}）开始，返回 {@link #INVALID} 由调用方回退到边界值</li>
+     * </ul>
+     *
+     * @param minuteTime      分钟精度时间段字符串
+     * @param adjustmentStart 调整值区域起始位置
+     * @param adjustmentEnd   调整值区域结束位置
+     * @param timeIndex       位图首个覆盖的 slot 下标
+     * @return 实际最早开始的分钟数（minute-of-day）；若从 slot 边界对齐开始则返回 {@link #INVALID}
+     */
     private static int startOfAdjustment(String minuteTime, int adjustmentStart, int adjustmentEnd, int timeIndex) {
-        //TODO 需要根据具体需求实现
-        return INVALID;
+        // 记录首个覆盖 slot 内分钟值最小（时间最早）的调整值及其类型
+        int first = INVALID;
+        boolean firstIsEnd = false;
+        int pos = adjustmentStart;
+        while (pos < adjustmentEnd) {
+            boolean isEnd = minuteTime.charAt(pos) == END_TIME_FLAG;
+            int valueStart = isEnd ? pos + 1 : pos;
+            int valueEnd = minuteTime.indexOf(ADJ_ITEMS_SEPARATOR, pos);
+            if (valueEnd == INVALID || valueEnd > adjustmentEnd) {
+                valueEnd = adjustmentEnd;
+            }
+            pos = valueEnd + ADJ_ITEMS_SEPARATOR.length();
+            int minutes = parseAdjValue(minuteTime, valueStart, valueEnd);
+            if (minutes == INVALID || getStartIndex0(minutes) != timeIndex) {
+                continue;
+            }
+            if (first == INVALID || minutes < first) {
+                first = minutes;
+                firstIsEnd = isEnd;
+            }
+        }
+        // 最早调整值为 START 才表示覆盖从该分钟开始；为 END 或无调整值时从 slot 边界对齐开始
+        return firstIsEnd ? INVALID : first;
     }
     private static int endOfAdjustment(String minuteTime, int adjustmentStart, int adjustmentEnd, int timeIndex) {
         //TODO 需要根据具体需求实现
@@ -1106,22 +1141,6 @@ public class TimeRangeUtils {
         return weekdays & ((1 << WEEKDAY_BITS) - 1);
 
     }
-
-    /**
-     * 应用调整值到时间范围列表，还原分钟精度的边界
-     *
-     * @param timeRange  基础时间范围列表（30分钟精度）
-     * @param adjustmentTime  调整值字符串
-     * @param adjStart  调整值起始位置
-     * @param adjEnd    调整值结束位置
-     */
-//    private static<T extends TimeRange> List<T> applyAdjustments(TimeRange timeRange, String adjustmentTime, int adjStart, int adjEnd) {
-//        if (TextUtils.isEmpty(adjustmentTime) || adjStart >= adjEnd) {
-//            return null;
-//        }
-//        //TODO 按调整值字符串解析并应用到时间范围为分钟精度的时间范围，如果需要从一个时间范围拆分出多个时间范围时，返回调整后的时间范围列表，如果不需要拆分返回null
-//        return null;
-//    }
 
     /**
      * 应用调整值到时间范围列表，还原分钟精度的边界
