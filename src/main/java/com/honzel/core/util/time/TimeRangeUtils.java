@@ -2,6 +2,7 @@ package com.honzel.core.util.time;
 
 import com.honzel.core.constant.NumberConstants;
 import com.honzel.core.util.text.TextUtils;
+import com.honzel.core.vo.KeyValue;
 
 import javax.annotation.PostConstruct;
 import java.time.DateTimeException;
@@ -264,7 +265,7 @@ public class TimeRangeUtils {
         int maxDuration = (int) ChronoUnit.MINUTES.between(startTime, endTime);
         if (maxDuration <= 0) {
             // 跨天时
-            maxDuration = (int) (ChronoUnit.DAYS.getDuration().toMinutes() + maxDuration);
+            maxDuration = TIME_BITS * TIME_UNIT_IN_MINUTES + maxDuration;
         }
         // 计算总时间段数
         int count = maxDuration / stepDuration;
@@ -901,6 +902,78 @@ public class TimeRangeUtils {
         long day = FIRST_BIT << (WEEKDAY_SHIFT + dayOfWeek.ordinal());
         return getMinuteTimeRanges(minuteTime, day, 0, false);
     }
+    /**
+     * 获取所有时间范围集合
+     * <p>从 {@link #from(String, List, StringBuilder)} 生成的 minuteTime 中解析出指定星期对应的时间范围列表。
+     * 解析条目中的时间戳位值判断是否包含目标星期，再结合调整值还原分钟精度的时间边界。返回日期范围与时间范围的集合(key: 日期范围, value: 时间范围列表)
+     * 当时间戳的日期区域为 0 时表示适用所有日期。</p>
+     * @param minuteTime 分钟精度的时间段值
+     * @param timeRangeMask 时间范围掩码, 包含日期和时间范围, 如果为0, 则表示获取首个时间范围集合
+     * @return 返回该星期对应的时间范围列表
+     * @param <T> 时间范围类型
+     */
+    public static<T extends TimeRange> List<KeyValue<String, List<T>>> getAllTimeRanges(String minuteTime, long timeRangeMask) {
+        if (TextUtils.isEmpty(minuteTime)) {
+            return Collections.emptyList();
+        }
+        // 拆分掉掩码中的日期区域，剩下的仅作为时间位掩码
+        int days;
+        if (timeRangeMask != NONE) {
+            days = (int)((timeRangeMask & ALL_WEEKDAYS) >>> WEEKDAY_SHIFT);
+            timeRangeMask &= ALL_TIMES;
+        } else {
+            days = 0;
+        }
+        List<KeyValue<String, List<T>>> result = new ArrayList<>();
+        // weekday 位在 base-32 时间戳中从末尾向前定位
+        int pos = 0;
+        int len = minuteTime.length();
+        while (pos < len) {
+            // 定位当前条目的分隔符位置
+            int entryEnd = getEntryEnd(minuteTime, pos, len);
+            // 从末尾反向定位调整值与时间戳分隔符
+            int timeSep = getAdjustmentEnd(minuteTime, pos, entryEnd);
+            int timeStart = timeSep + 1;
+            if (entryEnd == timeStart) {
+                pos = entryEnd + TIME_ENTRY_SEPARATOR.length();
+                continue;
+            }
+            // 直接读取 weekday 区域的两个字符，提取 7 位 weekday 值
+            int weekdays = parseWeekdays(minuteTime, timeStart, entryEnd);
+            // weekday 区域为 0 表示适用所有日期，否则检查对应日期位
+            if (weekdays != INVALID && (weekdays == 0 || days == 0 || (weekdays & days) != 0)) {
+                // 时间戳
+                long stamp = parseTimeValue(minuteTime, timeStart, entryEnd);
+                if (stamp != INVALID) {
+                    if (timeRangeMask != NONE) {
+                        // 时间范围掩码
+                        stamp = (stamp & ~ALL_TIMES) | (stamp & timeRangeMask);
+                    }
+                    // 从时间戳获取基础时间范围
+                    List<T> timeRanges = getTimeRanges0(stamp, minuteTime, pos, timeSep, 0, false);
+                    if (!timeRanges.isEmpty()) {
+                        // key 为该条目的日期范围（weekday 位不受时间掩码影响）
+                        result.add(new KeyValue<>(getWeekDays(stamp), timeRanges));
+                    }
+                }
+            }
+            pos = entryEnd + TIME_ENTRY_SEPARATOR.length();
+        }
+        return result;
+    }
+    /**
+     * 获取所有时间范围集合
+     * <p>从 {@link #from(String, List, StringBuilder)} 生成的 minuteTime 中解析出指定星期对应的时间范围列表。
+     * 解析条目中的时间戳位值判断是否包含目标星期，再结合调整值还原分钟精度的时间边界。返回日期范围与时间范围的集合(key: 日期范围, value: 时间范围列表)
+     * 当时间戳的日期区域为 0 时表示适用所有日期。</p>
+     * @param minuteTime 分钟精度的时间段值
+     * @return 返回该星期对应的时间范围列表
+     * @param <T> 时间范围类型
+     */
+    public static<T extends TimeRange> List<KeyValue<String, List<T>>> getAllTimeRanges(String minuteTime) {
+        return getAllTimeRanges(minuteTime, NONE);
+    }
+
 
 
     /**
@@ -1113,9 +1186,12 @@ public class TimeRangeUtils {
         if (TextUtils.isEmpty(minuteTime)) {
             return Collections.emptyList();
         }
-        int days = timeRangeMask == NONE ? 0 : (int)((timeRangeMask & ALL_WEEKDAYS) >>> WEEKDAY_SHIFT);
-        if (days != 0) {
-            timeRangeMask &= ~ALL_WEEKDAYS;
+        int days;
+        if (timeRangeMask != NONE) {
+            days = (int)((timeRangeMask & ALL_WEEKDAYS) >>> WEEKDAY_SHIFT);
+            timeRangeMask &= ALL_TIMES;
+        } else {
+            days = 0;
         }
         // weekday 位在 base-32 时间戳中从末尾向前定位
         int pos = 0;
@@ -1138,14 +1214,8 @@ public class TimeRangeUtils {
                 long stamp = parseTimeValue(minuteTime, timeStart, entryEnd);
                 if (stamp != INVALID) {
                     if (timeRangeMask != NONE) {
-                        long shiftFlag = stamp & SHIFT_TIME_FLAG;
-                        if ((SHIFT_TIME_FLAG & timeRangeMask) == shiftFlag) {
-                            // 班次标识一致
-                            stamp = (stamp & ~ALL_TIMES) | stamp & timeRangeMask & ALL_TIMES;
-                        } else {
-                            // 班次标识不一致
-                            stamp = (stamp & ~ALL_TIMES) | stamp & nonShift(timeRangeMask) & ALL_TIMES;
-                        }
+                        // 时间范围掩码
+                        stamp = (stamp & ~ALL_TIMES) | (stamp & timeRangeMask);
                     }
                     // 从时间戳获取基础时间范围
                     return getTimeRanges0(stamp, minuteTime, pos, timeSep, divisionDuration, halfDivisionDurationEnabled);
