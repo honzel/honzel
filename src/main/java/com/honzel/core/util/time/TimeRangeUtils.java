@@ -1672,6 +1672,10 @@ public class TimeRangeUtils {
      */
     private static final int TIME_RANGE_RADIX = 1 << TIME_RANGE_BITS;
     /**
+     * 时间段最大限制
+     */
+    private static final long TIME_RANGE_MAX_LIMIT = Long.MAX_VALUE >>> TIME_RANGE_BITS;
+    /**
      * 无效值
      */
     private static final int INVALID = -1; // 无效值
