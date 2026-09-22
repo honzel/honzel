@@ -1359,6 +1359,15 @@ public class TimeRangeUtils {
      *   <li>{@code [start, null)}：null end 用后一段 start 值所在 slot 的开始位置替代（无后段则用 timeRange.end）</li>
      *   <li>{@code [null, end)}：null start 用前一段 end 值所在 slot 的结束位置替代（无前段则用 timeRange.start）</li>
      * </ul>
+     * <p><b>扩张语义：</b>null 端表示「此处无显式边界，覆盖延续到下一个真实边界」。解析完成后若
+     * {@code start >= end}（相对位）则该段无效，就地移除；移除后相邻段的 null 端会自然扩张到下一个
+     * <i>真实</i>边界，从而覆盖被移除段留下的空隙。这是设计意图，而非缺陷。</p>
+     * <p><b>重要：</b>必须保持「倒序遍历 + 解析后立即移除」的单趟结构。因为倒序下处理 {@code seg[i]} 的
+     * null end 时，{@code get(i+1)} 已在上一次迭代处理并可能已被移除，故能越过无效段扩张到下一真实边界；
+     * 若改成「先全部解析、再统一移除」的两趟式，{@code get(i+1)} 仍指向无效段，扩张语义将被破坏。</p>
+     * <p><b>方向不对称：</b>null end 向后看 {@code get(i+1)}（已处理、可能已移除）会跨无效段扩张；
+     * null start 向前看 {@code get(i-1)}（倒序下尚未处理、不会被移除）不会跨无效段扩张。对规范的成对交替
+     * 输入无影响。</p>
      */
     private static <T extends TimeRange> void resolveNullEnds(List<T> subRanges, T timeRange, int startMinutes, boolean crossing) {
         if (subRanges == null) {
@@ -1368,9 +1377,10 @@ public class TimeRangeUtils {
             T seg = subRanges.get(i);
             if (seg.getStartTime() == null) {
                 if (i > 0) {
+                    // 向前看 get(i-1)：倒序下前段尚未处理、不会被移除，故不跨无效段扩张
                     LocalTime preEndTime = subRanges.get(i - 1).getEndTime();
                     if (preEndTime == null) {
-                        // 前段结束时间为空，用前段开始时间所在 slot 的开始位置替代,即两段合并
+                        // 前段结束时间为空，用前段开始时间所在 slot 的开始位置替代,即两段合并, 与外层 i-- 叠加后指向 P 前一段
                         seg.setStartTime(subRanges.remove(--i).getStartTime());
                     } else {
                         seg.setStartTime(parseTime(getEndIndex0(getTimeMinutes(preEndTime, true))));
@@ -1380,13 +1390,15 @@ public class TimeRangeUtils {
                 }
             } else if (seg.getEndTime() == null) {
                 if (i < subRanges.size() - 1) {
+                    // 向后看 get(i+1)：已在上一次迭代处理并可能已被移除，故此处会越过无效段扩张到下一真实边界
                     LocalTime nextStartTime = subRanges.get(i + 1).getStartTime();
                     seg.setEndTime(parseTime(getStartIndex0(getTimeMinutes(nextStartTime, false))));
                 } else {
                     seg.setEndTime(timeRange.getEndTime());
                 }
             }
-            // 倒序遍历，删除无效段
+            // 倒序遍历，解析后立即删除无效段（start >= end 相对位）；
+            // 该「就地移除」是相邻 null 端扩张到下一真实边界的前提，勿改为两趟式
             if (relativePos(startMinutes, getTimeMinutes(seg.getStartTime(), false), crossing)
                     >= relativePos(startMinutes, getTimeMinutes(seg.getEndTime(), true), crossing)) {
                 subRanges.remove(i);
