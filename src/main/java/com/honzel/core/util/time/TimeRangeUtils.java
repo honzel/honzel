@@ -1208,7 +1208,7 @@ public class TimeRangeUtils {
         if (minStart != INVALID) {
             T firstRange = subRanges.get(0);
             if (firstRange.getEndTime() != null
-                    && (relativePos(startMinutes, getTimeMinutes(firstRange.getEndTime(), true), crossing) >= relativePos(startMinutes, minStart, crossing))) {
+                    && (relativePos(startMinutes, getTimeMinutes(firstRange.getEndTime(), true), crossing) > relativePos(startMinutes, minStart, crossing))) {
                 firstRange.setStartTime(LocalTime.MIN.plusMinutes(minStart));
             } else {
                 subRanges = splitTimeRanges(subRanges, timeRange, startMinutes, crossing, minStart, false);
@@ -1224,7 +1224,7 @@ public class TimeRangeUtils {
             }
         }
         // 处理拆分后的子范围null的值
-        resolveNullEnds(subRanges, timeRange);
+        resolveNullEnds(subRanges, timeRange, startMinutes, crossing);
         return subRanges;
     }
 
@@ -1360,7 +1360,7 @@ public class TimeRangeUtils {
      *   <li>{@code [null, end)}：null start 用前一段 end 值所在 slot 的结束位置替代（无前段则用 timeRange.start）</li>
      * </ul>
      */
-    private static <T extends TimeRange> void resolveNullEnds(List<T> subRanges, T timeRange) {
+    private static <T extends TimeRange> void resolveNullEnds(List<T> subRanges, T timeRange, int startMinutes, boolean crossing) {
         if (subRanges == null) {
             return;
         }
@@ -1373,22 +1373,23 @@ public class TimeRangeUtils {
                         // 前段结束时间为空，用前段开始时间所在 slot 的开始位置替代,即两段合并
                         seg.setStartTime(subRanges.remove(--i).getStartTime());
                     } else {
-                        LocalTime startTime = parseTime(getEndIndex0(getTimeMinutes(preEndTime, true)));
-                        seg.setStartTime(startTime);
+                        seg.setStartTime(parseTime(getEndIndex0(getTimeMinutes(preEndTime, true))));
                     }
                 } else {
                     seg.setStartTime(timeRange.getStartTime());
                 }
-                continue;
-            }
-            if (seg.getEndTime() == null) {
+            } else if (seg.getEndTime() == null) {
                 if (i < subRanges.size() - 1) {
                     LocalTime nextStartTime = subRanges.get(i + 1).getStartTime();
-                    LocalTime endTime = parseTime(getStartIndex0(getTimeMinutes(nextStartTime, false)));
-                    seg.setEndTime(endTime);
+                    seg.setEndTime(parseTime(getStartIndex0(getTimeMinutes(nextStartTime, false))));
                 } else {
                     seg.setEndTime(timeRange.getEndTime());
                 }
+            }
+            // 倒序遍历，删除无效段
+            if (relativePos(startMinutes, getTimeMinutes(seg.getStartTime(), false), crossing)
+                    >= relativePos(startMinutes, getTimeMinutes(seg.getEndTime(), true), crossing)) {
+                subRanges.remove(i);
             }
         }
     }
