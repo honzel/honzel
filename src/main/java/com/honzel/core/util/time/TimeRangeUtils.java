@@ -1175,7 +1175,7 @@ public class TimeRangeUtils {
                 }
             }
             if (isEnd) {
-                if (minutes >= endMinutes - TIME_UNIT_IN_MINUTES) { //同一endSlot
+                if (minutes >= endMinutes - TIME_UNIT_IN_MINUTES && minutes < endMinutes) { //同一endSlot
                     if (maxEnd == INVALID) {
                         maxEnd = minutes;
                     } else {
@@ -1187,7 +1187,7 @@ public class TimeRangeUtils {
                     continue;
                 }
             } else {
-                if (minutes < startMinutes + TIME_UNIT_IN_MINUTES) { //同一startSlot
+                if (minutes >= startMinutes && minutes < startMinutes + TIME_UNIT_IN_MINUTES) { //同一startSlot
                     if (minStart == INVALID) {
                         minStart = minutes;
                     } else {
