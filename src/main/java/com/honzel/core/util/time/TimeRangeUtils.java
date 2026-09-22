@@ -371,7 +371,7 @@ public class TimeRangeUtils {
         if (adjustmentEnd == INVALID) {
             // 没有调整值
             long time = parseTimeValue(minuteTime, pos, entryEnd);
-            return time == INVALID ? null : getFirstStartTime(time);
+            return time == INVALID ? null : last ? getLastEndTime(time) : getFirstStartTime(time);
         }
         // 获取调整值的时间段值
         long time = parseTimeValue(minuteTime, adjustmentEnd + 1, entryEnd);
