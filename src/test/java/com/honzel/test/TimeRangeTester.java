@@ -1,6 +1,5 @@
 package com.honzel.test;
 
-import com.honzel.core.util.text.TextUtils;
 import com.honzel.core.util.time.TimeRange;
 import com.honzel.core.util.time.TimeRangeUtils;
 
@@ -20,8 +19,8 @@ public class TimeRangeTester {
 	}
 
 	private static class TimeRangeUtils1 extends TimeRangeUtils {
-	    static {
-	        new TimeRangeUtils1();
+		static {
+			new TimeRangeUtils1();
         }
     }
 
@@ -34,11 +33,11 @@ public class TimeRangeTester {
 		TimeRangeUtils.from("1", mondayRanges, minuteTime);
 		System.out.println("minuteTime: " + minuteTime);
 
-		List<TimeRange> result = TimeRangeUtils.getMinuteTimeRanges(minuteTime.toString(), DayOfWeek.MONDAY);
+		List<TimeRange> result = TimeRangeUtils.getTimeRanges(minuteTime.toString(), DayOfWeek.MONDAY);
 		System.out.println("Monday time ranges: " + result);
 
 		// 周二应该没有数据
-		List<TimeRange> tuesdayResult = TimeRangeUtils.getMinuteTimeRanges(minuteTime.toString(), DayOfWeek.TUESDAY);
+		List<TimeRange> tuesdayResult = TimeRangeUtils.getTimeRanges(minuteTime.toString(), DayOfWeek.TUESDAY);
 		System.out.println("Tuesday time ranges: " + tuesdayResult);
 
 		// 多个日期共用同一个 minuteTime
@@ -48,9 +47,9 @@ public class TimeRangeTester {
 		TimeRangeUtils.from("2", tueRanges, multiMinuteTime);
 		System.out.println("\nMulti-day minuteTime: " + multiMinuteTime);
 
-		List<TimeRange> monResult2 = TimeRangeUtils.getMinuteTimeRanges(multiMinuteTime.toString(), DayOfWeek.MONDAY);
+		List<TimeRange> monResult2 = TimeRangeUtils.getTimeRanges(multiMinuteTime.toString(), DayOfWeek.MONDAY);
 		System.out.println("Monday from multi: " + monResult2);
-		List<TimeRange> tueResult2 = TimeRangeUtils.getMinuteTimeRanges(multiMinuteTime.toString(), DayOfWeek.TUESDAY);
+		List<TimeRange> tueResult2 = TimeRangeUtils.getTimeRanges(multiMinuteTime.toString(), DayOfWeek.TUESDAY);
 		System.out.println("Tuesday from multi: " + tueResult2);
 
 		// 对齐边界的情况（无调整值）
@@ -59,7 +58,7 @@ public class TimeRangeTester {
 		alignedRanges.add(new TimeRange(LocalTime.parse("08:00"), LocalTime.parse("12:00")));
 		TimeRangeUtils.from("1", alignedRanges, alignedMinuteTime);
 		System.out.println("\nAligned minuteTime: " + alignedMinuteTime);
-		List<TimeRange> alignedResult = TimeRangeUtils.getMinuteTimeRanges(alignedMinuteTime.toString(), DayOfWeek.MONDAY);
+		List<TimeRange> alignedResult = TimeRangeUtils.getTimeRanges(alignedMinuteTime.toString(), DayOfWeek.MONDAY);
 		System.out.println("Aligned Monday: " + alignedResult);
 
 		// 不指定星期（weekday 位为 0），适用所有日期
@@ -68,9 +67,9 @@ public class TimeRangeTester {
 		allDaysRanges.add(new TimeRange(LocalTime.parse("10:15"), LocalTime.parse("14:30")));
 		TimeRangeUtils.fromTimeRanges(allDaysRanges, allDaysMinuteTime);
 		System.out.println("\nAll-days minuteTime: " + allDaysMinuteTime);
-		List<TimeRange> allDaysResult1 = TimeRangeUtils.getMinuteTimeRanges(allDaysMinuteTime.toString(), DayOfWeek.WEDNESDAY);
+		List<TimeRange> allDaysResult1 = TimeRangeUtils.getTimeRanges(allDaysMinuteTime.toString(), DayOfWeek.WEDNESDAY);
 		System.out.println("Wednesday from all-days: " + allDaysResult1);
-		List<TimeRange> allDaysResult2 = TimeRangeUtils.getMinuteTimeRanges(allDaysMinuteTime.toString(), DayOfWeek.SUNDAY);
+		List<TimeRange> allDaysResult2 = TimeRangeUtils.getTimeRanges(allDaysMinuteTime.toString(), DayOfWeek.SUNDAY);
 		System.out.println("Sunday from all-days: " + allDaysResult2);
 	}
 
@@ -88,15 +87,18 @@ public class TimeRangeTester {
 		timestamp = TimeRangeUtils.from("4",timeRangeList, minuteTime);
 		System.out.println("结果:" + minuteTime + "-------" + timestamp);
 
+		System.out.println("getAllTimeRanges:" + TimeRangeUtils.getAllTimeRanges(minuteTime.toString()));
 		System.out.println("getTimeRanges:" + TimeRangeUtils.getTimeRanges(timestamp));
-		System.out.println("getMinuteTimeRanges(MONDAY):" + TimeRangeUtils.getMinuteTimeRanges(minuteTime.toString(), DayOfWeek.MONDAY));
-		System.out.println("getMinuteTimeRanges(WEDNESDAY):" + TimeRangeUtils.getMinuteTimeRanges(minuteTime.toString(), DayOfWeek.WEDNESDAY));
+		System.out.println("getTimeRanges(MONDAY):" + TimeRangeUtils.getTimeRanges(minuteTime.toString(), DayOfWeek.MONDAY));
+		System.out.println("getTimeRanges(WEDNESDAY):" + TimeRangeUtils.getTimeRanges(minuteTime.toString(), DayOfWeek.WEDNESDAY));
 		System.out.println("containsTimeRange(02:25-04:13):" + TimeRangeUtils.containsTimeRange(minuteTime.toString(), DayOfWeek.MONDAY, LocalTime.parse("02:25"), LocalTime.parse("04:13")));
 		System.out.println("containsTimeRange(12:24-15:13):" + TimeRangeUtils.containsTimeRange(minuteTime.toString(), DayOfWeek.MONDAY, LocalTime.parse("12:24"), LocalTime.parse("15:13")));
 		System.out.println("containsTime(12:24):" + TimeRangeUtils.containsTime(minuteTime.toString(), DayOfWeek.MONDAY, LocalTime.parse("12:24")));
 		System.out.println("getFirstStartTime:" + TimeRangeUtils.getFirstStartTime(minuteTime.toString(), TimeRangeUtils.NONE));
 		System.out.println("getLastEndTime:" + TimeRangeUtils.getLastEndTime(minuteTime.toString(), TimeRangeUtils.NONE));
-		System.out.println("getAllTimeRanges:" + TimeRangeUtils.getAllTimeRanges(minuteTime.toString(), TimeRangeUtils.fromWeekDays("1,2,3")));
+
+		System.out.println("getTimeRanges(15:00-,15):" + TimeRangeUtils.getTimeRanges(minuteTime.toString(), -TimeRangeUtils.fromTime(LocalTime.parse("12:00")), 15));
+		System.out.println("getTimeRanges(20):" + TimeRangeUtils.getTimeRanges(minuteTime.toString(), 20));
 
 	}
 

@@ -426,7 +426,7 @@ public class TimeRangeUtils {
      * @return 返回最起始时间点
      */
     public static LocalTime getFirstStartTime(String minuteTime, DayOfWeek dayOfWeek) {
-        return dayOfWeek != null ? getFirstOrLastTime0(minuteTime, FIRST_BIT << (WEEKDAY_SHIFT + dayOfWeek.ordinal()), false) : null;
+        return dayOfWeek != null ? getFirstOrLastTime0(minuteTime, fromWeekday(dayOfWeek), false) : null;
     }
 
     /**
@@ -465,7 +465,7 @@ public class TimeRangeUtils {
      * @return 返回最后结束时间点
      */
     public static LocalTime getLastEndTime(String minuteTime, DayOfWeek dayOfWeek) {
-        return dayOfWeek != null ? getFirstOrLastTime0(minuteTime, FIRST_BIT << (WEEKDAY_SHIFT + dayOfWeek.ordinal()), true) : null;
+        return dayOfWeek != null ? getFirstOrLastTime0(minuteTime, fromWeekday(dayOfWeek), true) : null;
     }
     /**
      * 获取最后结束时间点
@@ -707,7 +707,7 @@ public class TimeRangeUtils {
     /**
      * 是否包含指定星期
      * @param timeRangeStamp  时间段值
-     * @param dayOfWeek 指定星期
+     * @param dayOfWeek 指定星期几
      * @return 是否包含指定星期
      */
     public static boolean containsDay(long timeRangeStamp, DayOfWeek dayOfWeek) {
@@ -1036,7 +1036,106 @@ public class TimeRangeUtils {
     }
 
 
+    /**
+     * 获取指定星期的时间范围集合
+     * <p>从 {@link #from(String, List, StringBuilder)} 生成的 minuteTime 中解析出指定星期对应的时间范围列表。
+     * 解析条目中的时间戳位值判断是否包含目标星期，再结合调整值还原分钟精度的时间边界。
+     * 当时间戳的日期区域为 0 时表示适用所有日期。</p>
+     *
+     * @param <T>                         时间范围类型
+     * @param minuteTime                  分钟精度的时间段值
+     * @param timeRangeMask               时间范围掩码, 包含日期和时间范围, 如果为0, 则表示获取首个时间范围集合
+     * @param divisionDuration            切割时长（单位为分钟)
+     * @param halfDivisionDurationEnabled 是否步长为一半切割时长, true-步长为切割时长的一半, false-步长与切割时长相等
+     * @return 返回该星期对应的时间范围列表，不包含则返回空列表
+     */
+    public static<T extends TimeRange> List<T> getTimeRanges(String minuteTime, long timeRangeMask, int divisionDuration, boolean halfDivisionDurationEnabled) {
+        if (TextUtils.isEmpty(minuteTime)) {
+            return Collections.emptyList();
+        }
+        int days;
+        if (timeRangeMask != NONE) {
+            days = (int)((timeRangeMask & ALL_WEEKDAYS) >>> WEEKDAY_SHIFT);
+            timeRangeMask &= ALL_TIMES;
+        } else {
+            days = 0;
+        }
+        // weekday 位在 base-32 时间戳中从末尾向前定位
+        int pos = 0;
+        int len = minuteTime.length();
+        while (pos < len) {
+            // 定位当前条目的分隔符位置
+            int entryEnd = getEntryEnd(minuteTime, pos, len);
+            // 从末尾反向定位调整值与时间戳分隔符
+            int timeSep = getAdjustmentEnd(minuteTime, pos, entryEnd);
+            int timeStart = timeSep + 1;
+            if (entryEnd == timeStart) {
+                pos = entryEnd + TIME_ENTRY_SEPARATOR.length();
+                continue;
+            }
+            // 直接读取 weekday 区域的两个字符，提取 7 位 weekday 值
+            int weekdays = parseWeekdays(minuteTime, timeStart, entryEnd);
+            // weekday 区域为 0 表示适用所有日期，否则检查对应日期位
+            if (weekdays != INVALID && (weekdays == 0 || days == 0 || (weekdays & days) != 0)) {
+                // 时间戳
+                long stamp = parseTimeValue(minuteTime, timeStart, entryEnd);
+                if (stamp != INVALID) {
+                    if (timeRangeMask != NONE) {
+                        // 时间范围掩码
+                        stamp = (stamp & ~ALL_TIMES) | (stamp & timeRangeMask);
+                    }
+                    // 从时间戳获取基础时间范围
+                    return getTimeRanges0(stamp, minuteTime, pos, timeSep, divisionDuration, halfDivisionDurationEnabled);
+                }
+            }
+            pos = entryEnd + TIME_ENTRY_SEPARATOR.length();
+        }
+        return Collections.emptyList();
+    }
 
+    /**
+     * 获取指定星期的时间范围集合
+     * <p>从 {@link #from(String, List, StringBuilder)} 生成的 minuteTime 中解析出指定星期对应的时间范围列表。
+     * 解析条目中的时间戳位值判断是否包含目标星期，再结合调整值还原分钟精度的时间边界。
+     * 当时间戳的日期区域为 0 时表示适用所有日期。</p>
+     * @param minuteTime 分钟精度的时间段值
+     * @param dayOfWeek 指定星期几
+     * @param divisionDuration 切割时长（单位为分钟)
+     * @param halfDivisionDurationEnabled 是否步长为一半切割时长, true-步长为切割时长的一半, false-步长与切割时长相等
+     * @return 返回该星期对应的时间范围列表，不包含则返回空列表
+     * @param <T> 时间范围类型
+     */
+    public static<T extends TimeRange> List<T> getTimeRanges(String minuteTime, DayOfWeek dayOfWeek, int divisionDuration, boolean halfDivisionDurationEnabled) {
+        return dayOfWeek == null ? Collections.emptyList() : getTimeRanges(minuteTime, fromWeekday(dayOfWeek), divisionDuration, halfDivisionDurationEnabled);
+    }
+    /**
+     * 获取指定星期的时间范围集合
+     * <p>从 {@link #from(String, List, StringBuilder)} 生成的 minuteTime 中解析出指定星期对应的时间范围列表。
+     * 解析条目中的时间戳位值判断是否包含目标星期，再结合调整值还原分钟精度的时间边界。
+     * 当时间戳的日期区域为 0 时表示适用所有日期。</p>
+     * @param minuteTime 分钟精度的时间段值
+     * @param timeRangeMask 时间范围掩码
+     * @param divisionDuration 切割时长（单位为分钟)
+     * @return 返回该星期对应的时间范围列表，不包含则返回空列表
+     * @param <T> 时间范围类型
+     */
+    public static<T extends TimeRange> List<T> getTimeRanges(String minuteTime, long timeRangeMask, int divisionDuration) {
+        return getTimeRanges(minuteTime, timeRangeMask, divisionDuration, false);
+    }
+    /**
+     * 获取指定星期的时间范围集合
+     * <p>从 {@link #from(String, List, StringBuilder)} 生成的 minuteTime 中解析出指定星期对应的时间范围列表。
+     * 解析条目中的时间戳位值判断是否包含目标星期，再结合调整值还原分钟精度的时间边界。
+     * 当时间戳的日期区域为 0 时表示适用所有日期。</p>
+     * @param minuteTime 分钟精度的时间段值
+     * @param dayOfWeek 指定星期几
+     * @param divisionDuration 切割时长（单位为分钟)
+     * @return 返回该星期对应的时间范围列表，不包含则返回空列表
+     * @param <T> 时间范围类型
+     */
+    public static<T extends TimeRange> List<T> getTimeRanges(String minuteTime, DayOfWeek dayOfWeek, int divisionDuration) {
+        return getTimeRanges(minuteTime, dayOfWeek, divisionDuration, false);
+    }
 
     /**
      * 获取指定星期的时间范围集合
@@ -1048,8 +1147,8 @@ public class TimeRangeUtils {
      * @return 返回该星期对应的时间范围列表，不包含则返回空列表
      * @param <T> 时间范围类型
      */
-    public static<T extends TimeRange> List<T> getMinuteTimeRanges(String minuteTime, int divisionDuration) {
-        return getMinuteTimeRanges(minuteTime, NONE, divisionDuration, false);
+    public static<T extends TimeRange> List<T> getTimeRanges(String minuteTime, int divisionDuration) {
+        return getTimeRanges(minuteTime, NONE, divisionDuration, false);
     }
 
     /**
@@ -1063,8 +1162,8 @@ public class TimeRangeUtils {
      * @return 返回该星期对应的时间范围列表，不包含则返回空列表
      * @param <T> 时间范围类型
      */
-    public static<T extends TimeRange> List<T> getMinuteTimeRanges(String minuteTime, int divisionDuration, boolean halfDivisionDurationEnabled) {
-        return getMinuteTimeRanges(minuteTime, NONE, divisionDuration, halfDivisionDurationEnabled);
+    public static<T extends TimeRange> List<T> getTimeRanges(String minuteTime, int divisionDuration, boolean halfDivisionDurationEnabled) {
+        return getTimeRanges(minuteTime, NONE, divisionDuration, halfDivisionDurationEnabled);
     }
     /**
      * 获取指定星期的时间范围集合
@@ -1072,17 +1171,23 @@ public class TimeRangeUtils {
      * 解析条目中的时间戳位值判断是否包含目标星期，再结合调整值还原分钟精度的时间边界。
      * 当时间戳的日期区域为 0 时表示适用所有日期。</p>
      * @param minuteTime 分钟精度的时间段值
-     * @param dayOfWeek 目标日期
+     * @param dayOfWeek 指定星期几
      * @return 返回该星期对应的时间范围列表，不包含则返回空列表
      * @param <T> 时间范围类型
      */
-    public static<T extends TimeRange> List<T> getMinuteTimeRanges(String minuteTime, DayOfWeek dayOfWeek) {
-        if (dayOfWeek == null) {
-            return Collections.emptyList();
-        }
-        long day = FIRST_BIT << (WEEKDAY_SHIFT + dayOfWeek.ordinal());
-        return getMinuteTimeRanges(minuteTime, day, 0, false);
+    public static<T extends TimeRange> List<T> getTimeRanges(String minuteTime, DayOfWeek dayOfWeek) {
+        return dayOfWeek == null ? Collections.emptyList() : getTimeRanges(minuteTime, fromWeekday(dayOfWeek), 0, false);
     }
+
+    /**
+     * 从星期几获取时间范围
+     * @param dayOfWeek 星期几
+     * @return 时间范围
+     */
+    public static long fromWeekday(DayOfWeek dayOfWeek) {
+        return dayOfWeek != null ? FIRST_BIT << (WEEKDAY_SHIFT + dayOfWeek.ordinal()) : NONE;
+    }
+
     /**
      * 获取所有时间范围集合
      * <p>从 {@link #from(String, List, StringBuilder)} 生成的 minuteTime 中解析出指定星期对应的时间范围列表。
@@ -1180,7 +1285,7 @@ public class TimeRangeUtils {
      */
     public static boolean containsTimeRange(String minuteTime, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime) {
         return dayOfWeek != null && startTime != null && endTime != null
-                && matchMinuteTime0(minuteTime, FIRST_BIT << (WEEKDAY_SHIFT + dayOfWeek.ordinal()), startTime, endTime) != INVALID;
+                && matchMinuteTime0(minuteTime, fromWeekday(dayOfWeek), startTime, endTime) != INVALID;
     }
 
     /**
@@ -1201,7 +1306,7 @@ public class TimeRangeUtils {
      * @return 是否时间段值包含该时间
      */
     public static boolean containsDateTime(String minuteTime, LocalDateTime time) {
-        return time != null && matchMinuteTime0(minuteTime, FIRST_BIT << (WEEKDAY_SHIFT + time.getDayOfWeek().ordinal()), time.toLocalTime(), null) != INVALID;
+        return time != null && matchMinuteTime0(minuteTime, fromWeekday(time.getDayOfWeek()), time.toLocalTime(), null) != INVALID;
     }
     /**
      * 时间段内是否包含有该时间区间
@@ -1221,7 +1326,7 @@ public class TimeRangeUtils {
      * @return 是否时间段值包含该时间段
      */
     public static boolean containsTime(String minuteTime, DayOfWeek dayOfWeek, LocalTime time) {
-        return dayOfWeek != null && time != null && matchMinuteTime0(minuteTime, FIRST_BIT << (WEEKDAY_SHIFT + dayOfWeek.ordinal()), time, null) != INVALID;
+        return dayOfWeek != null && time != null && matchMinuteTime0(minuteTime, fromWeekday(dayOfWeek), time, null) != INVALID;
     }
 
     /**
@@ -1362,62 +1467,6 @@ public class TimeRangeUtils {
         return !startGap && !endGap;
     }
 
-    /**
-     * 获取指定星期的时间范围集合
-     * <p>从 {@link #from(String, List, StringBuilder)} 生成的 minuteTime 中解析出指定星期对应的时间范围列表。
-     * 解析条目中的时间戳位值判断是否包含目标星期，再结合调整值还原分钟精度的时间边界。
-     * 当时间戳的日期区域为 0 时表示适用所有日期。</p>
-     *
-     * @param <T>                         时间范围类型
-     * @param minuteTime                  分钟精度的时间段值
-     * @param timeRangeMask               时间范围掩码, 包含日期和时间范围, 如果为0, 则表示获取首个时间范围集合
-     * @param divisionDuration            切割时长（单位为分钟)
-     * @param halfDivisionDurationEnabled 是否步长为一半切割时长, true-步长为切割时长的一半, false-步长与切割时长相等
-     * @return 返回该星期对应的时间范围列表，不包含则返回空列表
-     */
-    public static<T extends TimeRange> List<T> getMinuteTimeRanges(String minuteTime, long timeRangeMask, int divisionDuration, boolean halfDivisionDurationEnabled) {
-        if (TextUtils.isEmpty(minuteTime)) {
-            return Collections.emptyList();
-        }
-        int days;
-        if (timeRangeMask != NONE) {
-            days = (int)((timeRangeMask & ALL_WEEKDAYS) >>> WEEKDAY_SHIFT);
-            timeRangeMask &= ALL_TIMES;
-        } else {
-            days = 0;
-        }
-        // weekday 位在 base-32 时间戳中从末尾向前定位
-        int pos = 0;
-        int len = minuteTime.length();
-        while (pos < len) {
-            // 定位当前条目的分隔符位置
-            int entryEnd = getEntryEnd(minuteTime, pos, len);
-            // 从末尾反向定位调整值与时间戳分隔符
-            int timeSep = getAdjustmentEnd(minuteTime, pos, entryEnd);
-            int timeStart = timeSep + 1;
-            if (entryEnd == timeStart) {
-                pos = entryEnd + TIME_ENTRY_SEPARATOR.length();
-                continue;
-            }
-            // 直接读取 weekday 区域的两个字符，提取 7 位 weekday 值
-            int weekdays = parseWeekdays(minuteTime, timeStart, entryEnd);
-            // weekday 区域为 0 表示适用所有日期，否则检查对应日期位
-            if (weekdays != INVALID && (weekdays == 0 || days == 0 || (weekdays & days) != 0)) {
-                // 时间戳
-                long stamp = parseTimeValue(minuteTime, timeStart, entryEnd);
-                if (stamp != INVALID) {
-                    if (timeRangeMask != NONE) {
-                        // 时间范围掩码
-                        stamp = (stamp & ~ALL_TIMES) | (stamp & timeRangeMask);
-                    }
-                    // 从时间戳获取基础时间范围
-                    return getTimeRanges0(stamp, minuteTime, pos, timeSep, divisionDuration, halfDivisionDurationEnabled);
-                }
-            }
-            pos = entryEnd + TIME_ENTRY_SEPARATOR.length();
-        }
-        return Collections.emptyList();
-    }
 
     private static int parseWeekdays(String minuteTime, int timeStart, int timeEnd) {
         // weekday 位 (bits 54-60) 在 base-32 编码中从末尾向前定位
