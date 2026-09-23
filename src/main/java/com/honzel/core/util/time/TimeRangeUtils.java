@@ -136,11 +136,24 @@ public class TimeRangeUtils {
             times >>>= firstStart;
         }
         T firstRange = (T) getInstance().newTimeRange();
-        firstRange.setStartTime(parseTime((offset + firstStart) % TIME_BITS));
+        int actStartMinutes = INVALID;
+        if (firstStart != 0) {
+            firstRange.setStartTime(parseTime((offset + firstStart) % TIME_BITS));
+        } else {
+            firstRange.setStartTime(parseTime(offset));
+            if (adjStart < adjEnd && (offset != 0 || (times >>> (TIME_BITS - 1)) != NONE)) {
+                // 首尾段处理, 获取最接近的调整值
+                int nearest = nearestOfEnd(offset == 0 ? TIME_BITS : offset, adjTime, adjStart, adjEnd, false);
+                if (nearest < 0) {
+                    // 最接近的调整值为开始调整值
+                    actStartMinutes = -nearest;
+                }
+            }
+        }
         // 获取第一个结束位
         int firstBits = Long.numberOfTrailingZeros(~times);
         int firstEnd = firstStart + firstBits;
-        addEndTimeAndDivision(timeRangeList, firstRange, adjTime, adjStart, adjEnd, divisionDuration, halfDivisionDurationEnabled, shiftFlag, offset, firstEnd);
+        addEndTimeAndDivision(timeRangeList, firstRange, adjTime, adjStart, adjEnd, divisionDuration, halfDivisionDurationEnabled, shiftFlag, offset, firstEnd, actStartMinutes);
         if ((times >>>= firstBits) == NONE) {
             // 只有一个时间段
             return timeRangeList;
@@ -149,7 +162,7 @@ public class TimeRangeUtils {
         for (int i = firstEnd; i < TIME_BITS; i ++, times >>>= 1) {
             if ((times & FIRST_BIT) == NONE) {
                 if (timeRange != null) {
-                    addEndTimeAndDivision(timeRangeList, timeRange, adjTime, adjStart, adjEnd, divisionDuration, halfDivisionDurationEnabled, shiftFlag, offset, i);
+                    addEndTimeAndDivision(timeRangeList, timeRange, adjTime, adjStart, adjEnd, divisionDuration, halfDivisionDurationEnabled, shiftFlag, offset, i, actStartMinutes);
                     timeRange = null;
                 }
                 if (times == NONE) {
@@ -164,12 +177,12 @@ public class TimeRangeUtils {
         }
         if (timeRange != null) {
             // 添加最后一个时间段
-            addEndTimeAndDivision(timeRangeList, timeRange, adjTime, adjStart, adjEnd, divisionDuration, halfDivisionDurationEnabled, shiftFlag, offset, TIME_BITS);
+            addEndTimeAndDivision(timeRangeList, timeRange, adjTime, adjStart, adjEnd, divisionDuration, halfDivisionDurationEnabled, shiftFlag, offset, TIME_BITS, actStartMinutes);
         }
         return timeRangeList;
     }
 
-    private static <T extends TimeRange> void addEndTimeAndDivision(List<T> timeRangeList, T timeRange, String adjTime, int adjStart, int adjEnd, int divisionDuration, boolean halfDivisionDurationEnabled, boolean shiftFlag, int offset, int end) {
+    private static <T extends TimeRange> void addEndTimeAndDivision(List<T> timeRangeList, T timeRange, String adjTime, int adjStart, int adjEnd, int divisionDuration, boolean halfDivisionDurationEnabled, boolean shiftFlag, int offset, int end, int actStartMinutes) {
         if (shiftFlag) {
             timeRange.setEndTime(end == TIME_BITS - 1 && offset == 0 ? LocalTime.MAX : parseTime((offset + end) % TIME_BITS + 1));
         } else {
@@ -177,7 +190,29 @@ public class TimeRangeUtils {
         }
         // 应用调整值
         List<T> subRanges = applyAdjustments(timeRange, adjTime, adjStart, adjEnd);
-        if (subRanges != null) {
+        if (subRanges != null && !subRanges.isEmpty()) {
+            if (actStartMinutes != INVALID) {
+                // 首尾段分界点偏差处理
+                if (timeRangeList.isEmpty() && subRanges.get(0).getStartTime().equals(timeRange.getStartTime())) {
+                    // 首段开始时间正好为
+                    if (end == TIME_BITS) {
+                        if (subRanges.size() > 1 && getTimeMinutes(subRanges.get(subRanges.size() - 1).getStartTime(), false) == actStartMinutes) {
+                            // 最后一段被首段吸收
+                            subRanges.get(0).setStartTime(subRanges.get(subRanges.size() - 1).getStartTime());
+                            // 删除最后一段（被吸收）
+                            subRanges.remove(subRanges.size() - 1);
+                        }
+                    } else {
+                        // 最后一段被首段吸收
+                        subRanges.get(0).setStartTime(LocalTime.MIN.minusMinutes(actStartMinutes));
+                    }
+                }
+                if (end == TIME_BITS && !timeRangeList.isEmpty()
+                    && getTimeMinutes(timeRangeList.get(0).getStartTime(), false) == getTimeMinutes(subRanges.get(subRanges.size() - 1).getStartTime(), false)) {
+                    // 删除最后一段（被吸收）
+                    subRanges.remove(subRanges.size() - 1);
+                }
+            }
             // 如果有拆分成多个时间段则遍历子时间段
             for (T subRange : subRanges) {
                 // 按切割时长拆分时间段
@@ -186,6 +221,68 @@ public class TimeRangeUtils {
         } else {
             // 按切割时长拆分时间段
             addDivideTimeRange(timeRange, timeRangeList, divisionDuration, halfDivisionDurationEnabled);
+        }
+    }
+
+    /**
+     * 缝合被 offset 旋转切断的首/尾时间段
+     * <p>当日存在营业天偏移（{@code offset != 0}）时，{@link #getTimeRanges0} 以 seam={@code offset * 30} 分钟为原点将
+     * 环形的一天线性化：首段从 seam 开始（已加入 {@code timeRangeList}），末段结束于 seam（本次 {@code subRanges}）。
+     * 二者在真实时间上首尾相接，本方法依据 seam 两侧 slot 内的调整值将切断处缝合：</p>
+     * <ul>
+     *   <li>{@code offset == TIME_BITS - 1}：首段 startSlot（slot {@code offset}）内最靠近 seam 的调整值为 END(e)，
+     *       表示首段以 {@code [seam, e)} 开头且与末段结束点（seam）无缝相接，将末段（上一结束点）拓展到 e，并移除被吸收的首段前导部分</li>
+     *   <li>其他 {@code offset != 0}：末段 endSlot（slot {@code offset - 1}）内最靠近 seam 的调整值为 START(s)，
+     *       表示末段以 {@code [s, seam)} 结尾且与首段开始点（seam）无缝相接，将首段开始点前移到 s，并移除被吸收的末段尾段</li>
+     * </ul>
+     *  @param timeRangeList 已加入的时间段列表（首段位于下标 0）
+     *
+     * @param subRanges 末段经调整值拆分后的子时间段列表（按时间顺序，尚未加入 timeRangeList）
+     */
+    private static <T extends TimeRange> void mergeSeamRange(List<T> timeRangeList, List<T> subRanges) {
+        if (subRanges.isEmpty()) {
+            return;
+        }
+        // 营业天原点（分钟），首段从此开始、末段于此结束
+        T firstRange = timeRangeList.isEmpty() ? subRanges.get(0) : timeRangeList.get(0);
+        if (firstRange.getStartTime() == null) {
+            // 首段必须恰好从 seam 开始（firstStart==0），否则不构成环形首尾相接
+            return;
+        }
+        T lastPiece = subRanges.get(subRanges.size() - 1);
+        if (lastPiece.getEndTime() == null) {
+            // 末段结束点未落在 seam，与首段之间存在间隙，不缝合
+            return;
+        }
+        if (!firstRange.getStartTime().equals(lastPiece.getEndTime())) {
+            return;
+        }
+
+
+    }
+
+    /**
+     * 移除首段中被末段吸收的 {@code [seam, end)} 前导部分（考虑切割产生的多个子段）
+     * @param timeRangeList 时间段列表
+     * @param seam          营业天原点（分钟）
+     * @param end           吸收结束点（分钟）
+     */
+    private static <T extends TimeRange> void removeAbsorbedHead(List<T> timeRangeList, int seam, int end) {
+        while (!timeRangeList.isEmpty()) {
+            T head = timeRangeList.get(0);
+            if (head.getStartTime() == null || head.getEndTime() == null
+                    || getTimeMinutes(head.getStartTime(), false) != seam) {
+                break;
+            }
+            int headEnd = getTimeMinutes(head.getEndTime(), true);
+            if (headEnd <= end) {
+                // 整个前导子段都在被吸收范围内，移除
+                timeRangeList.remove(0);
+            } else {
+                // 前导子段越过吸收范围，仅将其开始点后移到 end
+                head.setStartTime(LocalTime.MIN.plusMinutes(end));
+                break;
+            }
         }
     }
 
@@ -367,7 +464,7 @@ public class TimeRangeUtils {
         int entryEnd = getEntryEnd(minuteTime, pos, minuteTime.length());
         // 获取调整值的结束位置
         int adjustmentEnd = getAdjustmentEnd(minuteTime, pos, entryEnd);
-        if (adjustmentEnd == INVALID) {
+        if (adjustmentEnd < pos) {
             // 没有调整值
             long time = parseTimeValue(minuteTime, pos, entryEnd);
             return time == INVALID ? null : last ? getLastEndTime(time) : getFirstStartTime(time);
@@ -384,16 +481,24 @@ public class TimeRangeUtils {
                 return null;
             }
             // 调整值的分钟数
-            int minutes = endOfAdjustment(minuteTime, pos, adjustmentEnd, index);
-            return minutes != INVALID ? LocalTime.MIN.plusMinutes(minutes) : index == TIME_BITS ? LocalTime.MAX : parseTime(index);
+            int minutes = nearestOfEnd(index, minuteTime, pos, adjustmentEnd, true);
+            return minutes != 0 ? LocalTime.MIN.plusMinutes(minutes) : index == TIME_BITS ? LocalTime.MAX : parseTime(index);
         } else {
             int index = getFirstStartIndex(time);
             if (index == INVALID) {
                 return null;
             }
             // 调整值的分钟数
-            int minutes = startOfAdjustment(minuteTime, pos, adjustmentEnd, index);
-            return minutes != INVALID ? LocalTime.MIN.plusMinutes(minutes) : parseTime(index);
+            int minutes = nearestOfStart(index, minuteTime, pos, adjustmentEnd, false);
+            if (minutes > 0) {
+                return LocalTime.MIN.plusMinutes(minutes);
+            }
+            if (getOffsetIndex(time) == index
+                && (minutes = nearestOfEnd((index == 0 ? TIME_BITS : index), minuteTime, pos, adjustmentEnd, false)) < 0) {
+                // 调整值的分钟数
+                return LocalTime.MIN.plusMinutes(-minutes);
+            }
+            return parseTime(index);
         }
     }
 
@@ -405,15 +510,19 @@ public class TimeRangeUtils {
      *   <li>最早调整值为 END 或该 slot 无调整值：覆盖从 slot 边界（{@code timeIndex * 30}）开始，返回 {@link #INVALID} 由调用方回退到边界值</li>
      * </ul>
      *
+     * @param startIndex      位图首个覆盖的 slot 下标
      * @param minuteTime      分钟精度时间段字符串
      * @param adjustmentStart 调整值区域起始位置
      * @param adjustmentEnd   调整值区域结束位置
-     * @param timeIndex       位图首个覆盖的 slot 下标
+     * @param matchStart 是否匹配调整值类型
      * @return 实际最早开始的分钟数（minute-of-day）；若从 slot 边界对齐开始则返回 {@link #INVALID}
      */
-    private static int startOfAdjustment(String minuteTime, int adjustmentStart, int adjustmentEnd, int timeIndex) {
+    private static int nearestOfStart(int startIndex, String minuteTime, int adjustmentStart, int adjustmentEnd, boolean matchStart) {
+        if (adjustmentStart >= adjustmentEnd) {
+            return 0;
+        }
         // 记录首个覆盖 slot 内分钟值最小（时间最早）的调整值及其类型
-        int first = INVALID;
+        int first = 0;
         boolean firstIsEnd = false;
         int pos = adjustmentStart;
         while (pos < adjustmentEnd) {
@@ -424,17 +533,31 @@ public class TimeRangeUtils {
                 valueEnd = adjustmentEnd;
             }
             pos = valueEnd + ADJ_ITEMS_SEPARATOR.length();
-            int minutes = parseAdjValue(minuteTime, valueStart, valueEnd);
-            if (minutes == INVALID || getStartIndex0(minutes) != timeIndex) {
+            int slot = parseAdjValue(minuteTime, valueStart, valueEnd - 1);
+            if (slot == INVALID || slot != startIndex) {
                 continue;
             }
-            if (first == INVALID || minutes < first) {
-                first = minutes;
-                firstIsEnd = isEnd;
+            int digit = Character.digit(minuteTime.charAt(valueEnd - 1), ADJ_RADIX);
+            if (digit == INVALID) {
+                continue;
+            }
+            if (first == 0 || digit < first) {
+                if (matchStart) {
+                    if (!isEnd) {
+                        first = digit;
+                        firstIsEnd = false;
+                    }
+                } else {
+                    first = digit;
+                    firstIsEnd = isEnd;
+                }
             }
         }
+        if (first != 0) {
+            first += startIndex * ADJ_RADIX;
+        }
         // 最早调整值为 START 才表示覆盖从该分钟开始；为 END 或无调整值时从 slot 边界对齐开始
-        return firstIsEnd ? INVALID : first;
+        return firstIsEnd ? -first : first;
     }
     /**
      * 获取分钟精度下实际的最晚结束时间点
@@ -445,17 +568,21 @@ public class TimeRangeUtils {
      *   <li>最晚调整值为 START 或该 slot 无调整值：覆盖延伸到 slot 边界（{@code timeIndex * 30}），返回 {@link #INVALID} 由调用方回退到边界值</li>
      * </ul>
      *
+     * @param endIndex        位图排他结束的 slot 下标
      * @param minuteTime      分钟精度时间段字符串
      * @param adjustmentStart 调整值区域起始位置
      * @param adjustmentEnd   调整值区域结束位置
-     * @param timeIndex       位图排他结束的 slot 下标
+     * @param matchEnd 是否匹配结束类型
      * @return 实际最晚结束的分钟数（minute-of-day）；若延伸到 slot 边界对齐结束则返回 {@link #INVALID}
      */
-    private static int endOfAdjustment(String minuteTime, int adjustmentStart, int adjustmentEnd, int timeIndex) {
+    private static int nearestOfEnd(int endIndex, String minuteTime, int adjustmentStart, int adjustmentEnd, boolean matchEnd) {
+        if (adjustmentStart >= adjustmentEnd) {
+            return 0;
+        }
         // 最后覆盖 slot 为排他结束下标的前一个 slot
-        int lastSlot = timeIndex - 1;
-        // 记录最后覆盖 slot 内分钟值最大（时间最晚）的调整值及其类型
-        int last = INVALID;
+        int lastSlot = endIndex - 1;
+        // 记录最后覆盖 slot 内分钟值最大（时间最晚）的调整值及其类型, 调整值不会为0
+        int last = 0;
         boolean lastIsEnd = false;
         int pos = adjustmentStart;
         while (pos < adjustmentEnd) {
@@ -466,17 +593,31 @@ public class TimeRangeUtils {
                 valueEnd = adjustmentEnd;
             }
             pos = valueEnd + ADJ_ITEMS_SEPARATOR.length();
-            int minutes = parseAdjValue(minuteTime, valueStart, valueEnd);
-            if (minutes == INVALID || getStartIndex0(minutes) != lastSlot) {
+            int slot = parseAdjValue(minuteTime, valueStart, valueEnd - 1);
+            if (slot == INVALID || slot != lastSlot) {
                 continue;
             }
-            if (last == INVALID || minutes > last) {
-                last = minutes;
-                lastIsEnd = isEnd;
+            int digit = Character.digit(minuteTime.charAt(valueEnd - 1), ADJ_RADIX);
+            if (digit == INVALID) {
+                continue;
+            }
+            if (last == 0 || digit > last) {
+                if (matchEnd) {
+                    if (isEnd) {
+                        last = digit;
+                        lastIsEnd = true;
+                    }
+                } else {
+                    last = digit;
+                    lastIsEnd = isEnd;
+                }
             }
         }
+        if (last != 0) {
+            last += lastSlot * ADJ_RADIX;
+        }
         // 最晚调整值为 END 才表示覆盖在该分钟结束；为 START 或无调整值时延伸到 slot 边界对齐结束
-        return lastIsEnd ? last : INVALID;
+        return lastIsEnd ? last : -last;
     }
     /**
      * 是否时间有跨天
@@ -1346,7 +1487,7 @@ public class TimeRangeUtils {
         if (minStart != INVALID) {
             T firstRange = subRanges.get(0);
             if (firstRange.getEndTime() != null
-                    && (relativePos(startMinutes, getTimeMinutes(firstRange.getEndTime(), true), crossing) > relativePos(startMinutes, minStart, crossing))) {
+                    && relativePos(startMinutes, getTimeMinutes(firstRange.getEndTime(), true), crossing) > relativePos(startMinutes, minStart, crossing)) {
                 firstRange.setStartTime(LocalTime.MIN.plusMinutes(minStart));
             } else {
                 subRanges = splitTimeRanges(subRanges, timeRange, startMinutes, crossing, minStart, false);
@@ -1372,28 +1513,30 @@ public class TimeRangeUtils {
                 timeRange.setStartTime(LocalTime.MIN.plusMinutes(minStart));
             }
             timeRange.setEndTime(LocalTime.MIN.plusMinutes(maxEnd));
-        } else {
-            if (sameSlot && maxEnd != INVALID) {
-                // 创建新的时间范围
-                T nextRange = createTimeRange(LocalTime.MIN.plusMinutes(minStart), timeRange.getEndTime());
-                // 调整结束时间
-                timeRange.setEndTime(LocalTime.MIN.plusMinutes(maxEnd));
-                List<T> subRangesList = new ArrayList<>(NumberConstants.INTEGER_TWO);
-                subRangesList.add(timeRange);
-                subRangesList.add(nextRange);
-                return subRangesList;
-            } else {
-                if (minStart != INVALID) {
-                    // 调整开始时间
-                    timeRange.setStartTime(LocalTime.MIN.plusMinutes(minStart));
-                }
-                if (maxEnd != INVALID) {
-                    // 调整结束时间
-                    timeRange.setEndTime(LocalTime.MIN.plusMinutes(maxEnd));
-                }
-            }
+            return Collections.emptyList();
         }
-        return null;
+        if (sameSlot && maxEnd != INVALID) {
+            // 创建新的时间范围
+            T nextRange = createTimeRange(LocalTime.MIN.plusMinutes(minStart), timeRange.getEndTime());
+            // 调整结束时间
+            timeRange.setEndTime(LocalTime.MIN.plusMinutes(maxEnd));
+            List<T> subRangesList = new ArrayList<>(NumberConstants.INTEGER_TWO);
+            subRangesList.add(timeRange);
+            subRangesList.add(nextRange);
+            return subRangesList;
+        }
+        boolean needAdjust = false;
+        if (minStart != INVALID) {
+            // 调整开始时间
+            timeRange.setStartTime(LocalTime.MIN.plusMinutes(minStart));
+            needAdjust = true;
+        }
+        if (maxEnd != INVALID) {
+            // 调整结束时间
+            timeRange.setEndTime(LocalTime.MIN.plusMinutes(maxEnd));
+            needAdjust = true;
+        }
+        return needAdjust ? Collections.emptyList() : null;
     }
 
 
