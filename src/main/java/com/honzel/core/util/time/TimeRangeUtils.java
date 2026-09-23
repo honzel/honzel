@@ -587,11 +587,13 @@ public class TimeRangeUtils {
         if (timeRangeStamp == NONE || (timeRangeStamp & ALL_WEEKDAYS) == NONE) {
             return TextUtils.EMPTY;
         }
-        timeRangeStamp >>>= WEEKDAY_SHIFT;
+        return getWeekDays0(timeRangeStamp >>> WEEKDAY_SHIFT);
+    }
 
+    private static String getWeekDays0(long weekdays) {
         StringBuilder buf = new StringBuilder();
         for (int i = 0; i < WEEKDAY_BITS; i ++) {
-            if ((timeRangeStamp & (FIRST_BIT << i)) != NONE) {
+            if ((weekdays & (FIRST_BIT << i)) != NONE) {
                 buf.append(getInstance().weekDayName(i + 1)).append(',');
             }
         }
@@ -940,7 +942,7 @@ public class TimeRangeUtils {
             // 直接读取 weekday 区域的两个字符，提取 7 位 weekday 值
             int weekdays = parseWeekdays(minuteTime, timeStart, entryEnd);
             // weekday 区域为 0 表示适用所有日期，否则检查对应日期位
-            if (weekdays != INVALID && (weekdays == 0 || days == 0 || (weekdays & days) != 0)) {
+            if (weekdays != INVALID && (weekdays == 0 || days == 0 || (weekdays = weekdays & days) != 0)) {
                 // 时间戳
                 long stamp = parseTimeValue(minuteTime, timeStart, entryEnd);
                 if (stamp != INVALID) {
@@ -951,8 +953,9 @@ public class TimeRangeUtils {
                     // 从时间戳获取基础时间范围
                     List<T> timeRanges = getTimeRanges0(stamp, minuteTime, pos, timeSep, 0, false);
                     if (!timeRanges.isEmpty()) {
-                        // key 为该条目的日期范围（weekday 位不受时间掩码影响）
-                        result.add(new KeyValue<>(getWeekDays(stamp), timeRanges));
+                        // key 为该条目的日期范围（weekday也受掩码影响）
+                        String weekdaysStr = weekdays == 0 && days == 0 ? TextUtils.EMPTY : getWeekDays0(weekdays == 0 ? days : weekdays);
+                        result.add(new KeyValue<>(weekdaysStr, timeRanges));
                     }
                 }
             }
