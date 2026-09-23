@@ -135,7 +135,8 @@ public class TimeRangeUtils {
         if (firstStart != 0) {
             times >>>= firstStart;
         }
-        T firstRange = (T) getInstance().newTimeRange();
+        TimeRangeUtils instance = getInstance();
+        T firstRange = (T) instance.newTimeRange();
         int actStartMinutes = INVALID;
         if (firstStart != 0) {
             firstRange.setStartTime(parseTime((offset + firstStart) % TIME_BITS));
@@ -170,7 +171,7 @@ public class TimeRangeUtils {
                 }
             } else {
                 if (timeRange == null) {
-                    timeRange = (T) getInstance().newTimeRange();
+                    timeRange = (T) instance.newTimeRange();
                     timeRange.setStartTime(parseTime((offset + i) % TIME_BITS));
                 }
             }
@@ -188,12 +189,13 @@ public class TimeRangeUtils {
         } else {
             timeRange.setEndTime(end == TIME_BITS && offset == 0 ? LocalTime.MAX : parseTime((offset + end) % TIME_BITS));
         }
+        LocalTime startTime = timeRange.getStartTime();
         // 应用调整值
         List<T> subRanges = applyAdjustments(timeRange, adjTime, adjStart, adjEnd);
         if (subRanges != null && !subRanges.isEmpty()) {
             if (actStartMinutes != INVALID) {
                 // 首尾段分界点偏差处理
-                if (timeRangeList.isEmpty() && subRanges.get(0).getStartTime().equals(timeRange.getStartTime())) {
+                if (timeRangeList.isEmpty() && subRanges.get(0).getStartTime().equals(startTime)) {
                     // 首段开始时间正好为
                     if (end == TIME_BITS) {
                         if (subRanges.size() > 1 && getTimeMinutes(subRanges.get(subRanges.size() - 1).getStartTime(), false) == actStartMinutes) {
@@ -204,7 +206,7 @@ public class TimeRangeUtils {
                         }
                     } else {
                         // 最后一段被首段吸收
-                        subRanges.get(0).setStartTime(LocalTime.MIN.minusMinutes(actStartMinutes));
+                        subRanges.get(0).setStartTime(LocalTime.MIN.plusMinutes(actStartMinutes));
                     }
                 }
                 if (end == TIME_BITS && !timeRangeList.isEmpty()
@@ -219,6 +221,21 @@ public class TimeRangeUtils {
                 addDivideTimeRange(subRange, timeRangeList, divisionDuration, halfDivisionDurationEnabled);
             }
         } else {
+            if (actStartMinutes != INVALID) {
+                // 首尾段分界点偏差处理
+                if (end != TIME_BITS) {
+                    if (timeRangeList.isEmpty() && timeRange.getStartTime().equals(startTime)) {
+                        // 最后一段被首段吸收
+                        timeRange.setStartTime(LocalTime.MIN.plusMinutes(actStartMinutes));
+                    }
+                } else {
+                    if (!timeRangeList.isEmpty()
+                            && getTimeMinutes(timeRangeList.get(0).getStartTime(), false) == getTimeMinutes(timeRange.getStartTime(), false)) {
+                        // 删除最后一段（被吸收）
+                        return;
+                    }
+                }
+            }
             // 按切割时长拆分时间段
             addDivideTimeRange(timeRange, timeRangeList, divisionDuration, halfDivisionDurationEnabled);
         }
@@ -328,12 +345,13 @@ public class TimeRangeUtils {
         LocalTime endTime = timeRange.getEndTime();
         // 计算总时间段数
         int count = calcTotalCount(startTime, endTime, stepDuration, halfDivisionDurationEnabled);
+        TimeRangeUtils instance = getInstance();
         // 前一个时间段
         TimeRange prevRange = timeRange;
         // 拆分时间段
         for (int i = 1; i < count; ++ i) {
             // 子时间段
-            T subRange = (T) getInstance().newTimeRange();
+            T subRange = (T) instance.newTimeRange();
             // 计算开始时间
             subRange.setStartTime(startTime.plusMinutes((long) i * stepDuration));
             if (halfDivisionDurationEnabled) {
@@ -411,6 +429,16 @@ public class TimeRangeUtils {
         return dayOfWeek != null ? getFirstOrLastTime0(minuteTime, FIRST_BIT << (WEEKDAY_SHIFT + dayOfWeek.ordinal()), false) : null;
     }
 
+    /**
+     * 获取最起始时间点
+     * @param minuteTime 分钟精度时间段值
+     * @param timeRangeMask 时间段掩码
+     * @return 返回最起始时间点
+     */
+    public static LocalTime getFirstStartTime(String minuteTime, long timeRangeMask) {
+        return getFirstOrLastTime0(minuteTime, timeRangeMask, false);
+    }
+
 
     /**
      * 获取最后结束时间点
@@ -422,6 +450,15 @@ public class TimeRangeUtils {
         return index != INVALID ? (index == TIME_BITS ? LocalTime.MAX : parseTime(index)) : null;
     }
 
+    /**
+     * 获取最后结束时间点
+     * @param minuteTime 分钟精度时间段值
+     * @param timeRangeMask 时间段掩码
+     * @return 返回最后结束时间点
+     */
+    public static LocalTime getLastEndTime(String minuteTime, long timeRangeMask) {
+        return getFirstOrLastTime0(minuteTime, timeRangeMask, true);
+    }
     /**
      * 获取最后结束时间点
      * @param minuteTime 分钟精度时间段值
@@ -732,10 +769,11 @@ public class TimeRangeUtils {
     }
 
     private static String getWeekDays0(long weekdays) {
+        TimeRangeUtils instance = getInstance();
         StringBuilder buf = new StringBuilder();
         for (int i = 0; i < WEEKDAY_BITS; i ++) {
             if ((weekdays & (FIRST_BIT << i)) != NONE) {
-                buf.append(getInstance().weekDayName(i + 1)).append(',');
+                buf.append(instance.weekDayName(i + 1)).append(',');
             }
         }
         if (buf.length() > 0) {
@@ -762,9 +800,10 @@ public class TimeRangeUtils {
         if (TextUtils.isEmpty(weekdays)) {
             return NONE;
         }
+        TimeRangeUtils instance = getInstance();
         long result = NONE;
         for (int i = 0; i < WEEKDAY_BITS; i ++) {
-            String value = utils.weekDayName(i + 1);
+            String value = instance.weekDayName(i + 1);
             if (TextUtils.containsValue(weekdays, value)) {
                 result |= (FIRST_BIT << i);
                 if (weekdays.length() == value.length()) {
@@ -1146,18 +1185,7 @@ public class TimeRangeUtils {
 
     /**
      * 时间段内是否包含有该时间区间
-      * @param minuteTime 分钟精度的时间段值
-     * @param timeRangeMask 时间范围掩码, 包含日期和时间范围, 如果为0, 则表示获取首个时间范围集合
-     * @param time 指定的时间
-     * @return 是否时间段值包含该时间段
-     */
-    public static boolean containsTime(String minuteTime, long timeRangeMask, LocalTime time) {
-        return time != null && matchMinuteTime0(minuteTime, timeRangeMask, time, null) != INVALID;
-    }
-
-    /**
-     * 时间段内是否包含有该时间区间
-      * @param minuteTime 分钟精度的时间段值
+     * @param minuteTime 分钟精度的时间段值
      *  @param startTime 时间段开始时间点
      * @param endTime 时间段结束时间
      * @return 是否时间段值包含该时间段
@@ -1165,15 +1193,7 @@ public class TimeRangeUtils {
     public static boolean containsTimeRange(String minuteTime, LocalTime startTime, LocalTime endTime) {
         return startTime != null && endTime != null && matchMinuteTime0(minuteTime, NONE, startTime, endTime) != INVALID;
     }
-    /**
-     * 时间段内是否包含有该时间
-     * @param minuteTime 分钟精度的时间段值
-     * @param time 指定的时间
-     * @return 是否时间段值包含该时间
-     */
-    public static boolean containsTime(String minuteTime, LocalTime time) {
-        return time != null && matchMinuteTime0(minuteTime, NONE, time, null) != INVALID;
-    }
+
     /**
      * 时间段内是否包含有该时间
      * @param minuteTime 分钟精度的时间段值
@@ -1182,6 +1202,36 @@ public class TimeRangeUtils {
      */
     public static boolean containsDateTime(String minuteTime, LocalDateTime time) {
         return time != null && matchMinuteTime0(minuteTime, FIRST_BIT << (WEEKDAY_SHIFT + time.getDayOfWeek().ordinal()), time.toLocalTime(), null) != INVALID;
+    }
+    /**
+     * 时间段内是否包含有该时间区间
+      * @param minuteTime 分钟精度的时间段值
+     * @param timeRangeMask 时间范围掩码, 包含日期和时间范围, 如果为0, 则表示获取首个时间范围集合
+     * @param time 指定的时间
+     * @return 是否时间段值包含该时间段
+     */
+    public static boolean containsTime(String minuteTime, long timeRangeMask, LocalTime time) {
+        return time != null && matchMinuteTime0(minuteTime, timeRangeMask, time, null) != INVALID;
+    }
+    /**
+     * 时间段内是否包含有该时间区间
+      * @param minuteTime 分钟精度的时间段值
+     * @param dayOfWeek 日期
+     * @param time 指定的时间
+     * @return 是否时间段值包含该时间段
+     */
+    public static boolean containsTime(String minuteTime, DayOfWeek dayOfWeek, LocalTime time) {
+        return dayOfWeek != null && time != null && matchMinuteTime0(minuteTime, FIRST_BIT << (WEEKDAY_SHIFT + dayOfWeek.ordinal()), time, null) != INVALID;
+    }
+
+    /**
+     * 时间段内是否包含有该时间
+     * @param minuteTime 分钟精度的时间段值
+     * @param time 指定的时间
+     * @return 是否时间段值包含该时间
+     */
+    public static boolean containsTime(String minuteTime, LocalTime time) {
+        return time != null && matchMinuteTime0(minuteTime, NONE, time, null) != INVALID;
     }
 
     /**

@@ -77,16 +77,26 @@ public class TimeRangeTester {
 	private void testTimeRange() {
 
 		List<TimeRange> timeRangeList = new ArrayList<>();
-		timeRangeList.add(new TimeRange(LocalTime.parse("12:20"), LocalTime.parse("16:00")));
-		timeRangeList.add(new TimeRange(LocalTime.parse("04:15"), LocalTime.parse("12:25")));
 		timeRangeList.add(new TimeRange(LocalTime.parse("18:15"), LocalTime.parse("02:16")));
+		timeRangeList.add(new TimeRange(LocalTime.parse("02:25"), LocalTime.parse("05:13")));
+		timeRangeList.add(new TimeRange(LocalTime.parse("08:15"), LocalTime.parse("12:20")));
+		timeRangeList.add(new TimeRange(LocalTime.parse("12:25"), LocalTime.parse("16:00")));
 
 		StringBuilder minuteTime = new StringBuilder();
-		long timestamp = TimeRangeUtils.fromTimeRanges(timeRangeList, minuteTime);
+		long timestamp = TimeRangeUtils.from("1,2",timeRangeList, minuteTime);
+		System.out.println("结果:" + minuteTime + "-------" + timestamp);
+		timestamp = TimeRangeUtils.from("4",timeRangeList, minuteTime);
 		System.out.println("结果:" + minuteTime + "-------" + timestamp);
 
 		System.out.println("getTimeRanges:" + TimeRangeUtils.getTimeRanges(timestamp));
-		System.out.println("getMinuteTimeRanges:" + TimeRangeUtils.getMinuteTimeRanges(minuteTime.toString(), DayOfWeek.MONDAY));
+		System.out.println("getMinuteTimeRanges(MONDAY):" + TimeRangeUtils.getMinuteTimeRanges(minuteTime.toString(), DayOfWeek.MONDAY));
+		System.out.println("getMinuteTimeRanges(WEDNESDAY):" + TimeRangeUtils.getMinuteTimeRanges(minuteTime.toString(), DayOfWeek.WEDNESDAY));
+		System.out.println("containsTimeRange(02:25-04:13):" + TimeRangeUtils.containsTimeRange(minuteTime.toString(), DayOfWeek.MONDAY, LocalTime.parse("02:25"), LocalTime.parse("04:13")));
+		System.out.println("containsTimeRange(12:24-15:13):" + TimeRangeUtils.containsTimeRange(minuteTime.toString(), DayOfWeek.MONDAY, LocalTime.parse("12:24"), LocalTime.parse("15:13")));
+		System.out.println("containsTime(12:24):" + TimeRangeUtils.containsTime(minuteTime.toString(), DayOfWeek.MONDAY, LocalTime.parse("12:24")));
+		System.out.println("getFirstStartTime:" + TimeRangeUtils.getFirstStartTime(minuteTime.toString(), TimeRangeUtils.NONE));
+		System.out.println("getLastEndTime:" + TimeRangeUtils.getLastEndTime(minuteTime.toString(), TimeRangeUtils.NONE));
+		System.out.println("getAllTimeRanges:" + TimeRangeUtils.getAllTimeRanges(minuteTime.toString(), TimeRangeUtils.fromWeekDays("1,2,3")));
 
 	}
 
