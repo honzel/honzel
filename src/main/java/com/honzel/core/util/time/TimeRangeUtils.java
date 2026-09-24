@@ -473,7 +473,7 @@ public class TimeRangeUtils {
                 return LocalTime.MIN.plusMinutes(minutes);
             }
             if (getOffsetIndex(time) == index
-                && (minutes = nearestOfEnd((index == 0 ? TIME_BITS : index), minuteTime, pos, adjustmentEnd, false, false)) < 0) {
+                && (minutes = nearestOfEnd((index == 0 ? TIME_BITS : index), minuteTime, pos, adjustmentEnd, shiftFlag, false)) < 0) {
                 // 调整值的分钟数
                 return LocalTime.MIN.plusMinutes(-minutes);
             }
