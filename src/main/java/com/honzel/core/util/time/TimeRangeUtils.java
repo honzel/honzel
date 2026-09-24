@@ -1415,13 +1415,15 @@ public class TimeRangeUtils {
             }
             // 二、调整值在查询范围外，只可能出现在查询起点/终点所在的 slot 上，判断边界是否落在间隙
             int slot = getStartIndex0(minutes);
-            if (slot == queryStartSlot && minutes <= startMinutes && minutes > startBnd) {
+            if (slot == queryStartSlot && minutes <= startMinutes && (minutes > startBnd || !isEnd && minutes == startBnd)) {
                 // 起点侧最近的边界：结束调整值→起点未覆盖；开始调整值→起点已覆盖
+                // 同分钟同时存在 END 与 START（forceShift 非对齐环接点）时以 START 优先（覆盖优先、顺序无关）
                 startBnd = minutes;
                 startGap = isEnd;
             }
-            if (slot == queryEndSlot && minutes >= endMinutes && minutes < endBnd) {
+            if (slot == queryEndSlot && minutes >= endMinutes && (minutes < endBnd || isEnd && minutes == endBnd)) {
                 // 终点侧最近的边界：开始调整值→终点前未覆盖；结束调整值→终点前已覆盖
+                // 同分钟同时存在 END 与 START（forceShift 非对齐环接点）时以 END 优先（覆盖优先、顺序无关）
                 endBnd = minutes;
                 endGap = !isEnd;
             }
