@@ -185,7 +185,7 @@ public class TimeRangeUtils {
 
     private static <T extends TimeRange> void addEndTimeAndDivision(List<T> timeRangeList, T timeRange, String adjTime, int adjStart, int adjEnd, int divisionDuration, boolean halfDivisionDurationEnabled, boolean shiftFlag, int offset, int end, int actStartMinutes) {
         if (shiftFlag) {
-            timeRange.setEndTime(end == TIME_BITS - 1 && offset == 0 ? LocalTime.MAX : parseTime((offset + end) % TIME_BITS + 1));
+            timeRange.setEndTime(end >= TIME_BITS - 1 ? (offset == 0 ? LocalTime.MAX : parseTime(offset)): parseTime((offset + end) % TIME_BITS + 1));
         } else {
             timeRange.setEndTime(end == TIME_BITS && offset == 0 ? LocalTime.MAX : parseTime((offset + end) % TIME_BITS));
         }
@@ -241,67 +241,6 @@ public class TimeRangeUtils {
         }
     }
 
-    /**
-     * 缝合被 offset 旋转切断的首/尾时间段
-     * <p>当日存在营业天偏移（{@code offset != 0}）时，{@link #getTimeRanges0} 以 seam={@code offset * 30} 分钟为原点将
-     * 环形的一天线性化：首段从 seam 开始（已加入 {@code timeRangeList}），末段结束于 seam（本次 {@code subRanges}）。
-     * 二者在真实时间上首尾相接，本方法依据 seam 两侧 slot 内的调整值将切断处缝合：</p>
-     * <ul>
-     *   <li>{@code offset == TIME_BITS - 1}：首段 startSlot（slot {@code offset}）内最靠近 seam 的调整值为 END(e)，
-     *       表示首段以 {@code [seam, e)} 开头且与末段结束点（seam）无缝相接，将末段（上一结束点）拓展到 e，并移除被吸收的首段前导部分</li>
-     *   <li>其他 {@code offset != 0}：末段 endSlot（slot {@code offset - 1}）内最靠近 seam 的调整值为 START(s)，
-     *       表示末段以 {@code [s, seam)} 结尾且与首段开始点（seam）无缝相接，将首段开始点前移到 s，并移除被吸收的末段尾段</li>
-     * </ul>
-     *  @param timeRangeList 已加入的时间段列表（首段位于下标 0）
-     *
-     * @param subRanges 末段经调整值拆分后的子时间段列表（按时间顺序，尚未加入 timeRangeList）
-     */
-    private static <T extends TimeRange> void mergeSeamRange(List<T> timeRangeList, List<T> subRanges) {
-        if (subRanges.isEmpty()) {
-            return;
-        }
-        // 营业天原点（分钟），首段从此开始、末段于此结束
-        T firstRange = timeRangeList.isEmpty() ? subRanges.get(0) : timeRangeList.get(0);
-        if (firstRange.getStartTime() == null) {
-            // 首段必须恰好从 seam 开始（firstStart==0），否则不构成环形首尾相接
-            return;
-        }
-        T lastPiece = subRanges.get(subRanges.size() - 1);
-        if (lastPiece.getEndTime() == null) {
-            // 末段结束点未落在 seam，与首段之间存在间隙，不缝合
-            return;
-        }
-        if (!firstRange.getStartTime().equals(lastPiece.getEndTime())) {
-            return;
-        }
-
-
-    }
-
-    /**
-     * 移除首段中被末段吸收的 {@code [seam, end)} 前导部分（考虑切割产生的多个子段）
-     * @param timeRangeList 时间段列表
-     * @param seam          营业天原点（分钟）
-     * @param end           吸收结束点（分钟）
-     */
-    private static <T extends TimeRange> void removeAbsorbedHead(List<T> timeRangeList, int seam, int end) {
-        while (!timeRangeList.isEmpty()) {
-            T head = timeRangeList.get(0);
-            if (head.getStartTime() == null || head.getEndTime() == null
-                    || getTimeMinutes(head.getStartTime(), false) != seam) {
-                break;
-            }
-            int headEnd = getTimeMinutes(head.getEndTime(), true);
-            if (headEnd <= end) {
-                // 整个前导子段都在被吸收范围内，移除
-                timeRangeList.remove(0);
-            } else {
-                // 前导子段越过吸收范围，仅将其开始点后移到 end
-                head.setStartTime(LocalTime.MIN.plusMinutes(end));
-                break;
-            }
-        }
-    }
 
 
     protected TimeRange newTimeRange() {
