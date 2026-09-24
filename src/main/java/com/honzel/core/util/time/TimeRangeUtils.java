@@ -493,7 +493,7 @@ public class TimeRangeUtils {
      * @param minuteTime      分钟精度时间段字符串
      * @param adjustmentStart 调整值区域起始位置
      * @param adjustmentEnd   调整值区域结束位置
-     * @param shiftFlag
+     * @param shiftFlag       是否班次时间
      * @param matchStart      是否匹配调整值类型
      * @return 实际最早开始的分钟数（minute-of-day）；若从 slot 边界对齐开始则返回 {@link #INVALID}
      */
@@ -552,7 +552,7 @@ public class TimeRangeUtils {
      * @param minuteTime      分钟精度时间段字符串
      * @param adjustmentStart 调整值区域起始位置
      * @param adjustmentEnd   调整值区域结束位置
-     * @param shiftFlag
+     * @param shiftFlag       是否班次时间
      * @param matchEnd        是否匹配结束类型
      * @return 实际最晚结束的分钟数（minute-of-day）；若延伸到 slot 边界对齐结束则返回 {@link #INVALID}
      */
