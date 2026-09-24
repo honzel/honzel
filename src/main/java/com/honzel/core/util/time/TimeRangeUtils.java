@@ -1696,7 +1696,8 @@ public class TimeRangeUtils {
                 T seg = subRanges.get(i);
                 if (seg.getStartTime() != null) {
                     // 有开始时间
-                    if (pos < relativePos(startMinutes, getTimeMinutes(seg.getStartTime(), false), crossing)) {
+                    int segPos = relativePos(startMinutes, getTimeMinutes(seg.getStartTime(), false), crossing);
+                    if (pos < segPos || isEnd && pos == segPos) {
                         // 如果在当前段开始时间之前，则继续检查前一段
                         beforeStart = true;
                         continue;
