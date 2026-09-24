@@ -144,7 +144,7 @@ public class TimeRangeUtils {
             firstRange.setStartTime(parseTime(offset));
             if (adjStart < adjEnd && (offset != 0 || (times >>> (TIME_BITS - 1)) != NONE)) {
                 // 首尾段处理, 获取最接近的调整值
-                int nearest = nearestOfEnd(offset == 0 ? TIME_BITS : offset, adjTime, adjStart, adjEnd, false);
+                int nearest = nearestOfEnd(offset == 0 ? TIME_BITS : offset, adjTime, adjStart, adjEnd, shiftFlag, false);
                 if (nearest < 0) {
                     // 最接近的调整值为开始调整值
                     actStartMinutes = -nearest;
@@ -191,7 +191,7 @@ public class TimeRangeUtils {
         }
         LocalTime startTime = timeRange.getStartTime();
         // 应用调整值
-        List<T> subRanges = applyAdjustments(timeRange, adjTime, adjStart, adjEnd);
+        List<T> subRanges = applyAdjustments(timeRange, adjTime, adjStart, adjEnd, shiftFlag);
         if (subRanges != null && !subRanges.isEmpty()) {
             if (actStartMinutes != INVALID) {
                 // 首尾段分界点偏差处理
@@ -446,7 +446,7 @@ public class TimeRangeUtils {
      * @return 返回最后结束时间点
      */
     public static LocalTime getLastEndTime(long timeRangeStamp) {
-        int index = getLastEndTimeIndex(timeRangeStamp);
+        int index = getLastEndTimeIndex(timeRangeStamp, (timeRangeStamp & SHIFT_TIME_FLAG) != NONE);
         return index != INVALID ? (index == TIME_BITS ? LocalTime.MAX : parseTime(index)) : null;
     }
 
@@ -469,10 +469,12 @@ public class TimeRangeUtils {
     }
     /**
      * 获取最后结束时间点
+     *
      * @param timeRangeStamp 时间段值
+     * @param shiftFlag
      * @return 返回最后结束时间点
      */
-    public static int getLastEndTimeIndex(long timeRangeStamp) {
+    public static int getLastEndTimeIndex(long timeRangeStamp, boolean shiftFlag) {
         if (timeRangeStamp != NONE) {
             // 开始时间位置
             int offset = getOffsetIndex(timeRangeStamp);
@@ -481,7 +483,7 @@ public class TimeRangeUtils {
                 return offset;
             }
             int index = Long.SIZE - Long.numberOfLeadingZeros(timeRangeStamp & ALL_TIMES);
-            if ((timeRangeStamp & SHIFT_TIME_FLAG) != NONE) {
+            if (shiftFlag) {
                 // 是班次时间
                 index ++;
             }
@@ -511,14 +513,15 @@ public class TimeRangeUtils {
         if (time == INVALID) {
             return null;
         }
+        boolean shiftFlag = (time & SHIFT_TIME_FLAG) != NONE;
         // 解析调整值的分钟数
         if (last) {
-            int index = getLastEndTimeIndex(time);
+            int index = getLastEndTimeIndex(time, shiftFlag);
             if (index == INVALID) {
                 return null;
             }
             // 调整值的分钟数
-            int minutes = nearestOfEnd(index, minuteTime, pos, adjustmentEnd, true);
+            int minutes = nearestOfEnd(index, minuteTime, pos, adjustmentEnd, shiftFlag, true);
             return minutes != 0 ? LocalTime.MIN.plusMinutes(minutes) : index == TIME_BITS ? LocalTime.MAX : parseTime(index);
         } else {
             int index = getFirstStartIndex(time);
@@ -531,7 +534,7 @@ public class TimeRangeUtils {
                 return LocalTime.MIN.plusMinutes(minutes);
             }
             if (getOffsetIndex(time) == index
-                && (minutes = nearestOfEnd((index == 0 ? TIME_BITS : index), minuteTime, pos, adjustmentEnd, false)) < 0) {
+                && (minutes = nearestOfEnd((index == 0 ? TIME_BITS : index), minuteTime, pos, adjustmentEnd, false, false)) < 0) {
                 // 调整值的分钟数
                 return LocalTime.MIN.plusMinutes(-minutes);
             }
@@ -570,7 +573,7 @@ public class TimeRangeUtils {
                 valueEnd = adjustmentEnd;
             }
             pos = valueEnd + ADJ_ITEMS_SEPARATOR.length();
-            int slot = parseAdjValue(minuteTime, valueStart, valueEnd - 1);
+            int slot = parseAdjValue(minuteTime, valueStart, valueEnd - 1, false);
             if (slot == INVALID || slot != startIndex) {
                 continue;
             }
@@ -609,10 +612,11 @@ public class TimeRangeUtils {
      * @param minuteTime      分钟精度时间段字符串
      * @param adjustmentStart 调整值区域起始位置
      * @param adjustmentEnd   调整值区域结束位置
-     * @param matchEnd 是否匹配结束类型
+     * @param shiftFlag
+     * @param matchEnd        是否匹配结束类型
      * @return 实际最晚结束的分钟数（minute-of-day）；若延伸到 slot 边界对齐结束则返回 {@link #INVALID}
      */
-    private static int nearestOfEnd(int endIndex, String minuteTime, int adjustmentStart, int adjustmentEnd, boolean matchEnd) {
+    private static int nearestOfEnd(int endIndex, String minuteTime, int adjustmentStart, int adjustmentEnd, boolean shiftFlag, boolean matchEnd) {
         if (adjustmentStart >= adjustmentEnd) {
             return 0;
         }
@@ -630,7 +634,7 @@ public class TimeRangeUtils {
                 valueEnd = adjustmentEnd;
             }
             pos = valueEnd + ADJ_ITEMS_SEPARATOR.length();
-            int slot = parseAdjValue(minuteTime, valueStart, valueEnd - 1);
+            int slot = parseAdjValue(minuteTime, valueStart, valueEnd - 1, false);
             if (slot == INVALID || slot != lastSlot) {
                 continue;
             }
@@ -641,11 +645,11 @@ public class TimeRangeUtils {
             if (last == 0 || digit > last) {
                 if (matchEnd) {
                     if (isEnd) {
-                        last = digit;
+                        last = shiftFlag ? digit + 1 : digit;
                         lastIsEnd = true;
                     }
                 } else {
-                    last = digit;
+                    last = shiftFlag && isEnd ? digit + 1 : digit;
                     lastIsEnd = isEnd;
                 }
             }
@@ -671,20 +675,28 @@ public class TimeRangeUtils {
      * @return 抹除班次信息的时间段值
      */
     public static long nonShift(long timeRangeStamp) {
-        if (timeRangeStamp == NONE) {
-            return NONE;
+        if (timeRangeStamp != NONE) {
+            long result = ~SHIFT_TIME_FLAG & timeRangeStamp;
+            return nonShift0(result, result != timeRangeStamp);
         }
-        long result = ~SHIFT_TIME_FLAG & timeRangeStamp;
-        if (result != timeRangeStamp) {
+        return NONE;
+    }
+    /**
+     * 抹除班次信息
+     * @param timeRangeStamp 时间段值，不包含班次标识
+     * @return 抹除班次信息的时间段值
+     */
+    public static long nonShift0(long timeRangeStamp, boolean shiftFlag) {
+        if (shiftFlag) {
             //如果是班次时间
-            long time = (result & ALL_TIMES);
+            long time = (timeRangeStamp & ALL_TIMES);
             if (((time |= (time << 1)) & (FIRST_BIT << TIME_BITS)) != NONE) {
                 // 最后一位非0，移一位后，需要补到开头
                 time = (time & ALL_TIMES) | FIRST_BIT;
             }
-            return result | time;
+            return timeRangeStamp | time;
         }
-        return result;
+        return timeRangeStamp;
     }
     /**
      * 时间段内是否包含有该时间
@@ -851,8 +863,10 @@ public class TimeRangeUtils {
     /**
      * 获取班次时间段值
      * @param timeRanges 时间范围列表
+     * @param checkOverlap 是否检查重叠
+     *
      */
-    public static void checkValidShiftTimeRanges(List<? extends TimeRange> timeRanges) {
+    public static void checkValidShiftTimeRanges(List<? extends TimeRange> timeRanges, boolean checkOverlap) {
         if (timeRanges == null || timeRanges.isEmpty()) {
             throw new DateTimeException("没有指定时间段");
         }
@@ -870,36 +884,42 @@ public class TimeRangeUtils {
             }
             int startMinutes = getTimeMinutes(startTime, false);
             int endMinutes = getTimeMinutes(endTime, true);
-            if (startMinutes < endMinutes && endMinutes - startMinutes <= TIME_UNIT_IN_MINUTES) {
-                throw new DateTimeException("时间段长度必须都大于" + TIME_UNIT_IN_MINUTES + "分钟");
+            // 范围只占单个 slot 才会塌缩
+            if (startMinutes < endMinutes && getStartIndex0(startMinutes) == getEndIndex0(endMinutes) - 1) {
+                throw new DateTimeException(
+                        "开始时间[" + startTime.truncatedTo(ChronoUnit.SECONDS)
+                                + "]和结束时间[" + endTime.truncatedTo(ChronoUnit.SECONDS) + "]不能同时落在同一个整点或半点的"
+                                + TIME_UNIT_IN_MINUTES + "分钟区间内");
             }
-            long time = fromTimeRange0(startMinutes, endMinutes, false, false);
-            long boundaryStart = FIRST_BIT << getStartIndex0(startMinutes);
-            long boundaryEnd = FIRST_BIT << (getEndIndex0(endMinutes) - 1);
-            long retain = time & result;
-            if (retain != NONE) {
-                if ((retain != boundaryStart && retain != boundaryEnd) || (retain & boundary) == NONE) {
-                    throw new DateTimeException("时间段不能出现重叠");
-                }
-                if (retain == boundaryStart) {
-                    for (int j = i - 1; j >= 0; j--) {
-                        LocalTime otherStart = timeRanges.get(j).getStartTime();
-                        if (fromTime(otherStart) == boundaryStart && getHalfHourSeconds(otherStart) >= getHalfHourSeconds(startTime)) {
-                            throw new DateTimeException("时间段不能出现重叠");
+            if (checkOverlap) {
+                long time = fromTimeRange0(startMinutes, endMinutes, false, false);
+                long boundaryStart = FIRST_BIT << getStartIndex0(startMinutes);
+                long boundaryEnd = FIRST_BIT << (getEndIndex0(endMinutes) - 1);
+                long retain = time & result;
+                if (retain != NONE) {
+                    if ((retain != boundaryStart && retain != boundaryEnd) || (retain & boundary) == NONE) {
+                        throw new DateTimeException("时间段不能出现重叠");
+                    }
+                    if (retain == boundaryStart) {
+                        for (int j = i - 1; j >= 0; j--) {
+                            LocalTime otherStart = timeRanges.get(j).getStartTime();
+                            if (fromTime(otherStart) == boundaryStart && getHalfHourSeconds(otherStart) >= getHalfHourSeconds(startTime)) {
+                                throw new DateTimeException("时间段不能出现重叠");
+                            }
+                        }
+                    }
+                    if (retain == boundaryEnd) {
+                        for (int j = i - 1; j >= 0; j--) {
+                            LocalTime otherEnd = timeRanges.get(j).getEndTime();
+                            if (fromTime(otherEnd) == boundaryEnd && getHalfHourSeconds(otherEnd) <= getHalfHourSeconds(endTime)) {
+                                throw new DateTimeException("时间段不能出现重叠");
+                            }
                         }
                     }
                 }
-                if (retain == boundaryEnd) {
-                    for (int j = i - 1; j >= 0; j--) {
-                        LocalTime otherEnd = timeRanges.get(j).getEndTime();
-                        if (fromTime(otherEnd) == boundaryEnd && getHalfHourSeconds(otherEnd) <= getHalfHourSeconds(endTime)) {
-                            throw new DateTimeException("时间段不能出现重叠");
-                        }
-                    }
-                }
+                boundary |= (boundaryStart | boundaryEnd);
+                result |= time;
             }
-            boundary |= (boundaryStart | boundaryEnd);
-            result |= time;
         }
     }
 
@@ -945,13 +965,13 @@ public class TimeRangeUtils {
             long range = fromTimeRange0(startMinutes, endMinutes, forceShift, fetchOffset);
             if (hasMinuteTimes) {
                 // 需要调整值
-                long nonShiftResult = forceShift ? nonShift(result) : result;
-                if (nonShiftResult != NONE && (nonShiftResult & (forceShift ? nonShift(range) : range)) != NONE) {
+                long nonShiftResult = nonShift0(result, forceShift);
+                if (nonShiftResult != NONE && (nonShiftResult & nonShift0(range, forceShift)) != NONE) {
                     // 时间段有交集，实现调整值的合并
-                    updateAdjustments(minuteTime, adjustOffset, nonShiftResult, startMinutes, endMinutes);
+                    updateAdjustments(minuteTime, adjustOffset, nonShiftResult, startMinutes, endMinutes, forceShift);
                 } else {
                     // 时间没交集
-                    appendAdjustments(minuteTime, adjustOffset, true, startMinutes, true, endMinutes);
+                    appendAdjustments(minuteTime, adjustOffset, true, startMinutes, true, endMinutes, forceShift);
                 }
             }
             // 只获取第一次的跨天位置
@@ -1377,12 +1397,15 @@ public class TimeRangeUtils {
                 // 时间戳
                 long stamp = parseTimeValue(minuteTime, timeStart, entryEnd);
                 if (stamp != INVALID) {
+                    // 去掉班次标识
+                    long time = ~SHIFT_TIME_FLAG & stamp;
+                    boolean forceShift = time != stamp;
                     // 获取时间戳对应的时间范围
-                    long time = timeRangeMask != NONE ? nonShift(stamp) & timeRangeMask : nonShift(stamp);
+                    time = timeRangeMask != NONE ? nonShift0(time, forceShift) & timeRangeMask : nonShift0(time, forceShift);
                     // 从时间戳获取基础时间范围
                     boolean result = time != NONE && (startTime == null
                             || (endTime != null ? containsTimeRange(time, startTime, endTime) : containsTime(time, startTime))
-                            && (pos >= timeSep || containsMinuteRange0(minuteTime, pos, timeSep, startTime, endTime)));
+                            && (pos >= timeSep || containsMinuteRange0(minuteTime, pos, timeSep, startTime, endTime, forceShift)));
                     if (result || weekdays == 0 || (weekdays & days) == days) {
                         return result ? pos : INVALID;
                     }
@@ -1409,7 +1432,7 @@ public class TimeRangeUtils {
         return entryEnd;
     }
 
-    private static boolean containsMinuteRange0(String minuteTime, int adjStart, int adjEnd, LocalTime startTime, LocalTime endTime) {
+    private static boolean containsMinuteRange0(String minuteTime, int adjStart, int adjEnd, LocalTime startTime, LocalTime endTime, boolean forceShift) {
         int startMinutes = getTimeMinutes(startTime, false);
         int endMinutes;
         if (endTime != null) {
@@ -1441,7 +1464,7 @@ public class TimeRangeUtils {
                 valueEnd = adjEnd;
             }
             pos = valueEnd + ADJ_ITEMS_SEPARATOR.length();
-            int minutes = parseAdjValue(minuteTime, valueStart, valueEnd);
+            int minutes = parseAdjValue(minuteTime, valueStart, valueEnd, forceShift && isEnd);
             if (minutes == INVALID) {
                 continue;
             }
@@ -1506,10 +1529,11 @@ public class TimeRangeUtils {
      * @param adjustmentTime  调整值字符串
      * @param adjStart  调整值起始位置
      * @param adjEnd    调整值结束位置
+     * @param forceShift 是否强制分隔班次, true 时结束调整值写入减去了 1 分钟, 还原时需加回
      * @return 若拆分为多个子时间段则返回列表；未拆分（含无调整值命中或仅得到单一子段）则返回 null，
      *         其中单一子段的情形下已就地修改 {@code timeRange} 的 startTime/endTime
      */
-    private static<T extends TimeRange> List<T> applyAdjustments(T timeRange, String adjustmentTime, int adjStart, int adjEnd) {
+    private static<T extends TimeRange> List<T> applyAdjustments(T timeRange, String adjustmentTime, int adjStart, int adjEnd, boolean forceShift) {
         if (TextUtils.isEmpty(adjustmentTime) || adjStart >= adjEnd) {
             return null;
         }
@@ -1536,7 +1560,7 @@ public class TimeRangeUtils {
             if (valueEnd == INVALID || valueEnd > adjEnd) {
                 valueEnd = adjEnd;
             }
-            int minutes = parseAdjValue(adjustmentTime, valueStart, valueEnd);
+            int minutes = parseAdjValue(adjustmentTime, valueStart, valueEnd, forceShift && isEnd);
             pos = valueEnd + sepLen;
             if (minutes == INVALID) {
                 continue;
@@ -1929,12 +1953,14 @@ public class TimeRangeUtils {
 
     /**
      * 追加调整值
-     * @param minuteTime 分钟精度时间段字符串
+     *
+     * @param minuteTime   分钟精度时间段字符串
      * @param adjustOffset 调整值偏移量
      * @param startMinutes 开始分钟
-     * @param endMinutes 结束分钟
+     * @param endMinutes   结束分钟
+     * @param forceShift
      */
-    private static void appendAdjustments(StringBuilder minuteTime, int adjustOffset, boolean addStart, int startMinutes, boolean andEnd, int endMinutes) {
+    private static void appendAdjustments(StringBuilder minuteTime, int adjustOffset, boolean addStart, int startMinutes, boolean andEnd, int endMinutes, boolean forceShift) {
         if (addStart && startMinutes % TIME_UNIT_IN_MINUTES != 0) {
             if (minuteTime.length() > adjustOffset) {
                 minuteTime.append(ADJ_ITEMS_SEPARATOR);
@@ -1947,7 +1973,7 @@ public class TimeRangeUtils {
             } else {
                 minuteTime.append(END_TIME_FLAG);
             }
-            minuteTime.append(Integer.toUnsignedString(endMinutes, ADJ_RADIX));
+            minuteTime.append(Integer.toUnsignedString(forceShift ? endMinutes - 1 : endMinutes, ADJ_RADIX));
         }
     }
 
@@ -1956,19 +1982,23 @@ public class TimeRangeUtils {
      * <p>扫描已有的调整值对，将落在 [startMinutes, endMinutes) 内的内部边界移除，
      * 并根据相邻调整值类型决定是否补充新的开始/结束调整值。</p>
      *
-     * @param minuteTime     分钟精度时间段字符串
-     * @param adjustOffset   调整值偏移量
-     * @param timestamp      时间戳
-     * @param startMinutes   开始分钟
-     * @param endMinutes     结束分钟
+     * @param minuteTime   分钟精度时间段字符串
+     * @param adjustOffset 调整值偏移量
+     * @param timestamp    时间戳
+     * @param startMinutes 开始分钟
+     * @param endMinutes   结束分钟
+     * @param forceShift
      */
-    private static void updateAdjustments(StringBuilder minuteTime, int adjustOffset, long timestamp, int startMinutes, int endMinutes) {
-        int startSlot = getStartIndex0(startMinutes);
+    private static void updateAdjustments(StringBuilder minuteTime, int adjustOffset, long timestamp, int startMinutes, int endMinutes, boolean forceShift) {
         int endSlotIdx = getEndIndex0(endMinutes);
-
+        int startSlot = getStartIndex0(startMinutes);
         // slot 未覆盖时直接确定需要加入，不需要计算 nearly 值
         boolean needNearlyStart = (timestamp & (FIRST_BIT << startSlot)) != NONE;
         boolean needNearlyEnd = (timestamp & (FIRST_BIT << (endSlotIdx - 1))) != NONE;
+
+        int start = needNearlyStart ? startSlot * TIME_UNIT_IN_MINUTES : 0;
+        int end = needNearlyEnd ? endSlotIdx * TIME_UNIT_IN_MINUTES : 0;
+        int tEndMinutes = forceShift ? endMinutes == 0 ? end - 1 : endMinutes - 1 : endMinutes;
 
         // 同一 slot 中最靠近 startMinutes/endMinutes 的最靠近的调整值
         int nearlyStart = INVALID;
@@ -1985,7 +2015,7 @@ public class TimeRangeUtils {
                 valueEnd = minuteTime.length();
             }
             boolean isEnd = minuteTime.charAt(pos) == END_TIME_FLAG;
-            int minutes = parseAdjValue(minuteTime, (isEnd ? pos + 1 : pos), valueEnd);
+            int minutes = parseAdjValue(minuteTime, (isEnd ? pos + 1 : pos), valueEnd, false);
             if (minutes == INVALID) {
                 pos = valueEnd + 1;
                 continue;
@@ -1996,10 +2026,10 @@ public class TimeRangeUtils {
             boolean endInside;
             if (isEnd) {
                 startInside = minutes >= startMinutes;
-                endInside = minutes < endMinutes;
+                endInside = minutes < tEndMinutes;
             } else {
                 startInside = minutes > startMinutes;
-                endInside = minutes <= endMinutes;
+                endInside = minutes <= tEndMinutes;
             }
             boolean inside = startMinutes < endMinutes ? startInside && endInside : startInside || endInside;
             if (inside) {
@@ -2016,13 +2046,13 @@ public class TimeRangeUtils {
                 }
             }
             // 只有需要时才计算同一 slot 中的 nearly 值
-            if (needNearlyStart && getStartIndex0(minutes) == startSlot) {
+            if (needNearlyStart && start <= minutes && minutes < start + TIME_UNIT_IN_MINUTES) {
                 if (nearlyStart == INVALID || Math.abs(minutes - startMinutes) < Math.abs(nearlyStart - startMinutes)) {
                     nearlyStart = minutes;
                     nearlyStartIsEnd = isEnd;
                 }
             }
-            if (needNearlyEnd && getEndIndex0(isEnd ? minutes : minutes + 1) == endSlotIdx) {
+            if (needNearlyEnd && minutes < end && end <= minutes + TIME_UNIT_IN_MINUTES) {
                 if (nearlyEnd == INVALID || Math.abs(minutes - endMinutes) < Math.abs(nearlyEnd - endMinutes)) {
                     nearlyEnd = minutes;
                     nearlyEndIsEnd = isEnd;
@@ -2048,15 +2078,24 @@ public class TimeRangeUtils {
         // 规则3：判断是否加入 endMinutes
         boolean addEnd;
         if (needNearlyEnd) {
-            addEnd = nearlyEnd != INVALID && ((nearlyEndIsEnd && nearlyEnd < endMinutes) || (!nearlyEndIsEnd && nearlyEnd > endMinutes));
+            addEnd = nearlyEnd != INVALID && ((nearlyEndIsEnd && nearlyEnd < tEndMinutes) || (!nearlyEndIsEnd && nearlyEnd > tEndMinutes));
         } else {
             addEnd = true;
         }
         // 新调整值追加到末尾
-        appendAdjustments(minuteTime, adjustOffset, addStart, startMinutes, addEnd, endMinutes);
+        appendAdjustments(minuteTime, adjustOffset, addStart, startMinutes, addEnd, endMinutes, forceShift);
     }
 
-    private static int parseAdjValue(CharSequence minuteTime, int start, int end) {
+    /**
+     * 解析调整值的分钟数
+     *
+     * @param minuteTime 分钟精度时间段字符串
+     * @param start      值起始位置
+     * @param end        值结束位置（排他）
+     * @param shiftEnd   是否为 forceShift 写入的结束调整值, true 时写入减去了 1 分钟, 需加回 1 还原
+     * @return 调整值对应的分钟数, 无效时返回 {@link #INVALID}
+     */
+    private static int parseAdjValue(CharSequence minuteTime, int start, int end, boolean shiftEnd) {
         int result = 0;
         while (start < end) {
             int digit = Character.digit(minuteTime.charAt(start++), ADJ_RADIX);
@@ -2065,7 +2104,8 @@ public class TimeRangeUtils {
             }
             result = result * ADJ_RADIX + digit;
         }
-        return result;
+        // forceShift 写入时结束调整值减去了 1 分钟, 读取时需加回 1 还原
+        return shiftEnd ? result + 1 : result;
     }
 
     private static long parseTimeValue(CharSequence minuteTime, int start, int end) {
