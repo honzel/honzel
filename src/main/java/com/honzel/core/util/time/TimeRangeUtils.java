@@ -422,7 +422,7 @@ public class TimeRangeUtils {
                 return offset;
             }
             int index = Long.SIZE - Long.numberOfLeadingZeros(timeRangeStamp & ALL_TIMES);
-            if (shiftFlag) {
+            if (shiftFlag && index != TIME_BITS) {
                 // 是班次时间
                 index ++;
             }
