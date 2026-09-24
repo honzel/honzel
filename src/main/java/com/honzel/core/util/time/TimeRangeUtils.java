@@ -468,7 +468,7 @@ public class TimeRangeUtils {
                 return null;
             }
             // 调整值的分钟数
-            int minutes = nearestOfStart(index, minuteTime, pos, adjustmentEnd, false);
+            int minutes = nearestOfStart(index, minuteTime, pos, adjustmentEnd, shiftFlag, false);
             if (minutes > 0) {
                 return LocalTime.MIN.plusMinutes(minutes);
             }
@@ -493,10 +493,11 @@ public class TimeRangeUtils {
      * @param minuteTime      分钟精度时间段字符串
      * @param adjustmentStart 调整值区域起始位置
      * @param adjustmentEnd   调整值区域结束位置
-     * @param matchStart 是否匹配调整值类型
+     * @param shiftFlag
+     * @param matchStart      是否匹配调整值类型
      * @return 实际最早开始的分钟数（minute-of-day）；若从 slot 边界对齐开始则返回 {@link #INVALID}
      */
-    private static int nearestOfStart(int startIndex, String minuteTime, int adjustmentStart, int adjustmentEnd, boolean matchStart) {
+    private static int nearestOfStart(int startIndex, String minuteTime, int adjustmentStart, int adjustmentEnd, boolean shiftFlag, boolean matchStart) {
         if (adjustmentStart >= adjustmentEnd) {
             return 0;
         }
@@ -527,7 +528,7 @@ public class TimeRangeUtils {
                         firstIsEnd = false;
                     }
                 } else {
-                    first = digit;
+                    first = isEnd && shiftFlag ? digit + 1 : digit;
                     firstIsEnd = isEnd;
                 }
             }
