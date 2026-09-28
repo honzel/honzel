@@ -28,6 +28,16 @@ public class TimeRangeUtils {
     private static final long FIRST_BIT = 1L;
 
 
+    public static final int ERROR_TIME_RANGES_IS_EMPTY = 1;
+    public static final int ERROR_START_TIME_IS_NULL = 2;
+
+    public static final int ERROR_END_TIME_IS_NULL = 3;
+    public static final int ERROR_TIME_RANGE_OVERLAP = 4;
+
+    public static final int ERROR_START_TIME_AND_END_TIME_IN_SAME_SLOT = 5;
+
+
+
     /**
      * 全部时间
      */
@@ -808,28 +818,25 @@ public class TimeRangeUtils {
      */
     public static void checkValidShiftTimeRanges(List<? extends TimeRange> timeRanges, boolean checkOverlap) {
         if (timeRanges == null || timeRanges.isEmpty()) {
-            throw new DateTimeException("没有指定时间段");
+            throw new DateTimeException(getInstance().getErrorMessage(ERROR_TIME_RANGES_IS_EMPTY, null, null));
         }
         long result = NONE;
         long boundary = NONE;
         for (int i = 0; i < timeRanges.size(); i++) {
             TimeRange timeRange = timeRanges.get(i);
             LocalTime startTime = timeRange.getStartTime();
-            if (startTime == null) {
-                throw new DateTimeException("开始时间不能为空");
-            }
             LocalTime endTime = timeRange.getEndTime();
+            if (startTime == null) {
+                throw new DateTimeException(getInstance().getErrorMessage(ERROR_START_TIME_IS_NULL, null, endTime));
+            }
             if (endTime == null) {
-                throw new DateTimeException("结束时间不能为空");
+                throw new DateTimeException(getInstance().getErrorMessage(ERROR_END_TIME_IS_NULL, startTime, null));
             }
             int startMinutes = getTimeMinutes(startTime, false);
             int endMinutes = getTimeMinutes(endTime, true);
             // 范围只占单个 slot 才会塌缩
             if (startMinutes < endMinutes && getStartIndex0(startMinutes) == getEndIndex0(endMinutes) - 1) {
-                throw new DateTimeException(
-                        "开始时间[" + startTime.truncatedTo(ChronoUnit.SECONDS)
-                                + "]和结束时间[" + endTime.truncatedTo(ChronoUnit.SECONDS) + "]不能同时落在同一个整点或半点的"
-                                + TIME_UNIT_IN_MINUTES + "分钟区间内");
+                throw new DateTimeException(getInstance().getErrorMessage(ERROR_START_TIME_AND_END_TIME_IN_SAME_SLOT, startTime, endTime));
             }
             if (checkOverlap) {
                 long time = fromTimeRange0(startMinutes, endMinutes, false, false);
@@ -838,13 +845,13 @@ public class TimeRangeUtils {
                 long retain = time & result;
                 if (retain != NONE) {
                     if ((retain != boundaryStart && retain != boundaryEnd) || (retain & boundary) == NONE) {
-                        throw new DateTimeException("时间段不能出现重叠");
+                        throw new DateTimeException(getInstance().getErrorMessage(ERROR_TIME_RANGE_OVERLAP, startTime, endTime));
                     }
                     if (retain == boundaryStart) {
                         for (int j = i - 1; j >= 0; j--) {
                             LocalTime otherStart = timeRanges.get(j).getStartTime();
                             if (fromTime(otherStart) == boundaryStart && getHalfHourSeconds(otherStart) >= getHalfHourSeconds(startTime)) {
-                                throw new DateTimeException("时间段不能出现重叠");
+                                throw new DateTimeException(getInstance().getErrorMessage(ERROR_TIME_RANGE_OVERLAP, startTime, endTime));
                             }
                         }
                     }
@@ -852,7 +859,7 @@ public class TimeRangeUtils {
                         for (int j = i - 1; j >= 0; j--) {
                             LocalTime otherEnd = timeRanges.get(j).getEndTime();
                             if (fromTime(otherEnd) == boundaryEnd && getHalfHourSeconds(otherEnd) <= getHalfHourSeconds(endTime)) {
-                                throw new DateTimeException("时间段不能出现重叠");
+                                throw new DateTimeException(getInstance().getErrorMessage(ERROR_TIME_RANGE_OVERLAP, startTime, endTime));
                             }
                         }
                     }
@@ -861,6 +868,24 @@ public class TimeRangeUtils {
                 result |= time;
             }
         }
+    }
+
+    protected String getErrorMessage(int errorCode, LocalTime startTime, LocalTime endTime) {
+        switch (errorCode) {
+            case ERROR_TIME_RANGES_IS_EMPTY:
+                return "没有指定时间段";
+            case ERROR_START_TIME_IS_NULL:
+                return "开始时间不能为空";
+            case ERROR_END_TIME_IS_NULL:
+                return "结束时间不能为空";
+            case ERROR_START_TIME_AND_END_TIME_IN_SAME_SLOT:
+                return "班次时间时开始时间[" + startTime.truncatedTo(ChronoUnit.SECONDS)
+                                + "]与结束时间[" + endTime.truncatedTo(ChronoUnit.SECONDS) + "]不能同时落在同一个以整点或半点为起点的"
+                                + TIME_UNIT_IN_MINUTES + "分钟区间内";
+            case ERROR_TIME_RANGE_OVERLAP:
+                return "时间段不能出现重叠";
+        }
+        return "时间段无效";
     }
 
     private static int getHalfHourSeconds(LocalTime time) {
@@ -903,6 +928,10 @@ public class TimeRangeUtils {
             int endMinutes = getTimeMinutes(endTime, true);
             // 获取时间段
             long range = fromTimeRange0(startMinutes, endMinutes, forceShift, fetchOffset);
+            if (forceShift && range == NONE) {
+                // 班次时间出现塌缩
+                throw new DateTimeException(getInstance().getErrorMessage(ERROR_START_TIME_AND_END_TIME_IN_SAME_SLOT, startTime, endTime));
+            }
             if (hasMinuteTimes) {
                 // 需要调整值
                 long nonShiftResult = nonShift0(result, forceShift);
@@ -1794,7 +1823,11 @@ public class TimeRangeUtils {
         if (startTime == null || endTime == null) {
             return NONE;
         }
-        return fromTimeRange0(getTimeMinutes(startTime, false), getTimeMinutes(endTime, true), forceShift, fetchOffset);
+        long result = fromTimeRange0(getTimeMinutes(startTime, false), getTimeMinutes(endTime, true), forceShift, fetchOffset);
+        if (fetchOffset && result == NONE) {
+            throw new DateTimeException(getInstance().getErrorMessage(ERROR_START_TIME_AND_END_TIME_IN_SAME_SLOT, startTime, endTime));
+        }
+        return result;
     }
 
     private static int getTimeMinutes(LocalTime time, boolean isEnd) {
