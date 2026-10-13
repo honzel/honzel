@@ -253,7 +253,7 @@ public class WebUtils {
         if (headerMap == null) {
             contentType = "application/x-www-form-urlencoded;charset=" + charset;
         }
-        return doRequest(instance.buildConnection(url, METHOD_POST, contentType, connectTimeout, readTimeout, headerMap), content, charset);
+        return doRequest(instance.buildConnection(url, METHOD_POST, contentType, connectTimeout, readTimeout, headerMap), content, charset, true);
     }
     /**
      * 执行HTTP POST请求。
@@ -289,14 +289,27 @@ public class WebUtils {
      * @throws IOException 异常
      */
     public static String doRequest(URLConnection conn, String content, Charset charset) throws IOException {
+        return doRequest(conn, content, charset, true);
+    }
+
+    /**
+     * 执行HTTP请求。
+     * @param conn 请求连接
+     * @param content 请求内容
+     * @param charset 请求字符集
+     * @param disconnect 是否断开连接
+     * @return 响应字符串
+     * @throws IOException 异常
+     */
+    public static String doRequest(URLConnection conn, String content, Charset charset, boolean disconnect) throws IOException {
         if (conn == null) {
             throw new IOException("connection is null");
         }
-        byte[] data = content != null && content.length() > 0 ? content.getBytes(charset != null ? charset : getInstance().getDefaultCharset()) : ArrayConstants.EMPTY_BYTE_ARRAY;
+        byte[] data = content != null && !content.isEmpty() ? content.getBytes(charset != null ? charset : getInstance().getDefaultCharset()) : ArrayConstants.EMPTY_BYTE_ARRAY;
         try {
             return readAsString(getConnectionInputStream(conn, data, charset), getResponseCharset(conn.getContentType(), charset));
         } finally {
-            if (conn instanceof HttpURLConnection) {
+            if (disconnect && conn instanceof HttpURLConnection) {
                 ((HttpURLConnection)conn).disconnect();
             }
         }
@@ -316,18 +329,10 @@ public class WebUtils {
             if (isHttpConnected && TextUtils.isEmpty(((HttpURLConnection)conn).getRequestMethod())) {
                 ((HttpURLConnection)conn).setRequestMethod(METHOD_POST);
             }
-            OutputStream out = null;
-            try {
-                out = conn.getOutputStream();
+            try (OutputStream out = conn.getOutputStream()) {
                 out.write(content);
-            } finally {
-                try {
-                    if (out != null) {
-                        out.close();
-                    }
-                } catch (Exception e) {
-                    LOG.warn("关闭输出流失败");
-                }
+            } catch (Exception e) {
+                LOG.warn("关闭输出流失败");
             }
         } else {
             if (isHttpConnected && TextUtils.isEmpty(((HttpURLConnection)conn).getRequestMethod())) {
@@ -392,14 +397,26 @@ public class WebUtils {
      * @throws IOException 异常
      */
     public static ByteArrayOutputStream doRequestAsStream(URLConnection conn, String content, Charset charset) throws IOException {
+        return doRequestAsStream(conn, content, charset, true);
+    }
+    /**
+     * 执行HTTP请求。
+     * @param conn 请求连接
+     * @param content 请求内容
+     * @param charset 请求字符集
+     * @param disconnect 是否断开连接
+     * @return 响应字节数组流
+     * @throws IOException 异常
+     */
+    public static ByteArrayOutputStream doRequestAsStream(URLConnection conn, String content, Charset charset, boolean disconnect) throws IOException {
         if (conn == null) {
             throw new IOException("connection is null");
         }
-        byte[] data = content != null && content.length() > 0 ? content.getBytes(charset != null ? charset : getInstance().getDefaultCharset()) : ArrayConstants.EMPTY_BYTE_ARRAY;
+        byte[] data = content != null && !content.isEmpty() ? content.getBytes(charset != null ? charset : getInstance().getDefaultCharset()) : ArrayConstants.EMPTY_BYTE_ARRAY;
         try {
             return readAsOutputStream(getConnectionInputStream(conn, data, charset));
         } finally {
-            if (conn instanceof HttpURLConnection) {
+            if (disconnect && conn instanceof HttpURLConnection) {
                 ((HttpURLConnection)conn).disconnect();
             }
         }
@@ -584,7 +601,7 @@ public class WebUtils {
         WebUtils instance = getInstance();
         Charset defaultCharset = instance.getDefaultCharset();
         String contentType = "application/x-www-form-urlencoded;charset=" + defaultCharset;
-        return doRequest(instance.buildConnection(buildGetUrl(url, params), METHOD_GET, contentType, instance.getDefaultConnectTimeout(), instance.getDefaultReadTimeout(), headerMap), null, defaultCharset);
+        return doRequest(instance.buildConnection(buildGetUrl(url, params), METHOD_GET, contentType, instance.getDefaultConnectTimeout(), instance.getDefaultReadTimeout(), headerMap), null, defaultCharset, true);
     }
 
     /**
@@ -608,7 +625,7 @@ public class WebUtils {
         if (headerMap == null) {
             contentType = "application/x-www-form-urlencoded;charset=" + charset;
         }
-        return doRequest(instance.buildConnection(buildGetUrl(url, queryString), METHOD_GET, contentType, connectTimeout, readTimeout, headerMap), null, charset);
+        return doRequest(instance.buildConnection(buildGetUrl(url, queryString), METHOD_GET, contentType, connectTimeout, readTimeout, headerMap), null, charset, true);
     }
 
     /**
