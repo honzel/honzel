@@ -339,14 +339,15 @@ public class WebUtils {
                 ((HttpURLConnection)conn).setRequestMethod(METHOD_GET);
             }
         }
-        if (!isHttpConnected || ((HttpURLConnection)conn).getResponseCode() < 300) {
+        WebUtils webUtils = getInstance();
+        if (!isHttpConnected || webUtils.isResponseSuccess((HttpURLConnection)conn)) {
             // 正常返回数据
-            return applyResponseInputStream(conn.getInputStream(), conn.getContentEncoding());
+            return webUtils.applyResponseInputStream(conn.getInputStream(), conn.getContentEncoding());
         } else {
             // 异常返回数据
             int responseCode = ((HttpURLConnection) conn).getResponseCode();
             InputStream originInput = responseCode < 400 ? conn.getInputStream() : ((HttpURLConnection)conn).getErrorStream();
-            InputStream input = applyResponseInputStream(originInput, conn.getContentEncoding());
+            InputStream input = webUtils.applyResponseInputStream(originInput, conn.getContentEncoding());
             String msg = readAsString(input, getResponseCharset(conn.getContentType(), charset));
             if (TextUtils.isEmpty(msg)) {
                 throw new HttpResponseMessageException(responseCode, ((HttpURLConnection)conn).getResponseMessage());
@@ -356,11 +357,21 @@ public class WebUtils {
         }
     }
 
+    /**
+     * 判断HTTP响应是否成功。
+     * @param conn 请求连接
+     * @return 布尔值
+     * @throws IOException 异常
+     */
+    protected boolean isResponseSuccess(HttpURLConnection conn) throws IOException {
+        return conn.getResponseCode() < 300;
+    }
 
-    private static InputStream applyResponseInputStream(InputStream input, String contentEncoding) {
+
+    private InputStream applyResponseInputStream(InputStream input, String contentEncoding) {
         if (input != null && TextUtils.isNotEmpty(contentEncoding)) {
             try {
-                InputStream inputStream = getInstance().convertResponseInputStream(input, contentEncoding);
+                InputStream inputStream = convertResponseInputStream(input, contentEncoding);
                 if (inputStream != null) {
                     return inputStream;
                 }
