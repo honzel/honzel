@@ -471,7 +471,7 @@ public class TimeRangeUtils {
         long result = NONE;
         int pos = 0;
         boolean first = true;
-        long timeRangeMask = dayOfWeek != null ? fromWeekday(dayOfWeek) : NONE;
+        long timeRangeMask = fromWeekday(dayOfWeek);
         while (pos < len) {
             if ((pos = matchMinuteTime0(minuteTime, pos, timeRangeMask, null, null)) == INVALID) {
                 return first ? INVALID : result;
