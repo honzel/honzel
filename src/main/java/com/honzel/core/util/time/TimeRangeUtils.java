@@ -441,10 +441,65 @@ public class TimeRangeUtils {
         return INVALID;
     }
 
+    /**
+     * 获取时间段值, 不匹配时返回-1
+     * @param minuteTime 分钟精度时间段值
+     * @param dayOfWeek 星期几
+     * @return 返回时间段值
+     */
+    public static long getRawTimeRange(String minuteTime, DayOfWeek dayOfWeek) {
+        return dayOfWeek != null ? getRawTimeRange0(minuteTime, dayOfWeek) : NONE;
+    }
+
+    /**
+     * 获取时间段值, 不匹配时返回-1
+     * @param minuteTime 分钟精度时间段值
+     * @return 返回时间段值
+     */
+    public static long getRawTimeRange(String minuteTime) {
+        return getRawTimeRange0(minuteTime, null);
+    }
+
+    /**
+     * 获取时间段值, 不匹配时返回-1
+     * @param minuteTime 分钟精度时间段值
+     * @param dayOfWeek 星期几
+     * @return 返回时间段值
+     */
+    private static long getRawTimeRange0(String minuteTime, DayOfWeek dayOfWeek) {
+        int len = minuteTime.length();
+        long result = NONE;
+        int pos = 0;
+        boolean first = true;
+        long timeRangeMask = dayOfWeek != null ? fromWeekday(dayOfWeek) : NONE;
+        while (pos < len) {
+            if ((pos = matchMinuteTime0(minuteTime, pos, timeRangeMask, null, null)) == INVALID) {
+                return first ? INVALID : result;
+            }
+            // 获取时间段的结束位置
+            int entryEnd = getEntryEnd(minuteTime, pos, len);
+            // 获取调整值的结束位置
+            int adjustmentEnd = getAdjustmentEnd(minuteTime, pos, entryEnd);
+            long stamp = parseTimeValue(minuteTime, adjustmentEnd + 1, entryEnd);
+            if (first) {
+                if (timeRangeMask != NONE && (timeRangeMask & ALL_WEEKDAYS) != NONE) {
+                    // 只取第一个
+                    return stamp;
+                }
+                first = false;
+            }
+            if (stamp != INVALID) {
+                result |= stamp;
+            }
+            pos = entryEnd + TIME_ENTRY_SEPARATOR.length();
+        }
+        return result;
+    }
+
 
     private static LocalTime getFirstOrLastTime0(String minuteTime, long timeRangeMask, boolean last) {
         // 获取指定天的起始时间位置
-        int pos = matchMinuteTime0(minuteTime, timeRangeMask, null, null);
+        int pos = matchMinuteTime0(minuteTime, 0, timeRangeMask, null, null);
         if (pos == INVALID) {
             return null;
         }
@@ -1262,7 +1317,7 @@ public class TimeRangeUtils {
      */
     public static boolean containsTimeRange(String minuteTime, long timeRangeMask, LocalTime startTime, LocalTime endTime) {
         return startTime != null && endTime != null
-                && matchMinuteTime0(minuteTime, timeRangeMask, startTime, endTime) != INVALID;
+                && matchMinuteTime0(minuteTime, 0, timeRangeMask, startTime, endTime) != INVALID;
     }
     /**
      * 时间段内是否包含有该时间区间
@@ -1274,7 +1329,7 @@ public class TimeRangeUtils {
      */
     public static boolean containsTimeRange(String minuteTime, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime) {
         return dayOfWeek != null && startTime != null && endTime != null
-                && matchMinuteTime0(minuteTime, fromWeekday(dayOfWeek), startTime, endTime) != INVALID;
+                && matchMinuteTime0(minuteTime, 0, fromWeekday(dayOfWeek), startTime, endTime) != INVALID;
     }
 
     /**
@@ -1285,7 +1340,7 @@ public class TimeRangeUtils {
      * @return 是否时间段值包含该时间段
      */
     public static boolean containsTimeRange(String minuteTime, LocalTime startTime, LocalTime endTime) {
-        return startTime != null && endTime != null && matchMinuteTime0(minuteTime, NONE, startTime, endTime) != INVALID;
+        return startTime != null && endTime != null && matchMinuteTime0(minuteTime, 0, NONE, startTime, endTime) != INVALID;
     }
 
     /**
@@ -1295,7 +1350,7 @@ public class TimeRangeUtils {
      * @return 是否时间段值包含该时间
      */
     public static boolean containsDateTime(String minuteTime, LocalDateTime time) {
-        return time != null && matchMinuteTime0(minuteTime, fromWeekday(time.getDayOfWeek()), time.toLocalTime(), null) != INVALID;
+        return time != null && matchMinuteTime0(minuteTime, 0, fromWeekday(time.getDayOfWeek()), time.toLocalTime(), null) != INVALID;
     }
     /**
      * 时间段内是否包含有该时间区间
@@ -1305,7 +1360,7 @@ public class TimeRangeUtils {
      * @return 是否时间段值包含该时间段
      */
     public static boolean containsTime(String minuteTime, long timeRangeMask, LocalTime time) {
-        return time != null && matchMinuteTime0(minuteTime, timeRangeMask, time, null) != INVALID;
+        return time != null && matchMinuteTime0(minuteTime, 0, timeRangeMask, time, null) != INVALID;
     }
     /**
      * 时间段内是否包含有该时间区间
@@ -1315,7 +1370,7 @@ public class TimeRangeUtils {
      * @return 是否时间段值包含该时间段
      */
     public static boolean containsTime(String minuteTime, DayOfWeek dayOfWeek, LocalTime time) {
-        return dayOfWeek != null && time != null && matchMinuteTime0(minuteTime, fromWeekday(dayOfWeek), time, null) != INVALID;
+        return dayOfWeek != null && time != null && matchMinuteTime0(minuteTime, 0, fromWeekday(dayOfWeek), time, null) != INVALID;
     }
 
     /**
@@ -1325,7 +1380,7 @@ public class TimeRangeUtils {
      * @return 是否时间段值包含该时间
      */
     public static boolean containsTime(String minuteTime, LocalTime time) {
-        return time != null && matchMinuteTime0(minuteTime, NONE, time, null) != INVALID;
+        return time != null && matchMinuteTime0(minuteTime, 0, NONE, time, null) != INVALID;
     }
 
     /**
@@ -1333,21 +1388,26 @@ public class TimeRangeUtils {
      * <p>从 {@link #from(String, List, StringBuilder)} 生成的 minuteTime 中解析出指定星期对应的时间范围列表。
      * 解析条目中的时间戳位值判断是否包含目标星期，再结合调整值还原分钟精度的时间边界。
      * 当时间戳的日期区域为 0 时表示适用所有日期。</p>
-     * @param minuteTime 分钟精度的时间段值
-     * @param timeRangeMask 时间范围掩码, 包含日期和时间范围, 如果为0, 则表示获取首个时间范围集合
-     *  @param startTime 时间段开始时间点
-     * @param endTime 时间段结束时间
      *
+     * @param minuteTime    分钟精度的时间段值
+     * @param pos           当前条目起始位置
+     * @param timeRangeMask 时间范围掩码, 包含日期和时间范围, 如果为0, 则表示获取首个时间范围集合
+     * @param startTime     时间段开始时间点
+     * @param endTime       时间段结束时间
      * @return 返回该星期对应的时间范围列表，不包含则返回空列表
      */
-    private static int matchMinuteTime0(String minuteTime, long timeRangeMask, LocalTime startTime, LocalTime endTime) {
+    private static int matchMinuteTime0(String minuteTime, int pos, long timeRangeMask, LocalTime startTime, LocalTime endTime) {
         if (TextUtils.isEmpty(minuteTime)) {
             return INVALID;
         }
-        int days = timeRangeMask == NONE ? 0 : (int)((timeRangeMask & ALL_WEEKDAYS) >>> WEEKDAY_SHIFT);
-        timeRangeMask &= ALL_TIMES;
+        int days;
+        if (timeRangeMask == NONE) {
+            days = 0;
+        } else {
+            days = (int)((timeRangeMask & ALL_WEEKDAYS) >>> WEEKDAY_SHIFT);
+            timeRangeMask &= ALL_TIMES;
+        }
         // weekday 位在 base-32 时间戳中从末尾向前定位
-        int pos = 0;
         int len = minuteTime.length();
         while (pos < len) {
             // 定位当前条目的分隔符位置

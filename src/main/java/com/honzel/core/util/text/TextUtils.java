@@ -238,15 +238,9 @@ public class TextUtils {
 	private static volatile TextUtils utils;
 
 	static {
-		registerFormatType(FormatTypeEnum.SIMPLE);
-		registerFormatType(FormatTypeEnum.JSON);
-		registerFormatType(FormatTypeEnum.XML);
-		registerFormatType(FormatTypeEnum.URL_ENCODING);
-		registerFormatType(FormatTypeEnum.SUB_STR);
-		registerFormatType(FormatTypeEnum.PAD);
-		registerFormatType(FormatTypeEnum.CALC);
-		registerFormatType(FormatTypeEnum.DIGEST);
-		registerFormatType(FormatTypeEnum.TIME);
+		for (FormatTypeEnum value : FormatTypeEnum.values()) {
+			registerFormatType(value);
+		}
 	}
 
 	protected TextUtils() {
