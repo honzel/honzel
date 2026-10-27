@@ -482,7 +482,7 @@ public class TimeRangeUtils {
             int adjustmentEnd = getAdjustmentEnd(minuteTime, pos, entryEnd);
             long stamp = parseTimeValue(minuteTime, adjustmentEnd + 1, entryEnd);
             if (first) {
-                if (timeRangeMask != NONE && (timeRangeMask & ALL_WEEKDAYS) != NONE) {
+                if (timeRangeMask != NONE) {
                     // 只取第一个
                     return stamp;
                 }
