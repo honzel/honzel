@@ -1033,12 +1033,12 @@ public class TextUtils {
 		//判断是否前置常量串
 		int start = resolver.getStart();
 		if (resolver.isInTokens() && format.charAt(start) != EXPR_FLAG && format.charAt(start) != JOIN_FLAG) {
-			// 前置字符串是否为null时附加的内容, 预先附加上内容
+			// 前置字符串是否为null时附加的内容, 预先附加上内容,不进行trim
 			if (format.charAt(start) == FOR_EMPTY_FLAG) {
 				appendForEmpty = true;
-				resolver.appendTo(content, 1);
+				resolver.appendTo(content, false, (start - resolver.getStart(false)) + 1, 0);
 			} else {
-				resolver.appendTo(content);
+				resolver.appendTo(content, false);
 			}
 			// 解析下一部分
 			resolver.hasNext();
@@ -1147,25 +1147,23 @@ public class TextUtils {
 		boolean next = true;
 		while (next && resolver.isInTokens()) {
 			int start = resolver.getStart();
-			int offset = 0;
 			if (format.charAt(start) ==  JOIN_FLAG) {
 				if (isLastValue) {
 					// 最后一个元素时不添加该值
 					break;
 				}
 				nonSeparator = false;
-				offset = 1;
-				start += offset;
+				start += 1;
 			}
 			if (format.charAt(start) ==  FOR_EMPTY_FLAG) {
-				// 如果为null时才附加，则值为null时进行附加
+				// 如果为null时才附加，则值为null时进行附加,不进行trim
 				if (emptyValue) {
-					resolver.appendTo(content, offset + 1);
+					resolver.appendTo(content,false, (start - resolver.getStart(false)) + 1, 0);
 				}
 			} else {
-				// 如果为非null时才附加，则值为非null时进行附加
+				// 如果为非null时才附加，则值为非null时进行附加,不进行trim
 				if (!emptyValue) {
-					resolver.appendTo(content, offset);
+					resolver.appendTo(content,false, (start - resolver.getStart(false)), 0);
 				}
 			}
 			next = resolver.hasNext();
